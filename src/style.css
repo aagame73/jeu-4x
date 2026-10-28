@@ -213,7 +213,7 @@ kbd {
   position: absolute;
   top: 72px;
   left: 12px;
-  width: 260px;
+  width: 290px;
   padding: 10px;
 }
 #probes {
@@ -221,31 +221,97 @@ kbd {
   gap: 6px;
 }
 .probe {
-  display: grid;
-  gap: 2px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
   width: 100%;
+  padding: 4px 8px 4px 4px;
 }
 .probe.selected {
-  border-color: var(--accent);
-  background: rgba(124, 255, 158, 0.1);
+  border-color: var(--ship-accent);
+  background: color-mix(in srgb, var(--ship-accent) 12%, transparent);
+}
+.ship-thumb {
+  width: 72px;
+  height: 43px;
+  flex: none;
+  border-radius: 6px;
+  background: radial-gradient(circle at 50% 45%, rgba(120, 150, 210, 0.18), rgba(0, 0, 0, 0.25));
+}
+.probe-text {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+  flex: 1;
 }
 .probe-name {
   display: flex;
   align-items: center;
   font-weight: 600;
+  color: var(--ship-accent);
+}
+.probe {
+  cursor: pointer;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: rgba(120, 170, 255, 0.08);
+}
+.probe:hover {
+  background: rgba(120, 170, 255, 0.16);
+}
+.name-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.probe-name .icon {
+  padding: 0 4px;
+  margin-left: 4px;
+  border: none;
+  background: none;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.2;
+  opacity: 0;
+}
+.probe:hover .icon,
+.probe.selected .icon {
+  opacity: 1;
+}
+.probe-name .icon:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.08);
 }
 .probe-name kbd {
   margin-left: auto;
 }
+.rename {
+  width: 100%;
+  font: inherit;
+  font-weight: 600;
+  color: var(--text);
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--ship-accent);
+  border-radius: 4px;
+  padding: 0 4px;
+}
+.probe-registry {
+  font: 10px monospace;
+  color: var(--muted);
+}
 .probe-status {
+  display: flex;
+  align-items: center;
   font-size: 12px;
   color: var(--muted);
 }
 .dot {
-  width: 8px;
-  height: 8px;
-  margin-right: 8px;
-  transform: rotate(45deg);
+  width: 6px;
+  height: 6px;
+  flex: none;
+  margin-right: 6px;
+  border-radius: 50%;
   background: var(--accent);
 }
 .probe.travel .dot {

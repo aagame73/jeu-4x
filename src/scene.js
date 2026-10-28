@@ -6,53 +6,23 @@ import { CONFIG } from './config.js';
 import { STAR_TYPES, starDistance } from './galaxy.js';
 import { reachableStars, probeProgress } from './game.js';
 import { createSky } from './skybox.js';
+import { createShip } from './ships.js';
+import { canvasTexture, glowTexture } from './textures.js';
 
-const PROBE_COLOR = 0x7cff9e;
+const PROBE_COLOR = 0x7cff9e; // lignes de portée
 const CURRENT_COLOR = 0x5fe3ff;
 const PARTICLES_PER_CURRENT = 8;
 
 const toVec = (p) => new THREE.Vector3(p.x, p.y, p.z);
 
-function canvasTexture(size, draw) {
-  const canvas = document.createElement('canvas');
-  canvas.width = canvas.height = size;
-  draw(canvas.getContext('2d'), size);
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.colorSpace = THREE.SRGBColorSpace;
-  return texture;
-}
-
-const glowTexture = () =>
-  canvasTexture(128, (ctx, s) => {
-    const g = ctx.createRadialGradient(s / 2, s / 2, 0, s / 2, s / 2, s / 2);
-    g.addColorStop(0, 'rgba(255,255,255,1)');
-    g.addColorStop(0.12, 'rgba(255,255,255,0.95)');
-    g.addColorStop(0.3, 'rgba(255,255,255,0.35)');
-    g.addColorStop(1, 'rgba(255,255,255,0)');
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, s, s);
-  });
-
 const ringTexture = () =>
-  canvasTexture(128, (ctx, s) => {
+  canvasTexture(128, 128, (ctx, s) => {
     ctx.strokeStyle = 'white';
     ctx.lineWidth = 5;
     ctx.setLineDash([18, 10]);
     ctx.beginPath();
     ctx.arc(s / 2, s / 2, s / 2 - 6, 0, Math.PI * 2);
     ctx.stroke();
-  });
-
-const diamondTexture = () =>
-  canvasTexture(64, (ctx, s) => {
-    ctx.fillStyle = 'white';
-    ctx.beginPath();
-    ctx.moveTo(s / 2, 6);
-    ctx.lineTo(s - 14, s / 2);
-    ctx.lineTo(s / 2, s - 6);
-    ctx.lineTo(14, s / 2);
-    ctx.closePath();
-    ctx.fill();
   });
 
 export function createGalaxyView(container, game, callbacks) {
@@ -74,6 +44,14 @@ export function createGalaxyView(container, game, callbacks) {
   controls.dampingFactor = 0.08;
   controls.minDistance = 8;
   controls.maxDistance = 420;
+
+  // Lumière pour les vaisseaux : ambiance bleutée + une lumière qui suit la caméra.
+  scene.add(new THREE.AmbientLight(0x8090b0, 1.1));
+  const sun = new THREE.DirectionalLight(0xfff4e0, 2.4);
+  sun.position.set(3, 4, 0);
+  sun.target.position.set(0, 0, -10);
+  camera.add(sun, sun.target);
+  scene.add(camera);
 
   const home = game.stars[game.homeId];
   controls.target.copy(toVec(home.pos));
@@ -136,24 +114,39 @@ export function createGalaxyView(container, game, callbacks) {
   const ring = new THREE.Sprite(new THREE.SpriteMaterial({ map: ringTexture(), color: 0xaad4ff, transparent: true, depthWrite: false }));
   scene.add(ring);
 
-  const diamond = diamondTexture();
+  // Sondes : un vaisseau 3D unique, un anneau de sélection et la trace de son trajet.
+  const ringTex = ringTexture();
   const probeViews = game.probes.map((probe) => {
-    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: diamond, color: PROBE_COLOR, transparent: true, depthWrite: false, depthTest: false }));
-    sprite.renderOrder = 10;
+    const ship = createShip(probe.shipSeed, probe.accent, probe.registry);
+    const holder = new THREE.Group();
+    holder.add(ship);
+    const marker = new THREE.Sprite(new THREE.SpriteMaterial({ map: ringTex, color: probe.accent, transparent: true, depthWrite: false, depthTest: false }));
+    marker.renderOrder = 10;
     const trail = new THREE.Line(
       new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]),
-      new THREE.LineDashedMaterial({ color: PROBE_COLOR, dashSize: 1.2, gapSize: 0.8, transparent: true, opacity: 0.75 }),
+      new THREE.LineDashedMaterial({ color: probe.accent, dashSize: 1.2, gapSize: 0.8, transparent: true, opacity: 0.75 }),
     );
-    scene.add(sprite, trail);
-    return { probe, sprite, trail, target: new THREE.Vector3(), placed: false };
+    scene.add(holder, marker, trail);
+    return { probe, ship, holder, marker, trail, look: new THREE.Vector3(), placed: false, scale: 1 };
   });
 
-  function probeTarget(probe) {
-    const offset = new THREE.Vector3(Math.cos(probe.id * 2.1) * 2.2, 1.6, Math.sin(probe.id * 2.1) * 2.2);
-    if (probe.state !== 'travel') return toVec(game.stars[probe.starId].pos).add(offset);
-    const from = toVec(game.stars[probe.fromId].pos);
-    const to = toVec(game.stars[probe.toId].pos);
-    return from.lerp(to, probeProgress(probe)).add(new THREE.Vector3(0, 1, 0));
+  // Position et point visé : en orbite autour de l'étoile, ou en route vers la destination.
+  const _pos = new THREE.Vector3();
+  const _look = new THREE.Vector3();
+  function probePose(probe, orbitScale) {
+    if (probe.state === 'travel') {
+      const to = toVec(game.stars[probe.toId].pos);
+      _pos.copy(toVec(game.stars[probe.fromId].pos)).lerp(to, probeProgress(probe)).y += 1;
+      _look.copy(to).setY(to.y + 1);
+    } else {
+      const center = game.stars[probe.starId].pos;
+      const angle = game.time * 0.35 + probe.id * 2.1;
+      const r = (2.6 + probe.id * 0.6) * orbitScale;
+      const y = center.y + 0.8 + Math.sin(game.time * 0.5 + probe.id) * 0.3;
+      _pos.set(center.x + Math.cos(angle) * r, y, center.z + Math.sin(angle) * r);
+      _look.set(center.x + Math.cos(angle + 0.3) * r, y, center.z + Math.sin(angle + 0.3) * r);
+    }
+    return { pos: _pos, look: _look };
   }
 
   // Synchronise l'affichage avec l'état de la partie.
@@ -222,10 +215,33 @@ export function createGalaxyView(container, game, callbacks) {
     return best;
   }
 
+  // Une sonde sous le curseur (prioritaire sur les étoiles).
+  function probeAt(clientX, clientY, maxPx) {
+    const rect = renderer.domElement.getBoundingClientRect();
+    let best = null;
+    let bestD = maxPx;
+    const p = new THREE.Vector3();
+    for (const v of probeViews) {
+      p.copy(v.holder.position).project(camera);
+      if (p.z > 1) continue;
+      const d = Math.hypot(rect.left + ((p.x + 1) / 2) * rect.width - clientX, rect.top + ((1 - p.y) / 2) * rect.height - clientY);
+      if (d < bestD) {
+        bestD = d;
+        best = v.probe;
+      }
+    }
+    return best;
+  }
+
   let down = null;
   renderer.domElement.addEventListener('pointerdown', (e) => (down = { x: e.clientX, y: e.clientY }));
   renderer.domElement.addEventListener('pointerup', (e) => {
     if (!down || e.button !== 0 || Math.hypot(e.clientX - down.x, e.clientY - down.y) > 5) return;
+    const probe = probeAt(e.clientX, e.clientY, 14);
+    if (probe) {
+      focusProbe(probe.id);
+      return callbacks.onSelectProbe(probe.id);
+    }
     const star = starAt(e.clientX, e.clientY, 22);
     if (star) callbacks.onSelectStar(star.id);
   });
@@ -234,15 +250,20 @@ export function createGalaxyView(container, game, callbacks) {
     if (star) focusStar(star.id);
   });
   renderer.domElement.addEventListener('pointermove', (e) => {
-    const star = starAt(e.clientX, e.clientY, 16);
-    renderer.domElement.style.cursor = star ? 'pointer' : '';
-    if (!star) {
+    const hoveredProbe = probeAt(e.clientX, e.clientY, 14);
+    const star = hoveredProbe ? null : starAt(e.clientX, e.clientY, 16);
+    renderer.domElement.style.cursor = star || hoveredProbe ? 'pointer' : '';
+    if (!star && !hoveredProbe) {
       tooltip.style.display = 'none';
       return;
     }
-    const probe = game.probes[game.selectedProbeId];
-    const d = probe ? Math.round(starDistance(game.stars[probe.state === 'travel' ? probe.toId : probe.starId], star)) : null;
-    tooltip.innerHTML = `<strong>${star.level >= 2 ? star.name : 'Lueur inconnue'}</strong>` + (d ? `<span>${d} al de ${probe.name}</span>` : '');
+    if (hoveredProbe) {
+      tooltip.innerHTML = `<strong style="color:${hoveredProbe.accent}">${hoveredProbe.name}</strong><span>${hoveredProbe.registry}</span>`;
+    } else {
+      const probe = game.probes[game.selectedProbeId];
+      const d = probe ? Math.round(starDistance(game.stars[probe.state === 'travel' ? probe.toId : probe.starId], star)) : null;
+      tooltip.innerHTML = `<strong>${star.level >= 2 ? star.name : 'Lueur inconnue'}</strong>` + (d ? `<span>${d} al de ${probe.name}</span>` : '');
+    }
     tooltip.style.display = 'block';
     tooltip.style.left = `${e.clientX + 14}px`;
     tooltip.style.top = `${e.clientY + 12}px`;
@@ -250,10 +271,22 @@ export function createGalaxyView(container, game, callbacks) {
   renderer.domElement.addEventListener('pointerleave', () => (tooltip.style.display = 'none'));
 
   // Recentre la caméra en douceur sur une étoile.
+  // Après un recentrage sur un vaisseau, la caméra le suit jusqu'à un déplacement manuel
+  // (clic droit) ou un recentrage sur une étoile.
   let focus = null;
+  let followId = null;
   function focusStar(id) {
-    focus = { from: controls.target.clone(), to: toVec(game.stars[id].pos), t: 0 };
+    followId = null;
+    const to = toVec(game.stars[id].pos);
+    focus = { from: controls.target.clone(), to: () => to, t: 0 };
   }
+  function focusProbe(id) {
+    followId = id;
+    focus = { from: controls.target.clone(), to: () => probeViews[id].holder.position, t: 0 };
+  }
+  renderer.domElement.addEventListener('pointerdown', (e) => {
+    if (e.button === 2) followId = null;
+  });
 
   window.addEventListener('resize', () => {
     const w = container.clientWidth;
@@ -273,10 +306,14 @@ export function createGalaxyView(container, game, callbacks) {
     if (focus) {
       focus.t = Math.min(1, focus.t + dt * 2.2);
       const k = 1 - Math.pow(1 - focus.t, 3);
-      const next = focus.from.clone().lerp(focus.to, k);
+      const next = focus.from.clone().lerp(focus.to(), k);
       camera.position.add(next.clone().sub(controls.target));
       controls.target.copy(next);
       if (focus.t >= 1) focus = null;
+    } else if (followId !== null) {
+      const p = probeViews[followId].holder.position;
+      camera.position.add(p.clone().sub(controls.target));
+      controls.target.copy(p);
     }
     controls.update();
     sky.position.copy(camera.position);
@@ -293,16 +330,31 @@ export function createGalaxyView(container, game, callbacks) {
     }
 
     for (const v of probeViews) {
-      v.target.copy(probeTarget(v.probe));
-      if (!v.placed) {
-        v.sprite.position.copy(v.target);
-        v.placed = true;
+      const { pos, look } = probePose(v.probe, THREE.MathUtils.clamp(v.scale * 0.7, 1, 2.5));
+      const k = v.placed ? Math.min(1, dt * 6) : 1;
+      v.placed = true;
+      v.holder.position.lerp(pos, k);
+      v.look.lerp(look, k);
+      v.holder.lookAt(v.look);
+
+      // Le vaisseau grossit avec la distance pour rester visible de loin.
+      const camDist = camera.position.distanceTo(v.holder.position);
+      const scale = (v.scale = THREE.MathUtils.clamp(camDist * 0.028, 0.45, 9));
+      v.holder.scale.setScalar(scale);
+
+      const traveling = v.probe.state === 'travel';
+      for (const flame of v.ship.userData.flames) {
+        flame.scale.setScalar((traveling ? 0.9 : 0.35) * (1 + Math.sin(time * 30 + v.probe.id) * 0.12));
       }
-      v.sprite.position.lerp(v.target, Math.min(1, dt * 8));
+      v.ship.userData.beacon.visible = Math.sin(time * 4 + v.probe.id * 2) > 0.3 || v.probe.state === 'analyse';
+
       const selected = v.probe.id === game.selectedProbeId;
-      const pulse = v.probe.state === 'analyse' ? 1 + Math.sin(time * 6) * 0.25 : 1;
-      v.sprite.scale.setScalar((selected ? 2.1 : 1.4) * pulse);
-      v.sprite.material.opacity = selected ? 1 : 0.7;
+      v.marker.visible = selected || v.probe.state === 'analyse';
+      v.marker.position.copy(v.holder.position);
+      const pulse = v.probe.state === 'analyse' ? 1 + Math.sin(time * 5) * 0.15 : 1;
+      v.marker.scale.setScalar(scale * 2.6 * pulse);
+      v.marker.material.opacity = selected ? 0.9 : 0.45;
+      v.marker.material.rotation -= dt * 0.6;
     }
 
     ring.material.rotation += dt * 0.4;
@@ -311,7 +363,7 @@ export function createGalaxyView(container, game, callbacks) {
   });
 
   update();
-  return { update, focusStar };
+  return { update, focusStar, focusProbe };
 }
 
 // Nébuleuses diffuses à l'intérieur de l'amas.
