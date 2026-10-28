@@ -2,12 +2,13 @@
 // Le temps est continu et compté en jours ; la partie avance en temps réel, avec une pause.
 //   Niveau 0 : inconnu (invisible)
 //   Niveau 1 : lueur repérée
-//   Niveau 2 : planètes repérées (une sonde est passée)
-//   Niveau 3 : composition connue (une sonde a analysé le système)
+//   Niveau 2 : système survolé (une sonde est passée, seules les grosses planètes sont vues)
+//   Niveau 3 : système analysé (toutes les planètes et leurs gisements sont connus)
 import { CONFIG } from './config.js';
 import { generateCluster, starDistance, STAR_TYPES } from './galaxy.js';
+import { SHIP_NAMES, SHIP_ACCENTS } from './ships.js';
 
-export const LEVEL_LABELS = ['Inconnu', 'Lueur repérée', 'Planètes repérées', 'Composition connue'];
+export const LEVEL_LABELS = ['Inconnu', 'Lueur repérée', 'Système survolé', 'Système analysé'];
 
 export function createGame(seed) {
   const galaxy = generateCluster(seed);
@@ -24,8 +25,24 @@ export function createGame(seed) {
     selectedStarId: galaxy.homeId,
     selectedProbeId: 0,
   };
+  // Chaque sonde a son propre vaisseau (forme tirée de sa graine), son nom et sa couleur.
   for (let i = 0; i < CONFIG.probeCount; i++) {
-    game.probes.push({ id: i, name: `Sonde ${i + 1}`, starId: game.homeId, state: 'idle', toId: null, fromId: null, distance: 0, speed: 0, progress: 0, daysLeft: 0 });
+    const shipName = SHIP_NAMES[(seed + i) % SHIP_NAMES.length];
+    game.probes.push({
+      id: i,
+      name: `Sonde ${shipName}`,
+      shipSeed: seed * 7919 + i * 104729,
+      accent: SHIP_ACCENTS[i % SHIP_ACCENTS.length],
+      registry: `SX-${String((seed * 13 + i * 271) % 1000).padStart(3, '0')}`,
+      starId: game.homeId,
+      state: 'idle',
+      toId: null,
+      fromId: null,
+      distance: 0,
+      speed: 0,
+      progress: 0,
+      daysLeft: 0,
+    });
   }
   const home = game.stars[game.homeId];
   home.level = 3;
@@ -149,13 +166,27 @@ export function tick(game, days) {
   return changed;
 }
 
+// Au premier passage, une sonde ne repère que les grosses planètes (géantes gazeuses,
+// grandes planètes, et une moyenne sur deux) ; l'analyse révèle toutes les autres.
+function isDetectable(planet, index) {
+  return planet.type === 'gazeuse' || planet.size === 'grande' || (planet.size === 'moyenne' && index % 2 === 0);
+}
+
+export function visiblePlanets(star) {
+  if (star.level >= 3) return star.planets;
+  if (star.level < 2) return [];
+  const detected = star.planets.filter(isDetectable);
+  return detected.length || star.planets.length === 0 ? detected : [star.planets[0]];
+}
+
 function arrive(game, probe) {
   const star = game.stars[probe.toId];
   Object.assign(probe, { starId: star.id, state: 'idle', fromId: null, toId: null });
   if (star.level < 2) {
     star.level = 2;
-    const n = star.planets.length;
-    addLog(game, `${probe.name} atteint ${star.name} (${STAR_TYPES[star.type].label.toLowerCase()}) : ${n === 0 ? 'aucune planète' : plural(n, 'planète')}.`, 'discovery');
+    const n = visiblePlanets(star).length;
+    const found = n === 0 ? 'aucune planète détectée' : `${plural(n, 'planète')} ${n > 1 ? 'détectées' : 'détectée'}`;
+    addLog(game, `${probe.name} atteint ${star.name} (${STAR_TYPES[star.type].label.toLowerCase()}) : ${found}.`, 'discovery');
     if (star.rival) addLog(game, `Des signaux artificiels émanent de ${star.name}. Une autre espèce vit ici.`, 'alert');
   } else {
     addLog(game, `${probe.name} arrive à ${star.name}.`);
@@ -167,9 +198,11 @@ function arrive(game, probe) {
 
 function completeAnalysis(game, probe) {
   const star = game.stars[probe.starId];
+  const hidden = star.planets.length - visiblePlanets(star).length;
   star.level = 3;
   probe.state = 'idle';
   const parts = [`Analyse de ${star.name} terminée.`];
+  if (hidden > 0) parts.push(hidden > 1 ? `${hidden} planètes cachées découvertes.` : '1 planète cachée découverte.');
   const ruins = star.planets.filter((p) => p.ruins);
   const velarine = star.planets.filter((p) => p.deposits.velarine > 0);
   const rich = star.planets.filter((p) => ['minerais', 'energie', 'biomasse'].some((r) => p.deposits[r] === 3));

@@ -3,10 +3,13 @@ import { CONFIG } from './config.js';
 import { createGame, tick, currentDay, sendProbe, startAnalysis } from './game.js';
 import { createGalaxyView } from './scene.js';
 import { createUI } from './ui.js';
+import { renderShipThumbnails } from './ships.js';
 
 // ?graine=1234 dans l'adresse pour rejouer le même amas.
 const seed = Number(new URLSearchParams(location.search).get('graine')) || Math.floor(Math.random() * 1e6);
 const game = createGame(seed);
+const thumbnails = renderShipThumbnails(game.probes.map((p) => ({ seed: p.shipSeed, accent: p.accent, registry: p.registry })));
+game.probes.forEach((p, i) => (p.thumbnail = thumbnails[i]));
 
 const selectedProbe = () => game.probes[game.selectedProbeId];
 
@@ -45,6 +48,9 @@ const view = createGalaxyView(document.getElementById('scene'), game, {
     game.selectedStarId = id;
     refresh();
   },
+  onSelectProbe(id) {
+    actions.onSelectProbe(id);
+  },
   onFrame: advanceTime,
 });
 
@@ -73,10 +79,20 @@ const actions = {
   onFocusStar(id) {
     view.focusStar(id);
   },
+  onFocusProbe(id) {
+    game.selectedProbeId = id;
+    view.focusProbe(id);
+    refresh();
+  },
+  onRenameProbe(id, name) {
+    game.probes[id].name = name;
+    refresh();
+  },
 };
 const ui = createUI(document.getElementById('ui'), game, actions);
 
 window.addEventListener('keydown', (e) => {
+  if (e.target.tagName === 'INPUT') return; // saisie d'un nom en cours
   if (e.code === 'Space') {
     e.preventDefault();
     if (!e.repeat) actions.onTogglePause();

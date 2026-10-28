@@ -1,7 +1,7 @@
 // Interface HTML par-dessus la vue 3D : barre du haut, sondes, fiche du système, journal.
 import { CONFIG } from './config.js';
 import { STAR_TYPES, PLANET_TYPES, PLANET_SIZES, starDistance } from './galaxy.js';
-import { LEVEL_LABELS, canReach, canAnalyse, starLabel, stats, currentDay, daysLeft } from './game.js';
+import { LEVEL_LABELS, canReach, canAnalyse, starLabel, stats, currentDay, daysLeft, visiblePlanets } from './game.js';
 
 const RESOURCES = [
   ['minerais', 'Minerais'],
@@ -30,11 +30,14 @@ export function createUI(root, game, actions) {
   const $ = (id) => root.querySelector(`#${id}`);
 
   root.addEventListener('click', (e) => {
+    if (e.target.tagName === 'INPUT') return;
     const el = e.target.closest('[data-action]');
     if (!el) return;
     el.blur(); // sinon la touche Espace réactiverait le bouton
     const { action, id } = el.dataset;
-    if (action === 'toggle-pause') actions.onTogglePause();
+    if (action === 'rename') startRename(Number(id));
+    else if (action === 'focus-probe') actions.onFocusProbe(Number(id));
+    else if (action === 'toggle-pause') actions.onTogglePause();
     else if (action === 'speed') actions.onSetSpeed(Number(id));
     else if (action === 'select-probe') actions.onSelectProbe(Number(id));
     else if (action === 'send') actions.onSend();
@@ -63,10 +66,19 @@ export function createUI(root, game, actions) {
   $('probes').innerHTML = game.probes
     .map(
       (p) => `
-      <button class="probe" data-action="select-probe" data-id="${p.id}">
-        <span class="probe-name"><i class="dot"></i>${p.name}<kbd>${p.id + 1}</kbd></span>
-        <span class="probe-status"></span>
-      </button>`,
+      <div class="probe" role="button" tabindex="0" data-action="select-probe" data-id="${p.id}" style="--ship-accent:${p.accent}">
+        <img class="ship-thumb" src="${p.thumbnail}" alt="" />
+        <span class="probe-text">
+          <span class="probe-name">
+            <span class="name-text"></span>
+            <button class="icon" data-action="rename" data-id="${p.id}" title="Renommer">✎</button>
+            <button class="icon" data-action="focus-probe" data-id="${p.id}" title="Centrer sur ce vaisseau">◎</button>
+            <kbd>${p.id + 1}</kbd>
+          </span>
+          <span class="probe-registry">${p.registry}</span>
+          <span class="probe-status"><i class="dot"></i><span class="status-text"></span></span>
+        </span>
+      </div>`,
     )
     .join('');
 
@@ -74,8 +86,37 @@ export function createUI(root, game, actions) {
     $('probes').querySelectorAll('.probe').forEach((el, i) => {
       const p = game.probes[i];
       el.className = `probe ${p.state}${p.id === game.selectedProbeId ? ' selected' : ''}`;
-      el.querySelector('.probe-status').textContent = probeStatus(p);
+      const name = el.querySelector('.name-text');
+      if (!name.querySelector('input')) name.textContent = p.name;
+      el.querySelector('.status-text').textContent = probeStatus(p);
     });
+  }
+
+  // Renommage sur place : Entrée valide, Échap annule.
+  function startRename(id) {
+    const name = $('probes').querySelectorAll('.name-text')[id];
+    if (name.querySelector('input')) return;
+    const input = document.createElement('input');
+    input.className = 'rename';
+    input.maxLength = 24;
+    input.value = game.probes[id].name;
+    name.replaceChildren(input);
+    input.focus();
+    input.select();
+    let done = false;
+    const finish = (save) => {
+      if (done) return;
+      done = true;
+      const value = input.value.trim();
+      input.remove();
+      if (save && value) actions.onRenameProbe(id, value);
+      else renderProbes();
+    };
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') finish(true);
+      else if (e.key === 'Escape') finish(false);
+    });
+    input.addEventListener('blur', () => finish(true));
   }
 
   function renderClock() {
@@ -146,11 +187,18 @@ export function createUI(root, game, actions) {
     let body = '';
     if (star.level === 1) {
       body = '<p>Une étoile repérée de loin. Envoyez une sonde pour découvrir ses planètes.</p>';
-    } else if (star.planets.length === 0) {
-      body = '<p class="muted">Aucune planète en orbite.</p>';
     } else {
-      body = `<h3>${plural(star.planets.length, 'planète')}</h3><ul class="planets">${star.planets.map((p) => renderPlanet(p, star.level)).join('')}</ul>`;
-      if (star.level === 2) body += '<p class="muted small">Une sonde peut rester ici pour analyser la composition du système.</p>';
+      const planets = visiblePlanets(star);
+      if (star.level === 3) {
+        body = planets.length ? `<h3>${plural(planets.length, 'planète')}</h3>` : '<p class="muted">Aucune planète en orbite.</p>';
+      } else {
+        const n = planets.length;
+        body = `<h3>${n === 0 ? 'Aucune planète détectée' : `${plural(n, 'planète')} ${n > 1 ? 'détectées' : 'détectée'}`}</h3>`;
+      }
+      body += `<ul class="planets">${planets.map((p) => renderPlanet(p, star.level)).join('')}</ul>`;
+      if (star.level === 2) {
+        body += '<p class="muted small">D\'autres planètes, plus petites, peuvent échapper au premier survol. Une analyse révèle toutes les planètes et leurs gisements.</p>';
+      }
     }
     $('info').innerHTML = header + renderActions(star) + body;
   }
