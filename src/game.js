@@ -1,4 +1,5 @@
-// État de la partie et règles d'exploration : sondes, tours, niveaux de connaissance.
+// État de la partie et règles d'exploration : sondes, temps qui s'écoule, niveaux de connaissance.
+// Le temps est continu et compté en jours ; la partie avance en temps réel, avec une pause.
 //   Niveau 0 : inconnu (invisible)
 //   Niveau 1 : lueur repérée
 //   Niveau 2 : planètes repérées (une sonde est passée)
@@ -12,7 +13,9 @@ export function createGame(seed) {
   const galaxy = generateCluster(seed);
   const game = {
     seed,
-    turn: 1,
+    time: 0, // en jours
+    speedIndex: 0,
+    paused: true,
     stars: galaxy.stars,
     currents: galaxy.currents,
     homeId: galaxy.homeId,
@@ -22,7 +25,7 @@ export function createGame(seed) {
     selectedProbeId: 0,
   };
   for (let i = 0; i < CONFIG.probeCount; i++) {
-    game.probes.push({ id: i, name: `Sonde ${i + 1}`, starId: game.homeId, state: 'idle', toId: null, fromId: null, totalTurns: 0, turnsLeft: 0 });
+    game.probes.push({ id: i, name: `Sonde ${i + 1}`, starId: game.homeId, state: 'idle', toId: null, fromId: null, distance: 0, speed: 0, progress: 0, daysLeft: 0 });
   }
   const home = game.stars[game.homeId];
   home.level = 3;
@@ -32,12 +35,28 @@ export function createGame(seed) {
   return game;
 }
 
+export const currentDay = (game) => Math.floor(game.time) + 1;
+
+// Jours restants avant la fin du voyage ou de l'analyse, arrondis au jour supérieur.
+export function daysLeft(probe) {
+  if (probe.state === 'travel') return Math.max(1, Math.ceil((probe.distance - probe.progress) / probe.speed));
+  if (probe.state === 'analyse') return Math.max(1, Math.ceil(probe.daysLeft));
+  return 0;
+}
+
+// Avancement de 0 à 1 (voyage ou analyse), pour l'affichage.
+export function probeProgress(probe) {
+  if (probe.state === 'travel') return Math.min(1, probe.progress / probe.distance);
+  if (probe.state === 'analyse') return 1 - probe.daysLeft / CONFIG.analyseDays;
+  return 0;
+}
+
 export function starLabel(star) {
   return star.level >= 2 ? star.name : 'une lueur inconnue';
 }
 
 function addLog(game, text, kind = 'info') {
-  game.log.push({ turn: game.turn, text, kind });
+  game.log.push({ day: currentDay(game), text, kind });
 }
 
 const plural = (n, word) => `${n} ${word}${n > 1 ? 's' : ''}`;
@@ -68,17 +87,18 @@ export function currentBetween(game, a, b) {
   return game.currents.find((c) => c.known && ((c.a === a && c.b === b) || (c.a === b && c.b === a)));
 }
 
-// Peut-on envoyer cette sonde vers cette étoile ? Renvoie { ok, turns, viaCurrent } ou { ok: false, reason }.
+// Peut-on envoyer cette sonde vers cette étoile ? Renvoie { ok, days, speed, distance, viaCurrent } ou { ok: false, reason }.
 export function canReach(game, probe, star) {
   if (probe.state !== 'idle') return { ok: false, reason: `${probe.name} est occupée.` };
   if (star.level < 1) return { ok: false, reason: 'Étoile inconnue.' };
   if (probe.starId === star.id) return { ok: false, reason: `${probe.name} est déjà ici.` };
-  if (currentBetween(game, probe.starId, star.id)) return { ok: true, turns: 1, viaCurrent: true };
-  const d = starDistance(game.stars[probe.starId], star);
-  if (d > CONFIG.jumpRange) {
-    return { ok: false, reason: `Hors de portée de ${probe.name} : ${Math.round(d)} al (portée ${CONFIG.jumpRange} al).` };
+  const distance = starDistance(game.stars[probe.starId], star);
+  const viaCurrent = !!currentBetween(game, probe.starId, star.id);
+  if (!viaCurrent && distance > CONFIG.jumpRange) {
+    return { ok: false, reason: `Hors de portée de ${probe.name} : ${Math.round(distance)} al (portée ${CONFIG.jumpRange} al).` };
   }
-  return { ok: true, turns: Math.max(1, Math.ceil(d / CONFIG.probeSpeed)), viaCurrent: false };
+  const speed = CONFIG.probeSpeed * (viaCurrent ? CONFIG.currentSpeedFactor : 1);
+  return { ok: true, distance, speed, days: Math.max(1, Math.ceil(distance / speed)), viaCurrent };
 }
 
 export function reachableStars(game, probe) {
@@ -88,8 +108,8 @@ export function reachableStars(game, probe) {
 export function sendProbe(game, probe, star) {
   const r = canReach(game, probe, star);
   if (!r.ok) return false;
-  Object.assign(probe, { state: 'travel', fromId: probe.starId, toId: star.id, totalTurns: r.turns, turnsLeft: r.turns });
-  addLog(game, `${probe.name} part vers ${starLabel(star)} (${plural(r.turns, 'tour')}${r.viaCurrent ? ', par le courant' : ''}).`);
+  Object.assign(probe, { state: 'travel', fromId: probe.starId, toId: star.id, distance: r.distance, speed: r.speed, progress: 0 });
+  addLog(game, `${probe.name} part vers ${starLabel(star)} (${plural(r.days, 'jour')}${r.viaCurrent ? ', par le courant' : ''}).`);
   return true;
 }
 
@@ -100,20 +120,33 @@ export function canAnalyse(probe, star) {
 export function startAnalysis(game, probe) {
   const star = game.stars[probe.starId];
   if (!canAnalyse(probe, star)) return false;
-  Object.assign(probe, { state: 'analyse', totalTurns: CONFIG.analyseTurns, turnsLeft: CONFIG.analyseTurns });
+  Object.assign(probe, { state: 'analyse', daysLeft: CONFIG.analyseDays });
   addLog(game, `${probe.name} commence l'analyse de ${star.name}.`);
   return true;
 }
 
-export function endTurn(game) {
-  game.turn++;
+// Fait avancer le temps de `days` jours. Renvoie true si un événement a eu lieu
+// (arrivée, fin d'analyse) ou si un nouveau jour a commencé.
+export function tick(game, days) {
+  const dayBefore = currentDay(game);
+  game.time += days;
+  let changed = currentDay(game) !== dayBefore;
   for (const probe of game.probes) {
-    if (probe.state === 'idle') continue;
-    probe.turnsLeft--;
-    if (probe.turnsLeft > 0) continue;
-    if (probe.state === 'travel') arrive(game, probe);
-    else completeAnalysis(game, probe);
+    if (probe.state === 'travel') {
+      probe.progress += probe.speed * days;
+      if (probe.progress >= probe.distance) {
+        arrive(game, probe);
+        changed = true;
+      }
+    } else if (probe.state === 'analyse') {
+      probe.daysLeft -= days;
+      if (probe.daysLeft <= 0) {
+        completeAnalysis(game, probe);
+        changed = true;
+      }
+    }
   }
+  return changed;
 }
 
 function arrive(game, probe) {

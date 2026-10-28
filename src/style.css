@@ -183,6 +183,31 @@ kbd {
   color: var(--text);
 }
 
+/* Horloge */
+.clock {
+  display: flex;
+  gap: 4px;
+}
+.clock .pause {
+  min-width: 112px;
+  text-align: center;
+}
+.clock .pause.paused {
+  background: rgba(255, 209, 102, 0.16);
+  border-color: rgba(255, 209, 102, 0.55);
+  color: #fff3d1;
+  animation: blink 1.6s ease-in-out infinite;
+}
+.clock .speed.active {
+  background: rgba(124, 255, 158, 0.18);
+  border-color: rgba(124, 255, 158, 0.6);
+}
+@keyframes blink {
+  50% {
+    border-color: rgba(255, 209, 102, 0.2);
+  }
+}
+
 /* Sondes */
 .probes {
   position: absolute;
@@ -351,7 +376,7 @@ kbd {
 .log {
   margin: 3px 0;
 }
-.log .turn {
+.log .day {
   display: inline-block;
   min-width: 30px;
   color: var(--muted);
