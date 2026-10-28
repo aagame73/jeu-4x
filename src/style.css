@@ -1,0 +1,374 @@
+:root {
+  --bg: #02040a;
+  --panel: rgba(8, 13, 28, 0.84);
+  --border: rgba(120, 170, 255, 0.22);
+  --text: #dbe6ff;
+  --muted: #8794b8;
+  --accent: #7cff9e;
+  --current: #5fe3ff;
+  --gold: #ffd166;
+  --rival: #ff7a8a;
+  --velarine: #c77dff;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--text);
+  font: 14px/1.4 'Segoe UI', system-ui, sans-serif;
+}
+
+#scene {
+  position: fixed;
+  inset: 0;
+}
+
+.labels {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.star-label {
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  color: #cfdcff;
+  text-shadow: 0 0 4px #000, 0 0 2px #000;
+  white-space: nowrap;
+}
+.star-label.home {
+  color: var(--accent);
+  font-weight: 600;
+}
+.star-label.rival {
+  color: var(--rival);
+}
+.star-label.ruins::after {
+  content: ' ◆';
+  color: var(--gold);
+}
+
+.tooltip {
+  position: fixed;
+  display: none;
+  pointer-events: none;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: rgba(8, 13, 28, 0.92);
+  border: 1px solid var(--border);
+  font-size: 12px;
+  z-index: 20;
+}
+.tooltip span {
+  display: block;
+  color: var(--muted);
+}
+
+#ui {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+}
+
+.panel {
+  pointer-events: auto;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  backdrop-filter: blur(6px);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.45);
+}
+
+h2 {
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.info h2 {
+  font-size: 20px;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  color: var(--text);
+}
+h3 {
+  margin: 14px 0 6px;
+  font-size: 13px;
+  color: var(--muted);
+  font-weight: 600;
+}
+p {
+  margin: 6px 0;
+}
+
+.muted {
+  color: var(--muted);
+}
+.small {
+  font-size: 12px;
+}
+
+button {
+  font: inherit;
+  color: var(--text);
+  background: rgba(120, 170, 255, 0.08);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 10px;
+  cursor: pointer;
+  text-align: left;
+}
+button:hover {
+  background: rgba(120, 170, 255, 0.18);
+}
+button.primary {
+  background: rgba(124, 255, 158, 0.14);
+  border-color: rgba(124, 255, 158, 0.5);
+  color: #e6ffec;
+}
+button.primary:hover {
+  background: rgba(124, 255, 158, 0.26);
+}
+
+kbd {
+  margin-left: 6px;
+  padding: 0 4px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  font: 10px/1.5 inherit;
+  color: var(--muted);
+}
+
+/* Barre du haut */
+.topbar {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  right: 12px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 8px 12px;
+}
+.title {
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+.tag {
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: rgba(124, 255, 158, 0.12);
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 400;
+}
+.stats {
+  display: flex;
+  gap: 18px;
+  flex: 1;
+  color: var(--muted);
+}
+.stats b {
+  color: var(--text);
+}
+
+/* Sondes */
+.probes {
+  position: absolute;
+  top: 72px;
+  left: 12px;
+  width: 260px;
+  padding: 10px;
+}
+#probes {
+  display: grid;
+  gap: 6px;
+}
+.probe {
+  display: grid;
+  gap: 2px;
+  width: 100%;
+}
+.probe.selected {
+  border-color: var(--accent);
+  background: rgba(124, 255, 158, 0.1);
+}
+.probe-name {
+  display: flex;
+  align-items: center;
+  font-weight: 600;
+}
+.probe-name kbd {
+  margin-left: auto;
+}
+.probe-status {
+  font-size: 12px;
+  color: var(--muted);
+}
+.dot {
+  width: 8px;
+  height: 8px;
+  margin-right: 8px;
+  transform: rotate(45deg);
+  background: var(--accent);
+}
+.probe.travel .dot {
+  background: var(--current);
+}
+.probe.analyse .dot {
+  background: var(--gold);
+}
+
+/* Fiche du système */
+.info {
+  position: absolute;
+  top: 72px;
+  right: 12px;
+  width: 340px;
+  max-height: calc(100vh - 120px);
+  overflow: auto;
+  padding: 14px;
+}
+.knowledge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 2px;
+  font-size: 12px;
+}
+.dots {
+  display: inline-flex;
+  gap: 3px;
+}
+.dots i,
+.bar i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.15);
+}
+.dots i.on {
+  background: var(--accent);
+}
+.actions {
+  display: grid;
+  gap: 6px;
+  margin: 12px 0;
+}
+.planets {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+.planet {
+  padding: 8px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+.planet-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.planet-head .muted {
+  margin-left: auto;
+  font-size: 12px;
+}
+.planet-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #999;
+}
+.planet-tempere .planet-dot { background: #6fbf73; }
+.planet-oceanique .planet-dot { background: #3f8fd6; }
+.planet-marecageuse .planet-dot { background: #5d8a4e; }
+.planet-desertique .planet-dot { background: #d9a55b; }
+.planet-volcanique .planet-dot { background: #e0553a; }
+.planet-toxique .planet-dot { background: #b8c43a; }
+.planet-glacee .planet-dot { background: #cfe8ff; }
+.planet-gazeuse .planet-dot { background: #c99b7a; }
+.planet-asteroides .planet-dot { background: #8a8278; }
+
+.deposits {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin-top: 6px;
+  font-size: 12px;
+}
+.deposit {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.bar {
+  display: inline-flex;
+  gap: 2px;
+}
+.deposit.minerais .on { background: #d2a679; }
+.deposit.energie .on { background: var(--gold); }
+.deposit.biomasse .on { background: #7bd88f; }
+.deposit.velarine .on { background: var(--velarine); }
+
+.badge {
+  display: inline-block;
+  margin-top: 6px;
+  margin-right: 4px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+}
+.badge.ruins { background: rgba(255, 209, 102, 0.15); color: var(--gold); }
+.badge.home { background: rgba(124, 255, 158, 0.15); color: var(--accent); }
+.badge.rival { background: rgba(255, 122, 138, 0.15); color: var(--rival); }
+
+/* Journal */
+.journal {
+  position: absolute;
+  bottom: 36px;
+  left: 12px;
+  width: 440px;
+  max-height: 200px;
+  overflow: auto;
+  padding: 10px;
+  font-size: 12px;
+}
+.log {
+  margin: 3px 0;
+}
+.log .turn {
+  display: inline-block;
+  min-width: 30px;
+  color: var(--muted);
+}
+.log-discovery {
+  color: #fff2c4;
+}
+.log-alert {
+  color: var(--rival);
+}
+
+.help {
+  position: absolute;
+  bottom: 10px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: 11px;
+  color: var(--muted);
+}

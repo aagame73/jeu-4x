@@ -1,0 +1,16 @@
+# Projet : jeu 4X spatial (titre à définir)
+
+Jeu de stratégie spatiale 4X ORIGINAL sur navigateur, inspiré de l'esprit d'Ascendancy (1995).
+Ce n'est ni un remake ni un clone : l'univers, les espèces, les noms, les mécaniques et l'interface sont propres au jeu.
+
+- Solo contre l'ordinateur
+- Parties longues : 5 à 10 heures maximum
+- Carte de la galaxie en 3D
+- Ce que le joueur aime : construire, chercher des ressources, découvrir des systèmes stellaires
+
+Document de concept (Claude Docs) : https://claude.ai/artifact/DmjNSzpHizS7BF9cqtibBg
+
+Décidé le 2026-10-28 : surface des planètes en hexagones ; gisements à épuisement partiel (baisse lente jusqu'à un plancher) ; titre choisi plus tard (nom de code en attendant).
+Prototype (2026-10-28) : galaxie 3D + exploration par sondes, en Vite + Three.js (`npm install` puis `npm run dev`, http://localhost:5173, `?graine=42` pour rejouer un amas). Code dans `src/` : `galaxy.js` (génération), `game.js` (règles, tours), `scene.js` (rendu 3D), `ui.js` (interface), réglages dans `config.js`.
+
+L'utilisateur parle français. Il a eu du mal à lire les longues réponses dans le terminal (le défilement ne marchait pas) : faire des réponses courtes et mettre le contenu long dans le document.
