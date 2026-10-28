@@ -10,7 +10,7 @@ Ce n'est ni un remake ni un clone : l'univers, les espèces, les noms, les méca
 
 Document de concept (Claude Docs) : https://claude.ai/artifact/DmjNSzpHizS7BF9cqtibBg
 
-Décidé le 2026-10-28 : surface des planètes en hexagones ; gisements à épuisement partiel (baisse lente jusqu'à un plancher) ; titre choisi plus tard (nom de code en attendant).
-Prototype (2026-10-28) : galaxie 3D + exploration par sondes, en Vite + Three.js (`npm install` puis `npm run dev`, http://localhost:5173, `?graine=42` pour rejouer un amas). Code dans `src/` : `galaxy.js` (génération), `game.js` (règles, tours), `scene.js` (rendu 3D), `ui.js` (interface), réglages dans `config.js`.
+Décidé le 2026-10-28 : surface des planètes en hexagones ; gisements à épuisement partiel (baisse lente jusqu'à un plancher) ; titre choisi plus tard (nom de code en attendant). Rythme : temps réel avec pause (temps en jours, vitesses x1/x2/x4), et non plus tour par tour.
+Prototype (2026-10-28) : galaxie 3D + exploration par sondes, en Vite + Three.js (`npm install` puis `npm run dev`, http://localhost:5173, `?graine=42` pour rejouer un amas). Code dans `src/` : `galaxy.js` (génération), `game.js` (règles, tours), `scene.js` (rendu 3D), `ui.js` (interface), `skybox.js` (fond Voie lactée), réglages dans `config.js`.
 
 L'utilisateur parle français. Il a eu du mal à lire les longues réponses dans le terminal (le défilement ne marchait pas) : faire des réponses courtes et mettre le contenu long dans le document.

@@ -1,7 +1,7 @@
 // Interface HTML par-dessus la vue 3D : barre du haut, sondes, fiche du système, journal.
 import { CONFIG } from './config.js';
 import { STAR_TYPES, PLANET_TYPES, PLANET_SIZES, starDistance } from './galaxy.js';
-import { LEVEL_LABELS, canReach, canAnalyse, starLabel, stats } from './game.js';
+import { LEVEL_LABELS, canReach, canAnalyse, starLabel, stats, currentDay, daysLeft } from './game.js';
 
 const RESOURCES = [
   ['minerais', 'Minerais'],
@@ -17,12 +17,15 @@ export function createUI(root, game, actions) {
     <header class="topbar panel">
       <div class="title">Amas inexploré <span class="tag">prototype</span></div>
       <div class="stats" id="stats"></div>
-      <button class="primary" data-action="end-turn">Fin du tour <kbd>Espace</kbd></button>
+      <div class="clock">
+        <button class="pause" data-action="toggle-pause" title="Pause (Espace)"></button>
+        ${CONFIG.speeds.map((x, i) => `<button class="speed" data-action="speed" data-id="${i}" title="Vitesse x${x}">x${x}</button>`).join('')}
+      </div>
     </header>
     <aside class="probes panel"><h2>Sondes</h2><div id="probes"></div></aside>
     <aside class="info panel" id="info"></aside>
     <section class="journal panel"><h2>Journal de bord</h2><div id="journal"></div></section>
-    <div class="help">Clic : sélectionner · Double-clic : centrer · Glisser : pivoter · Clic droit : déplacer · Molette : zoom · 1 à ${CONFIG.probeCount} : choisir une sonde</div>
+    <div class="help">Espace : pause · + / − : vitesse · Clic : sélectionner · Double-clic : centrer · Glisser : pivoter · Clic droit : déplacer · Molette : zoom · 1 à ${CONFIG.probeCount} : choisir une sonde</div>
   `;
   const $ = (id) => root.querySelector(`#${id}`);
 
@@ -31,7 +34,8 @@ export function createUI(root, game, actions) {
     if (!el) return;
     el.blur(); // sinon la touche Espace réactiverait le bouton
     const { action, id } = el.dataset;
-    if (action === 'end-turn') actions.onEndTurn();
+    if (action === 'toggle-pause') actions.onTogglePause();
+    else if (action === 'speed') actions.onSetSpeed(Number(id));
     else if (action === 'select-probe') actions.onSelectProbe(Number(id));
     else if (action === 'send') actions.onSend();
     else if (action === 'analyse') actions.onAnalyse();
@@ -41,7 +45,7 @@ export function createUI(root, game, actions) {
   function renderStats() {
     const s = stats(game);
     $('stats').innerHTML = `
-      <span>Tour <b>${game.turn}</b></span>
+      <span>Jour <b>${currentDay(game)}</b></span>
       <span>Systèmes visités <b>${s.explored}</b> / ${s.total}</span>
       <span>Analysés <b>${s.analysed}</b></span>
       <span>Lueurs <b>${s.seen - s.explored}</b></span>
@@ -49,21 +53,36 @@ export function createUI(root, game, actions) {
   }
 
   function probeStatus(probe) {
-    if (probe.state === 'travel') return `En route vers ${starLabel(game.stars[probe.toId])} · ${plural(probe.turnsLeft, 'tour')}`;
-    if (probe.state === 'analyse') return `Analyse de ${game.stars[probe.starId].name} · ${plural(probe.turnsLeft, 'tour')}`;
+    if (probe.state === 'travel') return `En route vers ${starLabel(game.stars[probe.toId])} · ${plural(daysLeft(probe), 'jour')}`;
+    if (probe.state === 'analyse') return `Analyse de ${game.stars[probe.starId].name} · ${plural(daysLeft(probe), 'jour')}`;
     return `En attente à ${game.stars[probe.starId].name}`;
   }
 
+  // Mise à jour en place (sans recréer les boutons) : la liste change chaque jour
+  // et un bouton recréé pendant un clic ferait perdre ce clic.
+  $('probes').innerHTML = game.probes
+    .map(
+      (p) => `
+      <button class="probe" data-action="select-probe" data-id="${p.id}">
+        <span class="probe-name"><i class="dot"></i>${p.name}<kbd>${p.id + 1}</kbd></span>
+        <span class="probe-status"></span>
+      </button>`,
+    )
+    .join('');
+
   function renderProbes() {
-    $('probes').innerHTML = game.probes
-      .map(
-        (p) => `
-        <button class="probe ${p.id === game.selectedProbeId ? 'selected' : ''} ${p.state}" data-action="select-probe" data-id="${p.id}">
-          <span class="probe-name"><i class="dot"></i>${p.name}<kbd>${p.id + 1}</kbd></span>
-          <span class="probe-status">${probeStatus(p)}</span>
-        </button>`,
-      )
-      .join('');
+    $('probes').querySelectorAll('.probe').forEach((el, i) => {
+      const p = game.probes[i];
+      el.className = `probe ${p.state}${p.id === game.selectedProbeId ? ' selected' : ''}`;
+      el.querySelector('.probe-status').textContent = probeStatus(p);
+    });
+  }
+
+  function renderClock() {
+    const pause = root.querySelector('.pause');
+    pause.textContent = game.paused ? '▶ Reprendre' : '❚❚ Pause';
+    pause.classList.toggle('paused', game.paused);
+    root.querySelectorAll('.speed').forEach((el, i) => el.classList.toggle('active', i === game.speedIndex));
   }
 
   function depositBar(value, max = 3) {
@@ -98,11 +117,11 @@ export function createUI(root, game, actions) {
     const probe = game.probes[game.selectedProbeId];
     const parts = [];
     if (canAnalyse(probe, star)) {
-      parts.push(`<button class="primary" data-action="analyse">Analyser avec ${probe.name} · ${plural(CONFIG.analyseTurns, 'tour')}</button>`);
+      parts.push(`<button class="primary" data-action="analyse">Analyser avec ${probe.name} · ${plural(CONFIG.analyseDays, 'jour')}</button>`);
     }
     const r = canReach(game, probe, star);
     if (r.ok) {
-      parts.push(`<button class="primary" data-action="send">Envoyer ${probe.name} · ${plural(r.turns, 'tour')}${r.viaCurrent ? ' (courant)' : ''}</button>`);
+      parts.push(`<button class="primary" data-action="send">Envoyer ${probe.name} · ${plural(r.days, 'jour')}${r.viaCurrent ? ' (courant)' : ''}</button>`);
     } else if (!(probe.starId === star.id && probe.state === 'idle' && parts.length)) {
       parts.push(`<p class="muted small">${r.reason}</p>`);
     }
@@ -140,17 +159,23 @@ export function createUI(root, game, actions) {
     $('journal').innerHTML = game.log
       .slice(-30)
       .reverse()
-      .map((entry) => `<p class="log log-${entry.kind}"><span class="turn">T${entry.turn}</span>${entry.text}</p>`)
+      .map((entry) => `<p class="log log-${entry.kind}"><span class="day">J${entry.day}</span>${entry.text}</p>`)
       .join('');
   }
 
-  function render() {
+  // Ce qui change à chaque nouveau jour.
+  function renderLive() {
     renderStats();
     renderProbes();
+    renderClock();
+  }
+
+  function render() {
+    renderLive();
     renderInfo();
     renderJournal();
   }
 
   render();
-  return { render };
+  return { render, renderLive };
 }

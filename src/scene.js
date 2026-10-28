@@ -4,7 +4,8 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 import { CONFIG } from './config.js';
 import { STAR_TYPES, starDistance } from './galaxy.js';
-import { reachableStars } from './game.js';
+import { reachableStars, probeProgress } from './game.js';
+import { createSky } from './skybox.js';
 
 const PROBE_COLOR = 0x7cff9e;
 const CURRENT_COLOR = 0x5fe3ff;
@@ -67,7 +68,7 @@ export function createGalaxyView(container, game, callbacks) {
 
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x02040a);
-  const camera = new THREE.PerspectiveCamera(55, container.clientWidth / container.clientHeight, 0.1, 4000);
+  const camera = new THREE.PerspectiveCamera(55, container.clientWidth / container.clientHeight, 0.1, 6000);
   const controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true;
   controls.dampingFactor = 0.08;
@@ -83,7 +84,9 @@ export function createGalaxyView(container, game, callbacks) {
   tooltip.className = 'tooltip';
   document.body.appendChild(tooltip);
 
-  addBackground(scene, glow);
+  const sky = createSky();
+  scene.add(sky);
+  addNebulae(scene, glow);
 
   // Étoiles : un halo coloré + une étiquette pour les systèmes visités.
   const starViews = game.stars.map((star) => {
@@ -150,8 +153,7 @@ export function createGalaxyView(container, game, callbacks) {
     if (probe.state !== 'travel') return toVec(game.stars[probe.starId].pos).add(offset);
     const from = toVec(game.stars[probe.fromId].pos);
     const to = toVec(game.stars[probe.toId].pos);
-    const t = (probe.totalTurns - probe.turnsLeft) / probe.totalTurns;
-    return from.lerp(to, t).add(new THREE.Vector3(0, 1, 0));
+    return from.lerp(to, probeProgress(probe)).add(new THREE.Vector3(0, 1, 0));
   }
 
   // Synchronise l'affichage avec l'état de la partie.
@@ -190,11 +192,6 @@ export function createGalaxyView(container, game, callbacks) {
     }
 
     for (const v of probeViews) {
-      v.target.copy(probeTarget(v.probe));
-      if (!v.placed) {
-        v.sprite.position.copy(v.target);
-        v.placed = true;
-      }
       const traveling = v.probe.state === 'travel';
       v.trail.visible = traveling;
       if (traveling) {
@@ -271,6 +268,7 @@ export function createGalaxyView(container, game, callbacks) {
   renderer.setAnimationLoop(() => {
     const dt = Math.min(clock.getDelta(), 0.1);
     const time = clock.elapsedTime;
+    callbacks.onFrame(dt);
 
     if (focus) {
       focus.t = Math.min(1, focus.t + dt * 2.2);
@@ -281,6 +279,7 @@ export function createGalaxyView(container, game, callbacks) {
       if (focus.t >= 1) focus = null;
     }
     controls.update();
+    sky.position.copy(camera.position);
 
     for (const v of currentViews) {
       if (!v.current.known) continue;
@@ -294,7 +293,12 @@ export function createGalaxyView(container, game, callbacks) {
     }
 
     for (const v of probeViews) {
-      v.sprite.position.lerp(v.target, Math.min(1, dt * 3));
+      v.target.copy(probeTarget(v.probe));
+      if (!v.placed) {
+        v.sprite.position.copy(v.target);
+        v.placed = true;
+      }
+      v.sprite.position.lerp(v.target, Math.min(1, dt * 8));
       const selected = v.probe.id === game.selectedProbeId;
       const pulse = v.probe.state === 'analyse' ? 1 + Math.sin(time * 6) * 0.25 : 1;
       v.sprite.scale.setScalar((selected ? 2.1 : 1.4) * pulse);
@@ -310,23 +314,8 @@ export function createGalaxyView(container, game, callbacks) {
   return { update, focusStar };
 }
 
-// Fond : étoiles lointaines et nébuleuses diffuses.
-function addBackground(scene, glow) {
-  const count = 2500;
-  const positions = new Float32Array(count * 3);
-  const colors = new Float32Array(count * 3);
-  const v = new THREE.Vector3();
-  for (let i = 0; i < count; i++) {
-    v.randomDirection().multiplyScalar(1200 + Math.random() * 1200);
-    positions.set([v.x, v.y, v.z], i * 3);
-    const b = 0.35 + Math.random() * 0.5;
-    colors.set([b, b, b * (1 + Math.random() * 0.25)], i * 3);
-  }
-  const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-  geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-  scene.add(new THREE.Points(geometry, new THREE.PointsMaterial({ size: 1.4, sizeAttenuation: false, vertexColors: true })));
-
+// Nébuleuses diffuses à l'intérieur de l'amas.
+function addNebulae(scene, glow) {
   const R = CONFIG.clusterRadius;
   const tints = [0x4b2f8f, 0x1f4f99, 0x6a2a5e, 0x23506b];
   for (let i = 0; i < 9; i++) {
@@ -335,7 +324,7 @@ function addBackground(scene, glow) {
         map: glow,
         color: tints[i % tints.length],
         transparent: true,
-        opacity: 0.1 + Math.random() * 0.08,
+        opacity: 0.06 + Math.random() * 0.06,
         depthWrite: false,
         blending: THREE.AdditiveBlending,
       }),
