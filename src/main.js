@@ -5,10 +5,28 @@ import { createGalaxyView } from './scene.js';
 import { createUI } from './ui.js';
 import { createPlanetView } from './planetView.js';
 import { startConstruction, demolish } from './economy.js';
+import { restore, readSlot, writeSlot, takePendingLoad, takeNewGameRequest } from './save.js';
+import { createMenu } from './menu.js';
 
-// ?graine=1234 dans l'adresse pour rejouer le même amas.
-const seed = Number(new URLSearchParams(location.search).get('graine')) || Math.floor(Math.random() * 1e6);
-const game = createGame(seed);
+// Au démarrage : une sauvegarde à charger (menu), sinon une nouvelle partie.
+// ?graine=1234 dans l'adresse lance directement un amas précis (sans écran d'accueil).
+const urlSeed = Number(new URLSearchParams(location.search).get('graine'));
+const pending = takePendingLoad();
+const wantsNewGame = takeNewGameRequest();
+let game = null;
+if (pending) {
+  try {
+    game = restore(pending);
+  } catch {
+    game = null;
+  }
+}
+game ??= createGame(urlSeed || Math.floor(Math.random() * 1e6));
+// L'écran d'accueil propose de continuer la partie enregistrée ; tant que le joueur n'a pas
+// choisi, la sauvegarde automatique est suspendue pour ne pas l'écraser.
+const showStart = !pending && !wantsNewGame && !urlSeed && !!readSlot('auto');
+let autosave = !showStart && !urlSeed; // une partie lancée par ?graine= sert aux tests : elle n'écrase pas la sauvegarde
+const AUTOSAVE_DAYS = 5;
 
 function selectNextIdleShip() {
   const n = game.ships.length;
@@ -41,6 +59,7 @@ function advanceTime(dt) {
     ui.renderLive();
     planetView.renderLive();
   }
+  if (autosave && currentDay(game) !== day && currentDay(game) % AUTOSAVE_DAYS === 0) writeSlot('auto', game);
 }
 
 const view = createGalaxyView(document.getElementById('scene'), game, {
@@ -115,17 +134,50 @@ const actions = {
   onShipyard(colony, key) {
     if (startShipyard(game, colony, key)) refresh();
   },
+  onOpenMenu() {
+    menu.open();
+  },
 };
 const ui = createUI(document.getElementById('ui'), game, actions);
 const planetView = createPlanetView(document.getElementById('planet-view'), game, actions);
+
+// Le menu met la partie en pause et rétablit l'état d'avant à sa fermeture.
+let pausedBeforeMenu = true;
+const menu = createMenu(document.getElementById('menu'), game, {
+  onOpen() {
+    pausedBeforeMenu = game.paused;
+    game.paused = true;
+    ui.renderLive();
+  },
+  onClose(fromStart) {
+    if (fromStart) {
+      autosave = true; // « Nouvelle partie » choisie à l'accueil
+      writeSlot('auto', game);
+    } else {
+      game.paused = pausedBeforeMenu;
+    }
+    ui.renderLive();
+  },
+});
+if (showStart) menu.open(true);
+
+// Dernière sauvegarde automatique quand on quitte ou cache la page.
+const saveOnLeave = () => autosave && writeSlot('auto', game);
+window.addEventListener('pagehide', saveOnLeave);
+document.addEventListener('visibilitychange', () => document.hidden && saveOnLeave());
 
 // En développement seulement : accès à la partie depuis la console du navigateur, pour tester.
 if (import.meta.env.DEV) window.jeu = { game, actions, refresh, tick };
 
 window.addEventListener('keydown', (e) => {
   if (e.target.tagName === 'INPUT') return; // saisie d'un nom en cours
-  if (e.key === 'Escape' && planetView.isOpen) {
-    actions.onClosePlanet();
+  if (menu.isOpen) {
+    if (e.key === 'Escape' && !document.getElementById('menu').classList.contains('start')) menu.close();
+    return;
+  }
+  if (e.key === 'Escape') {
+    if (planetView.isOpen) actions.onClosePlanet();
+    else menu.open();
   } else if (e.code === 'Space') {
     e.preventDefault();
     if (!e.repeat) actions.onTogglePause();

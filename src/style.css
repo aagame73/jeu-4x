@@ -780,3 +780,120 @@ button:disabled {
   width: 18px;
   height: 18px;
 }
+
+/* Menu et écran d'accueil */
+#menu {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(2, 4, 10, 0.55);
+  backdrop-filter: blur(4px);
+}
+#menu[hidden] {
+  display: none;
+}
+#menu.start {
+  background: rgba(2, 4, 10, 0.9);
+  backdrop-filter: blur(10px);
+}
+.menu.panel {
+  width: 460px;
+  max-width: 92vw;
+  max-height: 86vh;
+  overflow: auto;
+  padding: 18px;
+}
+.menu-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+.menu-head h2 {
+  margin: 0;
+}
+.menu-head button {
+  padding: 2px 9px;
+  color: var(--muted);
+}
+.menu-head button:hover {
+  color: var(--text);
+}
+.menu-title {
+  margin: 6px 0 4px;
+  font-size: 26px;
+  font-weight: 300;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  text-align: center;
+  color: var(--text);
+  text-shadow: 0 0 18px rgba(95, 227, 255, 0.35);
+}
+.menu-title + p {
+  text-align: center;
+}
+.start-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 14px 0 6px;
+}
+button.big {
+  width: 100%;
+  padding: 12px 16px;
+  font-size: 16px;
+  font-weight: 600;
+  text-align: center;
+  border-radius: 8px;
+}
+button.big .small {
+  display: block;
+  margin-top: 3px;
+  font-weight: 400;
+  color: var(--muted);
+}
+.slot-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(120, 170, 255, 0.1);
+}
+.slot-row:last-of-type {
+  border-bottom: none;
+}
+.slot-row > div:first-child {
+  min-width: 0;
+}
+.slot-actions {
+  display: flex;
+  gap: 6px;
+  flex: none;
+}
+.slot-actions button {
+  padding: 4px 9px;
+  font-size: 12px;
+}
+.menu-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+.menu-status {
+  min-height: 1.4em;
+  margin: 12px 0 0;
+}
+.menu-status:empty {
+  margin: 0;
+  min-height: 0;
+}
+.menu-btn {
+  padding: 6px 12px;
+  white-space: nowrap;
+}
