@@ -10,7 +10,6 @@ export const CONFIG = {
   analyseDays: 10, // jours pour connaître la composition d'un système
   secondsPerDay: 1, // durée d'un jour à la vitesse x1
   speeds: [1, 2, 4],
-  probeCount: 3,
   ruinCount: 9,
   extraCurrents: 8,
 };

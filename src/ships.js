@@ -100,7 +100,7 @@ function mirrored(mesh) {
   return copy;
 }
 
-export function createShip(seed, accent, registry = '') {
+export function createShip(seed, accent, registry = '', kind = 'sonde') {
   const rng = createRng(seed);
   const ship = new THREE.Group();
   const accentColor = new THREE.Color(accent);
@@ -212,9 +212,39 @@ export function createShip(seed, accent, registry = '') {
   beacon.position.set(0, radius * 0.9, -length * 0.25);
   ship.add(beacon);
 
-  ship.userData = { flames, beacon, length };
-  // Taille commune pour tous les vaisseaux, quelle que soit leur longueur.
-  ship.scale.setScalar(1.6 / length);
+  // Vaisseaux colonie et Arche : anneaux d'habitat en rotation et conteneurs de cargaison.
+  const rings = [];
+  if (kind !== 'sonde') {
+    const ringCount = kind === 'arche' ? 2 : 1;
+    for (let i = 0; i < ringCount; i++) {
+      const ring = new THREE.Group();
+      const r = radius * (kind === 'arche' ? 3.6 - i * 0.8 : 3);
+      ring.add(new THREE.Mesh(new THREE.TorusGeometry(r, radius * 0.45, 8, 28), hull));
+      for (let k = 0; k < 4; k++) {
+        const spoke = new THREE.Mesh(new THREE.BoxGeometry(r, 0.03, 0.04), dark);
+        spoke.position.x = r / 2;
+        const holder = new THREE.Group();
+        holder.add(spoke);
+        holder.rotation.z = (k / 4) * Math.PI * 2;
+        ring.add(holder);
+      }
+      ring.position.z = length * (i === 0 ? -0.05 : 0.22);
+      ship.add(ring);
+      rings.push(ring);
+    }
+    if (kind === 'arche') {
+      for (let k = 0; k < 6; k++) {
+        const box = new THREE.Mesh(new THREE.BoxGeometry(radius * 0.7, radius * 0.7, length * 0.22), k % 2 ? paint : dark);
+        const a = (k / 6) * Math.PI * 2;
+        box.position.set(Math.cos(a) * radius * 1.3, Math.sin(a) * radius * 1.3, -length * 0.3);
+        ship.add(box);
+      }
+    }
+  }
+
+  ship.userData = { flames, beacon, length, rings };
+  // Taille commune pour tous les vaisseaux, quelle que soit leur longueur ; l'Arche est bien plus grande.
+  ship.scale.setScalar((1.6 / length) * (kind === 'arche' ? 1.5 : kind === 'colonie' ? 1.25 : 1));
   return ship;
 }
 
@@ -226,13 +256,14 @@ export function renderShipThumbnails(specs, width = 120, height = 72) {
   const camera = new THREE.PerspectiveCamera(30, width / height, 0.1, 50);
   camera.position.set(1.75, 1.0, 1.45);
   camera.lookAt(0, 0, 0);
-  const urls = specs.map(({ seed, accent, registry }) => {
+  const urls = specs.map(({ seed, accent, registry, kind }) => {
     const scene = new THREE.Scene();
     scene.add(new THREE.AmbientLight(0x8090b0, 1.2));
     const sun = new THREE.DirectionalLight(0xffffff, 2.5);
     sun.position.set(2, 3, 2);
     scene.add(sun);
-    const ship = createShip(seed, accent, registry);
+    const ship = createShip(seed, accent, registry, kind);
+    ship.scale.setScalar(1.6 / ship.userData.length); // même cadrage pour tous dans la vignette
     for (const flame of ship.userData.flames) flame.scale.setScalar(0.5);
     scene.add(ship);
     renderer.render(scene, camera);
