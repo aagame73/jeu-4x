@@ -143,7 +143,6 @@ function setupHome(rng, star) {
   const home = star.planets[2];
   home.size = 'grande';
   home.deposits.biomasse = Math.max(2, home.deposits.biomasse);
-  home.inhabitedBy = 'vous';
 }
 
 function placeRuins(rng, stars, homeId) {

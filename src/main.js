@@ -1,24 +1,22 @@
 import './style.css';
 import { CONFIG } from './config.js';
-import { createGame, tick, currentDay, sendProbe, startAnalysis } from './game.js';
+import { createGame, tick, currentDay, sendShip, startAnalysis, selectedShip, foundColony, startShipyard } from './game.js';
 import { createGalaxyView } from './scene.js';
 import { createUI } from './ui.js';
-import { renderShipThumbnails } from './ships.js';
+import { createPlanetView } from './planetView.js';
+import { startConstruction, demolish } from './economy.js';
 
 // ?graine=1234 dans l'adresse pour rejouer le même amas.
 const seed = Number(new URLSearchParams(location.search).get('graine')) || Math.floor(Math.random() * 1e6);
 const game = createGame(seed);
-const thumbnails = renderShipThumbnails(game.probes.map((p) => ({ seed: p.shipSeed, accent: p.accent, registry: p.registry })));
-game.probes.forEach((p, i) => (p.thumbnail = thumbnails[i]));
 
-const selectedProbe = () => game.probes[game.selectedProbeId];
-
-function selectNextIdleProbe() {
-  const n = game.probes.length;
+function selectNextIdleShip() {
+  const n = game.ships.length;
+  const start = game.ships.findIndex((s) => s.id === game.selectedShipId);
   for (let i = 1; i <= n; i++) {
-    const p = game.probes[(game.selectedProbeId + i) % n];
-    if (p.state === 'idle') {
-      game.selectedProbeId = p.id;
+    const ship = game.ships[(start + i) % n];
+    if (ship.state === 'idle') {
+      game.selectedShipId = ship.id;
       return;
     }
   }
@@ -27,10 +25,11 @@ function selectNextIdleProbe() {
 function refresh() {
   view.update();
   ui.render();
+  planetView.update();
 }
 
 // Le temps avance à chaque image, sauf en pause. L'interface n'est redessinée en entier
-// que lorsqu'un événement survient (une entrée de journal) ; sinon, seulement l'horloge.
+// que lorsqu'un événement survient (une entrée de journal) ; sinon, chaque nouveau jour.
 function advanceTime(dt) {
   if (game.paused) return;
   const day = currentDay(game);
@@ -40,6 +39,7 @@ function advanceTime(dt) {
     refresh();
   } else if (currentDay(game) !== day) {
     ui.renderLive();
+    planetView.renderLive();
   }
 }
 
@@ -48,23 +48,23 @@ const view = createGalaxyView(document.getElementById('scene'), game, {
     game.selectedStarId = id;
     refresh();
   },
-  onSelectProbe(id) {
-    actions.onSelectProbe(id);
+  onSelectShip(id) {
+    actions.onSelectShip(id);
   },
   onFrame: advanceTime,
 });
 
 const actions = {
-  onSelectProbe(id) {
-    game.selectedProbeId = id;
+  onSelectShip(id) {
+    game.selectedShipId = id;
     refresh();
   },
   onSend() {
-    if (sendProbe(game, selectedProbe(), game.stars[game.selectedStarId])) selectNextIdleProbe();
+    if (sendShip(game, selectedShip(game), game.stars[game.selectedStarId])) selectNextIdleShip();
     refresh();
   },
   onAnalyse() {
-    if (startAnalysis(game, selectedProbe())) selectNextIdleProbe();
+    startAnalysis(game, selectedShip(game));
     refresh();
   },
   onTogglePause() {
@@ -79,21 +79,54 @@ const actions = {
   onFocusStar(id) {
     view.focusStar(id);
   },
-  onFocusProbe(id) {
-    game.selectedProbeId = id;
-    view.focusProbe(id);
+  onFocusShip(id) {
+    game.selectedShipId = id;
+    view.focusShip(id);
     refresh();
   },
-  onRenameProbe(id, name) {
-    game.probes[id].name = name;
+  onRenameShip(id, name) {
+    const ship = game.ships.find((s) => s.id === id);
+    if (ship) ship.name = name;
     refresh();
+  },
+  // founding : la vue s'ouvre pour choisir la case où poser une nouvelle colonie.
+  onOpenPlanet(starId, planetIndex, founding = false) {
+    planetView.open(starId, planetIndex, founding ? game.selectedShipId : null);
+    view.setActive(false);
+    document.body.classList.add('planet-open');
+  },
+  onClosePlanet() {
+    planetView.close();
+    view.setActive(true);
+    document.body.classList.remove('planet-open');
+  },
+  onFoundColony(shipId, starId, planetIndex, tileIndex) {
+    const ship = game.ships.find((s) => s.id === shipId);
+    if (!foundColony(game, ship, starId, planetIndex, tileIndex)) return;
+    refresh();
+    planetView.open(starId, planetIndex, null);
+  },
+  onBuild(colony, surface, tile, type) {
+    if (startConstruction(game, colony, surface, tile, type)) refresh();
+  },
+  onDemolish(colony, surface, tile) {
+    if (demolish(game, colony, surface, tile)) refresh();
+  },
+  onShipyard(colony, key) {
+    if (startShipyard(game, colony, key)) refresh();
   },
 };
 const ui = createUI(document.getElementById('ui'), game, actions);
+const planetView = createPlanetView(document.getElementById('planet-view'), game, actions);
+
+// En développement seulement : accès à la partie depuis la console du navigateur, pour tester.
+if (import.meta.env.DEV) window.jeu = { game, actions, refresh, tick };
 
 window.addEventListener('keydown', (e) => {
   if (e.target.tagName === 'INPUT') return; // saisie d'un nom en cours
-  if (e.code === 'Space') {
+  if (e.key === 'Escape' && planetView.isOpen) {
+    actions.onClosePlanet();
+  } else if (e.code === 'Space') {
     e.preventDefault();
     if (!e.repeat) actions.onTogglePause();
   } else if (e.key === '+' || e.code === 'NumpadAdd') {
@@ -101,7 +134,7 @@ window.addEventListener('keydown', (e) => {
   } else if (e.key === '-' || e.code === 'NumpadSubtract') {
     actions.onSetSpeed(Math.max(0, game.speedIndex - 1));
   } else if (/^Digit[1-9]$/.test(e.code)) {
-    const id = Number(e.code.slice(5)) - 1;
-    if (game.probes[id]) actions.onSelectProbe(id);
+    const ship = game.ships[Number(e.code.slice(5)) - 1];
+    if (ship) actions.onSelectShip(ship.id);
   }
 });

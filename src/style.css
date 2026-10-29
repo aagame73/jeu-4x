@@ -463,3 +463,320 @@ kbd {
   font-size: 11px;
   color: var(--muted);
 }
+
+/* Ressources dans la barre du haut */
+.res {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+}
+.res i {
+  align-self: center;
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+  transform: rotate(45deg);
+}
+.res-minerais i { background: #d2a679; }
+.res-biomasse i { background: #7bd88f; }
+.res-velarine i { background: var(--velarine); }
+.res small {
+  font-size: 11px;
+  color: var(--accent);
+}
+.res small.down {
+  color: var(--rival);
+}
+.stats .sep {
+  width: 1px;
+  align-self: stretch;
+  background: var(--border);
+}
+.surface-btn {
+  margin-top: 8px;
+  font-size: 12px;
+  padding: 4px 8px;
+}
+
+/* Vue d'une planète */
+#planet-view {
+  position: fixed;
+  inset: 0;
+}
+#planet-view[hidden] {
+  display: none;
+}
+.planet-canvas {
+  position: absolute;
+  inset: 0;
+}
+body.planet-open .probes,
+body.planet-open .info,
+body.planet-open .help {
+  display: none;
+}
+body.planet-open .journal {
+  width: 330px;
+  max-height: 150px;
+}
+.planet-panel {
+  position: absolute;
+  top: 72px;
+  padding: 14px;
+  max-height: calc(100vh - 250px);
+  overflow: auto;
+}
+#pv-colony {
+  left: 12px;
+  width: 330px;
+}
+.tile-panel {
+  right: 12px;
+  width: 340px;
+  max-height: calc(100vh - 140px);
+}
+.planet-panel h2 {
+  font-size: 18px;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  color: var(--text);
+}
+.back {
+  position: absolute;
+  bottom: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  pointer-events: auto;
+}
+.stat-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 2px 0;
+  font-size: 13px;
+}
+.stat-row span {
+  color: var(--muted);
+}
+.stat-row.warn b {
+  color: var(--rival);
+}
+.alert {
+  color: var(--rival);
+}
+.progress {
+  height: 6px;
+  margin-top: 4px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+}
+.progress i {
+  display: block;
+  height: 100%;
+  background: var(--current);
+}
+.build-option {
+  display: grid;
+  gap: 4px;
+  margin-top: 10px;
+  padding: 10px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+.build-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+.build-option button {
+  justify-self: start;
+  margin-top: 4px;
+}
+button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.gains {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  font-size: 12px;
+}
+.gain.up {
+  color: var(--accent);
+}
+.gain.down {
+  color: var(--rival);
+}
+.deposit-badge.minerais { background: rgba(210, 166, 121, 0.18); color: #e8c49a; }
+.deposit-badge.energie { background: rgba(255, 209, 102, 0.15); color: var(--gold); }
+.deposit-badge.biomasse { background: rgba(123, 216, 143, 0.15); color: #9be8ab; }
+.deposit-badge.velarine { background: rgba(199, 125, 255, 0.18); color: #dcb3ff; }
+.log-build {
+  color: #bfe6ff;
+}
+.title,
+.stats > span {
+  white-space: nowrap;
+}
+
+/* Usure des vaisseaux */
+.wear {
+  height: 3px;
+  margin-top: 3px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+}
+.wear i {
+  display: block;
+  height: 100%;
+  background: var(--ship-accent);
+}
+.wear i.low {
+  background: var(--rival);
+}
+
+/* Fondation et chantier spatial */
+.founding {
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(255, 209, 102, 0.12);
+  border: 1px solid rgba(255, 209, 102, 0.45);
+  color: #fff3d1;
+}
+.yard-option {
+  display: grid;
+  gap: 3px;
+  margin-top: 8px;
+  padding: 8px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+.yard-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+/* Icônes et pastilles du panneau de case */
+.icon-svg {
+  width: 14px;
+  height: 14px;
+  flex: none;
+}
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 6px 1px 4px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.06);
+  font-size: 12px;
+  white-space: nowrap;
+}
+.chip.res-minerais .icon-svg { color: #d2a679; }
+.chip.res-energie .icon-svg { color: var(--gold); }
+.chip.res-biomasse .icon-svg { color: #7bd88f; }
+.chip.res-velarine .icon-svg { color: var(--velarine); }
+.chip.up { color: var(--accent); }
+.chip.down { color: var(--rival); }
+.tile-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.tile-head h2 {
+  margin: 0;
+}
+.swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  transform: rotate(30deg);
+  clip-path: polygon(25% 5%, 75% 5%, 100% 50%, 75% 95%, 25% 95%, 0 50%);
+}
+.deposit-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  font-size: 13px;
+}
+.deposit-line > .icon-svg {
+  width: 18px;
+  height: 18px;
+}
+.deposit-line.res-minerais { color: #e8c49a; }
+.deposit-line.res-energie { color: var(--gold); }
+.deposit-line.res-biomasse { color: #9be8ab; }
+.deposit-line.res-velarine { color: #dcb3ff; }
+.deposit-line .dots i.on { background: currentColor; }
+.big-icon .icon-svg {
+  width: 30px;
+  height: 30px;
+  color: #cfe0ff;
+}
+.building-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 12px 0 8px;
+}
+.build-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 12px;
+}
+.build-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 10px 6px 8px;
+  text-align: center;
+}
+.build-card .chips {
+  justify-content: center;
+}
+.build-card .chips.cost .chip {
+  background: rgba(0, 0, 0, 0.25);
+  color: var(--muted);
+}
+.card-name {
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+.build-card .reason {
+  font-size: 11px;
+  color: var(--rival);
+}
+.build-card .reason:empty {
+  display: none;
+}
+.build-card:not(:disabled):hover .big-icon .icon-svg {
+  color: var(--accent);
+}
+.icon-btn,
+.found-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+}
+.found-btn .icon-svg {
+  width: 18px;
+  height: 18px;
+}

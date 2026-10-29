@@ -4,7 +4,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 import { CONFIG } from './config.js';
 import { STAR_TYPES, starDistance } from './galaxy.js';
-import { reachableStars, probeProgress } from './game.js';
+import { reachableStars, shipProgress, selectedShip } from './game.js';
 import { createSky } from './skybox.js';
 import { createShip } from './ships.js';
 import { canvasTexture, glowTexture } from './textures.js';
@@ -114,35 +114,46 @@ export function createGalaxyView(container, game, callbacks) {
   const ring = new THREE.Sprite(new THREE.SpriteMaterial({ map: ringTexture(), color: 0xaad4ff, transparent: true, depthWrite: false }));
   scene.add(ring);
 
-  // Sondes : un vaisseau 3D unique, un anneau de sélection et la trace de son trajet.
+  // Vaisseaux : un modèle 3D unique, un anneau de sélection et la trace du trajet.
+  // Ils apparaissent (chantier spatial) et disparaissent (usure, fondation) en cours de partie.
   const ringTex = ringTexture();
-  const probeViews = game.probes.map((probe) => {
-    const ship = createShip(probe.shipSeed, probe.accent, probe.registry);
-    const holder = new THREE.Group();
-    holder.add(ship);
-    const marker = new THREE.Sprite(new THREE.SpriteMaterial({ map: ringTex, color: probe.accent, transparent: true, depthWrite: false, depthTest: false }));
-    marker.renderOrder = 10;
-    const trail = new THREE.Line(
-      new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]),
-      new THREE.LineDashedMaterial({ color: probe.accent, dashSize: 1.2, gapSize: 0.8, transparent: true, opacity: 0.75 }),
-    );
-    scene.add(holder, marker, trail);
-    return { probe, ship, holder, marker, trail, look: new THREE.Vector3(), placed: false, scale: 1 };
-  });
+  const shipViews = new Map();
+  function syncShips() {
+    for (const [id, v] of shipViews) {
+      if (game.ships.some((s) => s.id === id)) continue;
+      scene.remove(v.holder, v.marker, v.trail);
+      shipViews.delete(id);
+      if (followId === id) followId = null;
+    }
+    for (const ship of game.ships) {
+      if (shipViews.has(ship.id)) continue;
+      const model = createShip(ship.shipSeed, ship.accent, ship.registry, ship.kind);
+      const holder = new THREE.Group();
+      holder.add(model);
+      const marker = new THREE.Sprite(new THREE.SpriteMaterial({ map: ringTex, color: ship.accent, transparent: true, depthWrite: false, depthTest: false }));
+      marker.renderOrder = 10;
+      const trail = new THREE.Line(
+        new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]),
+        new THREE.LineDashedMaterial({ color: ship.accent, dashSize: 1.2, gapSize: 0.8, transparent: true, opacity: 0.75 }),
+      );
+      scene.add(holder, marker, trail);
+      shipViews.set(ship.id, { ship, model, holder, marker, trail, look: new THREE.Vector3(), placed: false, scale: 1 });
+    }
+  }
 
   // Position et point visé : en orbite autour de l'étoile, ou en route vers la destination.
   const _pos = new THREE.Vector3();
   const _look = new THREE.Vector3();
-  function probePose(probe, orbitScale) {
-    if (probe.state === 'travel') {
-      const to = toVec(game.stars[probe.toId].pos);
-      _pos.copy(toVec(game.stars[probe.fromId].pos)).lerp(to, probeProgress(probe)).y += 1;
+  function shipPose(ship, orbitScale) {
+    if (ship.state === 'travel') {
+      const to = toVec(game.stars[ship.toId].pos);
+      _pos.copy(toVec(game.stars[ship.fromId].pos)).lerp(to, shipProgress(ship)).y += 1;
       _look.copy(to).setY(to.y + 1);
     } else {
-      const center = game.stars[probe.starId].pos;
-      const angle = game.time * 0.35 + probe.id * 2.1;
-      const r = (2.6 + probe.id * 0.6) * orbitScale;
-      const y = center.y + 0.8 + Math.sin(game.time * 0.5 + probe.id) * 0.3;
+      const center = game.stars[ship.starId].pos;
+      const angle = game.time * (ship.kind === 'arche' ? 0.12 : 0.35) + ship.id * 2.1;
+      const r = (ship.kind === 'arche' ? 5.5 : 2.6 + (ship.id % 4) * 0.6) * orbitScale;
+      const y = center.y + 0.8 + Math.sin(game.time * 0.5 + ship.id) * 0.3;
       _pos.set(center.x + Math.cos(angle) * r, y, center.z + Math.sin(angle) * r);
       _look.set(center.x + Math.cos(angle + 0.3) * r, y, center.z + Math.sin(angle + 0.3) * r);
     }
@@ -168,11 +179,12 @@ export function createGalaxyView(container, game, callbacks) {
       v.line.visible = v.points.visible = v.current.known;
     }
 
-    const probe = game.probes[game.selectedProbeId];
+    syncShips();
+    const current = selectedShip(game);
     const positions = [];
-    if (probe && probe.state === 'idle') {
-      const from = game.stars[probe.starId].pos;
-      for (const s of reachableStars(game, probe)) positions.push(from.x, from.y, from.z, s.pos.x, s.pos.y, s.pos.z);
+    if (current && current.state === 'idle') {
+      const from = game.stars[current.starId].pos;
+      for (const s of reachableStars(game, current)) positions.push(from.x, from.y, from.z, s.pos.x, s.pos.y, s.pos.z);
     }
     reachLines.geometry.dispose();
     reachLines.geometry = new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
@@ -184,11 +196,11 @@ export function createGalaxyView(container, game, callbacks) {
       ring.scale.setScalar(STAR_TYPES[selected.type].size * 4.2);
     }
 
-    for (const v of probeViews) {
-      const traveling = v.probe.state === 'travel';
+    for (const v of shipViews.values()) {
+      const traveling = v.ship.state === 'travel';
       v.trail.visible = traveling;
       if (traveling) {
-        v.trail.geometry.setFromPoints([toVec(game.stars[v.probe.fromId].pos), toVec(game.stars[v.probe.toId].pos)]);
+        v.trail.geometry.setFromPoints([toVec(game.stars[v.ship.fromId].pos), toVec(game.stars[v.ship.toId].pos)]);
         v.trail.computeLineDistances();
       }
     }
@@ -215,19 +227,19 @@ export function createGalaxyView(container, game, callbacks) {
     return best;
   }
 
-  // Une sonde sous le curseur (prioritaire sur les étoiles).
-  function probeAt(clientX, clientY, maxPx) {
+  // Un vaisseau sous le curseur (prioritaire sur les étoiles).
+  function shipAt(clientX, clientY, maxPx) {
     const rect = renderer.domElement.getBoundingClientRect();
     let best = null;
     let bestD = maxPx;
     const p = new THREE.Vector3();
-    for (const v of probeViews) {
+    for (const v of shipViews.values()) {
       p.copy(v.holder.position).project(camera);
       if (p.z > 1) continue;
       const d = Math.hypot(rect.left + ((p.x + 1) / 2) * rect.width - clientX, rect.top + ((1 - p.y) / 2) * rect.height - clientY);
       if (d < bestD) {
         bestD = d;
-        best = v.probe;
+        best = v.ship;
       }
     }
     return best;
@@ -237,10 +249,10 @@ export function createGalaxyView(container, game, callbacks) {
   renderer.domElement.addEventListener('pointerdown', (e) => (down = { x: e.clientX, y: e.clientY }));
   renderer.domElement.addEventListener('pointerup', (e) => {
     if (!down || e.button !== 0 || Math.hypot(e.clientX - down.x, e.clientY - down.y) > 5) return;
-    const probe = probeAt(e.clientX, e.clientY, 14);
-    if (probe) {
-      focusProbe(probe.id);
-      return callbacks.onSelectProbe(probe.id);
+    const ship = shipAt(e.clientX, e.clientY, 14);
+    if (ship) {
+      focusShip(ship.id);
+      return callbacks.onSelectShip(ship.id);
     }
     const star = starAt(e.clientX, e.clientY, 22);
     if (star) callbacks.onSelectStar(star.id);
@@ -250,19 +262,19 @@ export function createGalaxyView(container, game, callbacks) {
     if (star) focusStar(star.id);
   });
   renderer.domElement.addEventListener('pointermove', (e) => {
-    const hoveredProbe = probeAt(e.clientX, e.clientY, 14);
-    const star = hoveredProbe ? null : starAt(e.clientX, e.clientY, 16);
-    renderer.domElement.style.cursor = star || hoveredProbe ? 'pointer' : '';
-    if (!star && !hoveredProbe) {
+    const hoveredShip = shipAt(e.clientX, e.clientY, 14);
+    const star = hoveredShip ? null : starAt(e.clientX, e.clientY, 16);
+    renderer.domElement.style.cursor = star || hoveredShip ? 'pointer' : '';
+    if (!star && !hoveredShip) {
       tooltip.style.display = 'none';
       return;
     }
-    if (hoveredProbe) {
-      tooltip.innerHTML = `<strong style="color:${hoveredProbe.accent}">${hoveredProbe.name}</strong><span>${hoveredProbe.registry}</span>`;
+    if (hoveredShip) {
+      tooltip.innerHTML = `<strong style="color:${hoveredShip.accent}">${hoveredShip.name}</strong><span>${hoveredShip.registry}</span>`;
     } else {
-      const probe = game.probes[game.selectedProbeId];
-      const d = probe ? Math.round(starDistance(game.stars[probe.state === 'travel' ? probe.toId : probe.starId], star)) : null;
-      tooltip.innerHTML = `<strong>${star.level >= 2 ? star.name : 'Lueur inconnue'}</strong>` + (d ? `<span>${d} al de ${probe.name}</span>` : '');
+      const current = selectedShip(game);
+      const d = current ? Math.round(starDistance(game.stars[current.state === 'travel' ? current.toId : current.starId], star)) : null;
+      tooltip.innerHTML = `<strong>${star.level >= 2 ? star.name : 'Lueur inconnue'}</strong>` + (d ? `<span>${d} al de ${current.name}</span>` : '');
     }
     tooltip.style.display = 'block';
     tooltip.style.left = `${e.clientX + 14}px`;
@@ -280,9 +292,10 @@ export function createGalaxyView(container, game, callbacks) {
     const to = toVec(game.stars[id].pos);
     focus = { from: controls.target.clone(), to: () => to, t: 0 };
   }
-  function focusProbe(id) {
+  function focusShip(id) {
+    if (!shipViews.has(id)) return;
     followId = id;
-    focus = { from: controls.target.clone(), to: () => probeViews[id].holder.position, t: 0 };
+    focus = { from: controls.target.clone(), to: () => shipViews.get(id)?.holder.position ?? controls.target, t: 0 };
   }
   renderer.domElement.addEventListener('pointerdown', (e) => {
     if (e.button === 2) followId = null;
@@ -297,11 +310,13 @@ export function createGalaxyView(container, game, callbacks) {
     labelRenderer.setSize(w, h);
   });
 
+  let active = true;
   const clock = new THREE.Clock();
   renderer.setAnimationLoop(() => {
     const dt = Math.min(clock.getDelta(), 0.1);
     const time = clock.elapsedTime;
     callbacks.onFrame(dt);
+    if (!active) return; // vue d'une planète ouverte : le temps avance, l'amas n'est pas dessiné
 
     if (focus) {
       focus.t = Math.min(1, focus.t + dt * 2.2);
@@ -311,7 +326,7 @@ export function createGalaxyView(container, game, callbacks) {
       controls.target.copy(next);
       if (focus.t >= 1) focus = null;
     } else if (followId !== null) {
-      const p = probeViews[followId].holder.position;
+      const p = shipViews.get(followId).holder.position;
       camera.position.add(p.clone().sub(controls.target));
       controls.target.copy(p);
     }
@@ -329,8 +344,8 @@ export function createGalaxyView(container, game, callbacks) {
       v.line.material.opacity = 0.22 + Math.sin(time * 1.5 + v.current.id) * 0.08;
     }
 
-    for (const v of probeViews) {
-      const { pos, look } = probePose(v.probe, THREE.MathUtils.clamp(v.scale * 0.7, 1, 2.5));
+    for (const v of shipViews.values()) {
+      const { pos, look } = shipPose(v.ship, THREE.MathUtils.clamp(v.scale * 0.7, 1, 2.5));
       const k = v.placed ? Math.min(1, dt * 6) : 1;
       v.placed = true;
       v.holder.position.lerp(pos, k);
@@ -342,16 +357,17 @@ export function createGalaxyView(container, game, callbacks) {
       const scale = (v.scale = THREE.MathUtils.clamp(camDist * 0.028, 0.45, 9));
       v.holder.scale.setScalar(scale);
 
-      const traveling = v.probe.state === 'travel';
-      for (const flame of v.ship.userData.flames) {
-        flame.scale.setScalar((traveling ? 0.9 : 0.35) * (1 + Math.sin(time * 30 + v.probe.id) * 0.12));
+      const traveling = v.ship.state === 'travel';
+      for (const flame of v.model.userData.flames) {
+        flame.scale.setScalar((traveling ? 0.9 : 0.35) * (1 + Math.sin(time * 30 + v.ship.id) * 0.12));
       }
-      v.ship.userData.beacon.visible = Math.sin(time * 4 + v.probe.id * 2) > 0.3 || v.probe.state === 'analyse';
+      for (const ring of v.model.userData.rings) ring.rotation.z += dt * 0.4;
+      v.model.userData.beacon.visible = Math.sin(time * 4 + v.ship.id * 2) > 0.3 || v.ship.state === 'analyse';
 
-      const selected = v.probe.id === game.selectedProbeId;
-      v.marker.visible = selected || v.probe.state === 'analyse';
+      const selected = v.ship.id === game.selectedShipId;
+      v.marker.visible = selected || v.ship.state === 'analyse';
       v.marker.position.copy(v.holder.position);
-      const pulse = v.probe.state === 'analyse' ? 1 + Math.sin(time * 5) * 0.15 : 1;
+      const pulse = v.ship.state === 'analyse' ? 1 + Math.sin(time * 5) * 0.15 : 1;
       v.marker.scale.setScalar(scale * 2.6 * pulse);
       v.marker.material.opacity = selected ? 0.9 : 0.45;
       v.marker.material.rotation -= dt * 0.6;
@@ -363,7 +379,15 @@ export function createGalaxyView(container, game, callbacks) {
   });
 
   update();
-  return { update, focusStar, focusProbe };
+  return {
+    update,
+    focusStar,
+    focusShip,
+    setActive(value) {
+      active = value;
+      tooltip.style.display = 'none';
+    },
+  };
 }
 
 // Nébuleuses diffuses à l'intérieur de l'amas.
