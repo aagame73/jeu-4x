@@ -19,6 +19,7 @@ export function createUI(root, game, actions) {
     <header class="topbar panel">
       <div class="title">Amas inexploré <span class="tag">prototype</span></div>
       <div class="stats" id="stats"></div>
+      <button class="menu-btn" data-action="menu" title="Menu : sauvegarder, charger (Échap)">☰ Menu</button>
       <div class="clock">
         <button class="pause" data-action="toggle-pause" title="Pause (Espace)"></button>
         ${CONFIG.speeds.map((x, i) => `<button class="speed" data-action="speed" data-id="${i}" title="Vitesse x${x}">x${x}</button>`).join('')}
@@ -37,7 +38,8 @@ export function createUI(root, game, actions) {
     if (!el) return;
     el.blur(); // sinon la touche Espace réactiverait le bouton
     const { action, id } = el.dataset;
-    if (action === 'rename') startRename(Number(id));
+    if (action === 'menu') actions.onOpenMenu();
+    else if (action === 'rename') startRename(Number(id));
     else if (action === 'focus-ship') actions.onFocusShip(Number(id));
     else if (action === 'found') actions.onOpenPlanet(Number(el.dataset.star), Number(el.dataset.planet), true);
     else if (action === 'toggle-pause') actions.onTogglePause();
