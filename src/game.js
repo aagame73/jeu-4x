@@ -13,9 +13,9 @@ import { generateCluster, starDistance, STAR_TYPES } from './galaxy.js';
 import { SHIP_NAMES, SHIP_ACCENTS } from './ships.js';
 import { generateSurface, hexDistance } from './surface.js';
 import { tickColony, colonyReport, SHIPYARD, canAfford } from './economy.js';
-import { TECHS, hasTech, bindResearch, markTech } from './research.js';
+import { TECHS, hasTech, bindResearch, markTech, techCost } from './research.js';
 import { SPECIES, DEFAULT_SPECIES } from './config.js';
-import { bindSpecies } from './species.js';
+import { bindSpecies, speciesBonus, speciesHabitat, hostilePenalty, currentSpecies } from './species.js';
 
 export const LEVEL_LABELS = ['Inconnu', 'Lueur repérée', 'Système survolé', 'Système analysé'];
 
@@ -45,11 +45,12 @@ export function shipStats(game, ship) {
   const attackBonus = (hasTech('lasers') ? 1.3 : 1) * (hasTech('torpilles-plasma') ? 1.3 : 1) * (hasTech('lance-gravite') ? 1.5 : 1);
   const defenseBonus =
     (hasTech('boucliers-deflecteurs') ? 1.25 : 1) * (hasTech('alliages-composites') ? 1.25 : 1) * (hasTech('blindage-veilleurs') ? 1.5 : 1);
-  const fuelFactor = SIZE_FUEL[def.size] * (hasTech('injecteurs') ? 0.75 : 1) * (hasTech('recyclage-deuterium') ? 0.75 : 1);
+  const fuelFactor =
+    SIZE_FUEL[def.size] * (hasTech('injecteurs') ? 0.75 : 1) * (hasTech('recyclage-deuterium') ? 0.75 : 1) * speciesBonus('fuel');
   return {
-    attack: Math.round(def.attack * attackBonus),
-    defense: Math.round(def.defense * defenseBonus),
-    speed: CONFIG.probeSpeed * def.speed * speedBonus,
+    attack: Math.round(def.attack * attackBonus * speciesBonus('shipAttack')),
+    defense: Math.round(def.defense * defenseBonus * speciesBonus('shipDefense')),
+    speed: CONFIG.probeSpeed * def.speed * speedBonus * speciesBonus('shipSpeed'),
     lifespan: lifespan(game, ship),
     fuelFactor,
   };
@@ -132,7 +133,7 @@ function removeShip(game, ship) {
 
 export function lifespan(game, ship) {
   const base = SHIP_KINDS[ship.kind].lifespan;
-  return base === null ? null : base * (game.upgrades.blindage || hasTech('coques-renforcees') ? 1.5 : 1);
+  return base === null ? null : base * (game.upgrades.blindage || hasTech('coques-renforcees') ? 1.5 : 1) * speciesBonus('shipLifespan');
 }
 
 export const currentDay = (game) => Math.floor(game.time) + 1;
@@ -260,7 +261,19 @@ export function foundingProblem(game, ship, starId, planetIndex) {
   if (!planet.size) return 'Cette planète ne se colonise pas.';
   if (planet.inhabitedBy) return `Planète habitée par les ${planet.inhabitedBy}.`;
   if (colonyOn(game, starId, planetIndex)) return 'Une colonie existe déjà ici.';
+  // L'Arche peut toujours se poser (ses moteurs sont cassés) ; les autres attendent la recherche.
+  if (speciesHabitat(planet) === 'hostile' && ship.kind !== 'arche' && !hasTech('adaptation-xenobiologique')) {
+    return `Milieu hostile aux ${currentSpecies().label} : recherchez Adaptation xénobiologique.`;
+  }
   return null;
+}
+
+// Colons au départ : +1 sur une planète favorable, 1 de moins sur une planète hostile (minimum 1).
+function foundingPopulation(ship, habitat) {
+  const base = SHIP_KINDS[ship.kind].population;
+  if (habitat === 'favored') return base + 1;
+  if (habitat === 'hostile') return Math.max(1, base - hostilePenalty(hasTech('biospheres-adaptatives')).colonists);
+  return base;
 }
 
 export function foundColony(game, ship, starId, planetIndex, tileIndex) {
@@ -270,6 +283,7 @@ export function foundColony(game, ship, starId, planetIndex, tileIndex) {
   if (!tile || tile.terrain === 'ocean' || tile.building || tile.deposit?.resource === 'minerais' || tile.deposit?.resource === 'velarine') return false;
   const planet = game.stars[starId].planets[planetIndex];
   const first = game.colonies.length === 0;
+  const habitat = speciesHabitat(planet);
   tile.terrain = 'plaine';
   tile.building = { type: 'centre', done: true };
   // Pour la première colonie, les scanners de l'Arche repèrent toujours un filon de minerais.
@@ -283,7 +297,8 @@ export function foundColony(game, ship, starId, planetIndex, tileIndex) {
     starId,
     planetIndex,
     name: planet.name,
-    population: SHIP_KINDS[ship.kind].population,
+    population: foundingPopulation(ship, habitat),
+    habitat, // 'favored', 'hostile' ou null pour l'espèce de la partie
     growth: 0,
     construction: null,
     shipyard: null,
@@ -349,9 +364,9 @@ export function startResearch(game, key) {
 function checkResearchDone(game) {
   const r = game.research;
   const tech = TECHS[r.current];
-  if (!tech || r.progress < tech.cost) return;
+  if (!tech || r.progress < techCost(tech)) return;
   const key = r.current;
-  r.bank = r.progress - tech.cost; // le surplus n'est pas perdu
+  r.bank = r.progress - techCost(tech); // le surplus n'est pas perdu
   r.current = null;
   r.progress = 0;
   markTech(r, key);
@@ -364,7 +379,7 @@ export function colonyDefense(game, colony) {
   const surface = getSurface(game, colony.starId, colony.planetIndex);
   const batteries = surface.tiles.filter((t) => t.building?.type === 'batterie' && t.building.done).reduce((sum, t) => sum + 5 * (t.building.level ?? 1), 0);
   const rings = colony.orbital.defense * 10 * (hasTech('boucliers-deflecteurs') ? 1.25 : 1);
-  return Math.round((rings + batteries) * (hasTech('champ-stase') ? 2 : 1));
+  return Math.round((rings + batteries) * (hasTech('champ-stase') ? 2 : 1) * speciesBonus('colonyDefense'));
 }
 
 function applyTech(game, key) {
@@ -409,11 +424,14 @@ export function shipyardProblem(game, colony, key) {
   return null;
 }
 
+// Durée d'une commande du chantier spatial, bonus d'espèce compris.
+export const shipyardDays = (key) => Math.max(1, Math.ceil(SHIPYARD[key].days * speciesBonus('shipyardTime')));
+
 export function startShipyard(game, colony, key) {
   if (shipyardProblem(game, colony, key)) return false;
   const order = SHIPYARD[key];
   for (const [res, n] of Object.entries(order.cost)) game.resources[res] -= n;
-  colony.shipyard = { key, daysLeft: order.days };
+  colony.shipyard = { key, daysLeft: shipyardDays(key), total: shipyardDays(key) };
   addLog(game, `Chantier spatial de ${colony.name} : ${order.label} en construction.`);
   return true;
 }

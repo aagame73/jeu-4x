@@ -1028,7 +1028,7 @@ export function createPlanetView(root, game, actions) {
       if (colony.shipyard) {
         const order = SHIPYARD[colony.shipyard.key];
         html += section('Chantier spatial');
-        html += jobCard(yardIcon(colony.shipyard.key), order.label, 1 - colony.shipyard.daysLeft / order.days, colony.shipyard.daysLeft);
+        html += jobCard(yardIcon(colony.shipyard.key), order.label, 1 - colony.shipyard.daysLeft / (colony.shipyard.total ?? order.days), colony.shipyard.daysLeft);
       }
       const orbit = [];
       const defense = GAME.colonyDefense?.(game, colony);
@@ -1079,7 +1079,7 @@ export function createPlanetView(root, game, actions) {
         const cost = Object.entries(order.cost ?? {})
           .map(([res, n]) => `${n} ${resLabel(res).toLowerCase()}`)
           .join(', ');
-        const details = [`${order.label}${sizeLabel ? ` (taille : ${sizeLabel.toLowerCase()})` : ''}`, order.desc, `Coût : ${cost}. Durée : ${order.days} jours.`];
+        const details = [`${order.label}${sizeLabel ? ` (taille : ${sizeLabel.toLowerCase()})` : ''}`, order.desc, `Coût : ${cost}. Durée : ${GAME.shipyardDays(key)} jours.`];
         if (war && kind) details.push(`Attaque ${kind.attack ?? 0}, défense ${kind.defense ?? 0} (avant bonus de recherche).`);
         const stats = war && kind
           ? `<span class="yard-stat atk" title="Attaque de base">${icon('attaque')}${kind.attack ?? 0}</span><span class="yard-stat def" title="Défense de base">${icon('defense')}${kind.defense ?? 0}</span>`
@@ -1090,7 +1090,7 @@ export function createPlanetView(root, game, actions) {
             <b class="yard-name">${order.label}</b>
             ${sizeLabel ? `<span class="yard-size size-${size}">${sizeLabel}</span>` : ''}
             ${stats}
-            <span class="yard-days">${order.days} j</span>
+            <span class="yard-days">${GAME.shipyardDays(key)} j</span>
             <button class="primary" data-pv="shipyard" data-key="${key}">Lancer</button><span class="reason"></span>
           </div>`;
       }

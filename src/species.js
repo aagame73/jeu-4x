@@ -24,5 +24,31 @@ export function speciesHabitat(planet) {
 // Les cases de ces terrains produisent +25 % pour l'espèce.
 export const isFavoredTerrain = (terrain) => current.favoredTerrains.includes(terrain);
 
+// Bonus additifs (0 par défaut), ex. digArtefacts.
+export const speciesExtra = (key) => current.bonuses[key] ?? 0;
+
+const TERRAIN_BONUS = 0.25;
+const FACTOR_MIN = 0.5;
+const FACTOR_MAX = 1.5;
+
+// Malus d'une colonie sur une planète hostile ; `adapted` = Biosphères adaptatives acquises.
+export const hostilePenalty = (adapted) =>
+  adapted ? { growth: 0.75, production: 0.05, colonists: 0 } : { growth: 0.5, production: 0.15, colonists: 1 };
+
+// Facteur d'espèce d'une production positive : les bonus s'additionnent (ressource, terrain favori,
+// malus hostile) puis le total est borné entre 0,5 et 1,5 (voir docs/plan-especes.md § 11.3).
+export function productionFactor(resource, terrain, habitat, adapted = false) {
+  let f = speciesBonus(resource) - 1;
+  if (terrain && isFavoredTerrain(terrain)) f += TERRAIN_BONUS;
+  if (habitat === 'hostile') f -= hostilePenalty(adapted).production;
+  return Math.min(FACTOR_MAX, Math.max(FACTOR_MIN, 1 + f));
+}
+
+// Vitesse de croissance de la population d'une colonie.
+export function growthFactor(habitat, adapted = false) {
+  const milieu = habitat === 'favored' ? 1.25 : habitat === 'hostile' ? hostilePenalty(adapted).growth : 1;
+  return speciesBonus('growth') * milieu;
+}
+
 // Espèces proposées à l'écran de choix (sans le profil neutre des anciennes parties).
 export const playableSpecies = () => Object.entries(SPECIES).filter(([, s]) => !s.hidden).map(([key]) => key);

@@ -226,3 +226,13 @@ body.system-open .advisor-portrait {
   width: auto;
   min-width: 240px;
 }
+
+/* Milieu de la planète pour l'espèce jouée */
+.badge.favored {
+  background: rgba(124, 255, 158, 0.12);
+  color: #9dffb8;
+}
+.badge.hostile {
+  background: rgba(255, 122, 138, 0.12);
+  color: #ff9a9a;
+}
