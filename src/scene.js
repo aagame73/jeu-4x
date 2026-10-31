@@ -260,8 +260,11 @@ export function createGalaxyView(container, game, callbacks) {
     if (star) callbacks.onSelectStar(star.id);
   });
   renderer.domElement.addEventListener('dblclick', (e) => {
+    // Double-clic sur une étoile visitée : vue du système ; sinon on centre la caméra dessus.
     const star = starAt(e.clientX, e.clientY, 22);
-    if (star) focusStar(star.id);
+    if (!star) return;
+    if (star.level >= 2 && callbacks.onOpenSystem) callbacks.onOpenSystem(star.id);
+    else focusStar(star.id);
   });
   renderer.domElement.addEventListener('pointermove', (e) => {
     const hoveredShip = shipAt(e.clientX, e.clientY, 14);
