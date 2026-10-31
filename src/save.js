@@ -155,22 +155,24 @@ export function takePendingLoad() {
   }
 }
 
-export function newGameAndRestart() {
+// species : espèce déjà choisie ; sans elle, la page rechargée ouvre l'écran de choix.
+export function newGameAndRestart(species = '') {
   try {
-    sessionStorage.setItem(`${PREFIX}nouvelle`, '1');
+    sessionStorage.setItem(`${PREFIX}nouvelle`, species || '?');
   } catch {
     /* sans stockage, la page rechargée démarre de toute façon une nouvelle partie */
   }
   location.href = location.pathname;
 }
 
+// null : pas de nouvelle partie demandée ; '' : nouvelle partie, espèce à choisir ; sinon la clé de l'espèce.
 export function takeNewGameRequest() {
   try {
-    const asked = sessionStorage.getItem(`${PREFIX}nouvelle`) === '1';
+    const asked = sessionStorage.getItem(`${PREFIX}nouvelle`);
     sessionStorage.removeItem(`${PREFIX}nouvelle`);
-    return asked;
+    return asked === null ? null : asked === '?' || asked === '1' ? '' : asked;
   } catch {
-    return false;
+    return null;
   }
 }
 

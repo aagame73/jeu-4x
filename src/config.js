@@ -17,7 +17,8 @@ export const CONFIG = {
 // Espèces jouables (voir docs/plan-especes.md). Données pures : la logique est dans species.js.
 // bonuses : multiplicateurs (1 = neutre), clés possibles : minerais, alliages, biomasse, eau, deuterium,
 // energie, recherche, growth, shipSpeed, shipDefense, shipLifespan, shipAttack, shipyardTime,
-// colonyDefense, fuel, digSpeed, veilleursTechCost.
+// colonyDefense, fuel, digSpeed, veilleursTechCost (branche Xéno-archéologie et technologies à artefacts) ;
+// digArtefacts : artefacts ajoutés à chaque fouille terminée (additif, 0 par défaut).
 // habitat : types de planètes favorables / hostiles ('lune' = toute lune habitable) ;
 // favoredTerrains : terrains d'hexagones qui produisent +25 % ; shipStyle : paramètres de ships.js.
 export const SPECIES = {
@@ -48,9 +49,9 @@ export const SPECIES = {
   keltirr: {
     label: 'Kel-Tirr',
     lore: 'Petits êtres à plumes vivant en essaims, vifs et curieux, toujours en mouvement.',
-    strength: 'Vitesse des vaisseaux +25 %, chantier spatial 20 % plus rapide',
+    strength: 'Vitesse des vaisseaux +25 %, chantier spatial 15 % plus rapide',
     weakness: 'Défense et durée de vie des vaisseaux −20 %',
-    bonuses: { shipSpeed: 1.25, shipyardTime: 0.8, shipDefense: 0.8, shipLifespan: 0.8 },
+    bonuses: { shipSpeed: 1.25, shipyardTime: 0.85, shipDefense: 0.8, shipLifespan: 0.8 },
     habitat: { favored: ['tempere', 'marecageuse'], hostile: ['glacee'] },
     favoredTerrains: ['plaine', 'foret'],
     accent: '#fff07a',
@@ -73,8 +74,8 @@ export const SPECIES = {
     label: 'Orrhaïdes',
     lore: "Cristaux vivants nourris de lumière et de chaleur ; ils chantent quand une étoile se lève.",
     strength: 'Énergie +25 %',
-    weakness: 'Biomasse −20 %',
-    bonuses: { energie: 1.25, biomasse: 0.8 },
+    weakness: 'Biomasse −25 %',
+    bonuses: { energie: 1.25, biomasse: 0.75 },
     habitat: { favored: ['glacee', 'desertique'], hostile: ['marecageuse'] },
     favoredTerrains: ['glace', 'desert'],
     accent: '#cfe8ff',
@@ -84,9 +85,9 @@ export const SPECIES = {
   thrennes: {
     label: 'Thrennes',
     lore: 'Reptiles à six membres, à la culture guerrière ritualisée : chaque victoire se grave sur leurs coques.',
-    strength: 'Attaque des vaisseaux et défense des colonies +25 %',
+    strength: 'Attaque des vaisseaux et défense des colonies +25 %, alliages +15 %',
     weakness: 'Recherche −20 %',
-    bonuses: { shipAttack: 1.25, colonyDefense: 1.25, recherche: 0.8 },
+    bonuses: { shipAttack: 1.25, colonyDefense: 1.25, alliages: 1.15, recherche: 0.8 },
     habitat: { favored: ['volcanique', 'toxique'], hostile: ['tempere'] },
     favoredTerrains: ['volcanique', 'toxique'],
     accent: '#ff6f6f',
@@ -96,9 +97,9 @@ export const SPECIES = {
   liseurs: {
     label: 'Liseurs de Vey',
     lore: 'Êtres longilignes qui vénèrent les Veilleurs ; ils déchiffrent leurs glyphes depuis des siècles.',
-    strength: 'Fouilles 2× plus rapides, technologies des Veilleurs −30 %',
-    weakness: 'Énergie −20 %',
-    bonuses: { digSpeed: 2, veilleursTechCost: 0.7, energie: 0.8 },
+    strength: 'Fouilles 2× plus rapides (+1 artefact chacune), technologies des Veilleurs −30 %',
+    weakness: 'Énergie −15 %',
+    bonuses: { digSpeed: 2, digArtefacts: 1, veilleursTechCost: 0.7, energie: 0.85 },
     habitat: { favored: ['glacee', 'tempere'], hostile: ['toxique'] },
     favoredTerrains: ['glace', 'ruines'],
     accent: '#ffd166',
@@ -109,8 +110,8 @@ export const SPECIES = {
     label: 'Ashkari',
     lore: 'Nomades des géantes gazeuses, marchands et pilotes ; leurs familles vivent à bord depuis toujours.',
     strength: 'Deutérium +25 %, sauts −25 % de carburant',
-    weakness: 'Défense des colonies −20 %',
-    bonuses: { deuterium: 1.25, fuel: 0.75, colonyDefense: 0.8 },
+    weakness: 'Défense des colonies −20 %, minerais −10 %',
+    bonuses: { deuterium: 1.25, fuel: 0.75, colonyDefense: 0.8, minerais: 0.9 },
     habitat: { favored: ['oceanique', 'lune'], hostile: ['volcanique'] },
     favoredTerrains: ['ocean', 'glace'],
     accent: '#e0a070',

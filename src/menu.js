@@ -10,7 +10,7 @@ function describe(data) {
   return `Jour ${s.day} · ${s.colonies} colonie${s.colonies > 1 ? 's' : ''} · ${s.ships} vaisseau${s.ships > 1 ? 'x' : ''}<br><span class="muted small">enregistrée le ${s.savedAt}</span>`;
 }
 
-export function createMenu(root, game, { onOpen, onClose }) {
+export function createMenu(root, game, { onOpen, onClose, onNewGame }) {
   root.innerHTML = `
     <div class="menu panel" role="dialog" aria-label="Menu">
       <div id="menu-body"></div>
@@ -89,7 +89,7 @@ export function createMenu(root, game, { onOpen, onClose }) {
     } else if (action === 'new') {
       if (confirm('Commencer une nouvelle partie ? La progression non enregistrée sera perdue.')) newGameAndRestart();
     } else if (action === 'new-start') {
-      close();
+      onNewGame();
     }
   });
 

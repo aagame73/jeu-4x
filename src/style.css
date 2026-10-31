@@ -515,10 +515,6 @@ body.planet-open .info,
 body.planet-open .help {
   display: none;
 }
-body.planet-open .journal {
-  width: 330px;
-  max-height: 150px;
-}
 .planet-panel {
   position: absolute;
   top: 72px;

@@ -26,10 +26,6 @@ body.system-open .info,
 body.system-open .help {
   display: none;
 }
-body.system-open .journal {
-  width: 330px;
-  max-height: 150px;
-}
 
 /* Étiquettes des corps (CSS2D) */
 .sv-label {
