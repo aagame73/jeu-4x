@@ -5,6 +5,7 @@ import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer
 import { CONFIG } from './config.js';
 import { STAR_TYPES, starDistance } from './galaxy.js';
 import { reachableStars, shipProgress, selectedShip } from './game.js';
+import { currentSpecies } from './species.js';
 import { createSky } from './skybox.js';
 import { createShip, shipScale } from './ships.js';
 import { canvasTexture, glowTexture } from './textures.js';
@@ -127,7 +128,7 @@ export function createGalaxyView(container, game, callbacks) {
     }
     for (const ship of game.ships) {
       if (shipViews.has(ship.id)) continue;
-      const model = createShip(ship.shipSeed, ship.accent, ship.registry, ship.kind);
+      const model = createShip(ship.shipSeed, ship.accent, ship.registry, ship.kind, currentSpecies().shipStyle);
       const holder = new THREE.Group();
       holder.add(model);
       const marker = new THREE.Sprite(new THREE.SpriteMaterial({ map: ringTex, color: ship.accent, transparent: true, depthWrite: false, depthTest: false }));

@@ -177,7 +177,7 @@ export function createUI(root, game, actions) {
 
   function buildFleet() {
     for (const ship of game.ships) {
-      ship.thumbnail ??= renderShipThumbnails([{ seed: ship.shipSeed, accent: ship.accent, registry: ship.registry, kind: ship.kind }])[0];
+      ship.thumbnail ??= renderShipThumbnails([{ seed: ship.shipSeed, accent: ship.accent, registry: ship.registry, kind: ship.kind }], 120, 72, currentSpecies().shipStyle)[0];
     }
     if (!game.ships.length) {
       $('probes').innerHTML = '<p class="muted small">Aucun vaisseau. Construisez un spatioport sur une colonie pour lancer des sondes.</p>';

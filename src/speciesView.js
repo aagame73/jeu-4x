@@ -4,6 +4,18 @@ import { playableSpecies } from './species.js';
 import { PLANET_TYPES } from './galaxy.js';
 import { TERRAINS } from './surface.js';
 import { createAlienPortrait } from './aliens.js';
+import { renderShipThumbnails } from './ships.js';
+
+// Aperçu de la flotte de chaque espèce, rendu une fois par espèce.
+const FLEET = [['arche', 'Arche'], ['sonde', 'Sonde'], ['colonie', 'Colonie'], ['corvette', 'Corvette']];
+const fleetCache = new Map();
+function fleetImages(key) {
+  if (!fleetCache.has(key)) {
+    const s = SPECIES[key];
+    fleetCache.set(key, renderShipThumbnails(FLEET.map(([kind], i) => ({ seed: 7 + i * 13, accent: s.accent, registry: '', kind })), 120, 72, s.shipStyle));
+  }
+  return fleetCache.get(key);
+}
 
 const habitatLabel = (type) => (type === 'lune' ? 'Lunes habitables' : PLANET_TYPES[type]?.label ?? type);
 
@@ -34,6 +46,7 @@ export function createSpeciesView(root, { onChoose, onBack }) {
           <p class="small">Milieu de prédilection : <b>${s.habitat.favored.map(habitatLabel).join(', ')}</b> · hostile : ${s.habitat.hostile.map(habitatLabel).join(', ')}<br>
           Terrains favoris (+25 %) : ${s.favoredTerrains.map((t) => TERRAINS[t]?.label ?? t).join(', ')}</p>
           <p class="small muted">Vaisseau colonie : ${s.arkName}</p>
+          <div class="sp-fleet">${fleetImages(key).map((url, i) => `<figure><img src="${url}" alt="" /><figcaption>${FLEET[i][1]}</figcaption></figure>`).join('')}</div>
         </div>
       </div>`;
   }

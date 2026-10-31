@@ -236,3 +236,9 @@ body.system-open .advisor-portrait {
   background: rgba(255, 122, 138, 0.12);
   color: #ff9a9a;
 }
+
+/* Aperçu de la flotte dans la fiche de l'espèce */
+.sp-fleet { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.sp-fleet figure { margin: 0; text-align: center; }
+.sp-fleet img { width: 96px; height: 58px; display: block; border: 1px solid color-mix(in srgb, var(--sp) 35%, transparent); border-radius: 4px; background: rgba(0, 0, 0, 0.25); }
+.sp-fleet figcaption { font-size: 11px; opacity: 0.75; }
