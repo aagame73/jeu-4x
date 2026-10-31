@@ -1,6 +1,6 @@
 # Plan : choix de l'espèce en début de partie
 
-État : **plan validé**. Étapes 1 (données) et 2 (écran de choix, avec portraits animés et conseiller qui remplace le journal) faites le 31/10/2026 ; étapes 3 à 5 à venir. Décisions de design au § 10 ; revue d'avant l'étape 3 au § 11 (**validée**, ajustements d'équilibre reportés dans `config.js`).
+État : **plan validé**. Étapes 1 (données) et 2 (écran de choix, avec portraits animés et conseiller qui remplace le journal) faites le 31/10/2026 ; étape 3 (bonus) faite le 31/10/2026, avec la décision du § 11.7 ; étapes 4 et 5 à venir. Décisions de design au § 10 ; revue d'avant l'étape 3 au § 11 (**validée**, ajustements d'équilibre reportés dans `config.js`).
 
 ## 1. Le parcours du joueur
 
@@ -218,16 +218,122 @@ Protocole (script Node, sans navigateur) :
 - Mesures au jour 200 : population, production par jour (minerais, alliages, biomasse, eau, deutérium, énergie nette, recherche), technologies acquises, bâtiments et niveaux, jour où la 1re sonde est possible.
 - Critère : un **score économique** (somme pondérée des productions et de la recherche) à **±10 %** du profil neutre. Une espèce hors fourchette est ajustée (§ 11.2) et la simulation relancée. Les bonus militaires (Thrennes, Kel-Tirr, Ashkari) ne se mesurent pas tant que le combat n'existe pas : revus à l'étape « espèces rivales ».
 
-Tableau des résultats (rempli à l'étape 3) :
+Résultats de l'étape 3 (31/10/2026). Scripts : `docs/outils/sim-especes.mjs` (lancer `node docs/outils/sim-especes.mjs . 42 1`, ou `0` en dernier argument pour le milieu réel) et `docs/outils/test-etape3.mjs` (tests des règles). Le score est la **production brute cumulée sur 200 jours**, pondérée (minerais 1, alliages 2, biomasse 0,3, eau 0,3, deutérium 0,7, énergie 0,5, recherche 1,5). La production est comptée **avant consommation**, pour que les choix du bot ne faussent pas la mesure.
+
+**Méthode corrigée en cours de route.** Un seul bot adaptatif sur une seule graine variait de ±40 % d'une espèce à l'autre, simplement parce qu'il ne fait pas les mêmes choix. D'où deux mesures :
+
+- **A** : la suite d'actions des Colons (graine 42) est rejouée à l'identique pour chaque espèce, ce qui isole l'effet des bonus.
+- **B** : bot adaptatif sur 20 graines × les 3 planètes du système de départ, soit 60 parties par espèce, avec les médianes.
+
+Autre correction : chaque espèce a des terrains favoris, contrairement au profil neutre. Le critère devient donc **±10 % autour de la moyenne des 8 espèces** (colonne « vs espèces »), et non plus autour du neutre.
+
+**A. Suite d'actions identique, milieu neutralisé** (graine 42, Urlor III, tempérée)
 
 | Espèce | Population | Minerais/j | Alliages/j | Biomasse/j | Eau/j | Deutérium/j | Énergie nette | Recherche/j | Technologies | Score vs neutre |
 |---|---|---|---|---|---|---|---|---|---|---|
-| Colons de l'Arche (référence) | | | | | | | | | | 100 % |
-| Vaskhar | | | | | | | | | | |
-| Ondésiens | | | | | | | | | | |
-| Kel-Tirr | | | | | | | | | | |
-| Synodes | | | | | | | | | | |
-| Orrhaïdes | | | | | | | | | | |
-| Thrennes | | | | | | | | | | |
-| Liseurs de Vey | | | | | | | | | | |
-| Ashkari | | | | | | | | | | |
+| Colons de l'Arche (référence) | 16 | 0,7 | 1 | 2,8 | 7,4 | 1 | 2 | 10 | 16 | 100 % |
+| Vaskhar | 14 | 1,2 | 1 | 3,2 | 7,6 | 1 | 2 | 8,5 | 14 | 94 % |
+| Ondésiens | 16 | 0,7 | 0,8 | 4,3 | 9,2 | 1,3 | 2 | 10 | 16 | 102 % |
+| Kel-Tirr | 16 | 0,7 | 1 | 2,8 | 8,9 | 1 | 2 | 11,5 | 16 | 109 % |
+| Synodes | 13 | 0,1 | 1 | 3,4 | 1,7 | 0 | 4 | 10,3 | 16 | 103 % |
+| Orrhaïdes | 16 | 0,7 | 1 | 1,3 | 7,4 | 1 | 4,5 | 10 | 16 | 103 % |
+| Thrennes | 15 | 0,7 | 1,3 | 3 | 5,5 | 1 | 2 | 8 | 14 | 91 % |
+| Liseurs de Vey | 16 | 0,7 | 1 | 2,8 | 7,4 | 1 | 0,5 | 11,5 | 16 | 105 % |
+| Ashkari | 16 | 0,7 | 1 | 2,2 | 8,2 | 1,5 | 2 | 10 | 16 | 101 % |
+
+(Les valeurs par jour sont nettes, au jour 200 : un « 0,1 minerai/j » signifie que les fonderies consomment presque tout.)
+
+**B. Bot adaptatif, 60 parties par espèce, milieu neutralisé**
+
+| Espèce | vs neutre | vs espèces | 1er quartile | 3e quartile | Population moyenne | Technologies moyennes | Verdict |
+|---|---|---|---|---|---|---|---|
+| Colons de l'Arche | 100 % | 96 % | 95 % | 97 % | 13,5 | 12,9 | référence |
+| Vaskhar | 115 % | **111 %** | 98 % | 115 % | 11,9 | 12 | limite haute |
+| Ondésiens | 111 % | 107 % | 98 % | 109 % | 14 | 13,2 | ✓ |
+| Kel-Tirr | 100 % | 97 % | 96 % | 108 % | 13,6 | 14,2 | ✓ (bonus de vaisseaux non mesurés) |
+| Synodes | 107 % | 102 % | 99 % | 105 % | 13,1 | 14,5 | ✓ |
+| Orrhaïdes | 104 % | 100 % | 99 % | 103 % | 12,6 | 13,4 | ✓ |
+| Thrennes | 93 % | **90 %** | 87 % | 92 % | 13,4 | 11,2 | limite basse (bonus militaires non mesurés) |
+| Liseurs de Vey | 96 % | 93 % | 92 % | 103 % | 13,5 | 13,7 | ✓ (fouilles rarement possibles) |
+| Ashkari | 100 % | 96 % | 94 % | 96 % | 13,1 | 12,6 | ✓ |
+
+**Ajustements faits pour atteindre ce résultat** (en plus de ceux du § 11.2), reportés dans `config.js` :
+
+| Espèce | Avant | Après | Raison mesurée |
+|---|---|---|---|
+| Vaskhar | minerais +25 % ; croissance −20 % ; terrains volcanique + désert | **minerais +20 %** ; croissance −20 % **et recherche −15 %** ; **volcanique seul** | 138 % au départ. La croissance ne pèse presque rien, puisque c'est le nombre de logements qui limite la population : même à −30 %, rien ne changeait. |
+| Ondésiens | biomasse et eau +25 % ; terrains océan + marais | biomasse +25 %, **eau +10 %** ; **océan seul** | 121 % : l'eau manque souvent, donc un bonus d'eau vaut beaucoup |
+| Kel-Tirr | terrains plaine + forêt | **forêt + marais** | 133 % : la plaine accepte 8 bâtiments sur 14, c'est le meilleur terrain |
+| Synodes | terrains marais + toxique | marais + toxique **+ forêt** | 93 % : leurs deux terrains n'acceptent qu'un bâtiment chacun |
+| Orrhaïdes | terrains glace + désert | **glace seule** | glace et désert couvraient 44 % des cases de l'amas |
+| Thrennes | alliages +15 % ; milieu hostile tempérée | **alliages +25 %** ; **hostile glacée** (sang froid) | 85 % ; la tempérée est l'une des planètes de départ les plus fréquentes |
+| Liseurs de Vey | terrains glace + ruines | glace + **forêt** + ruines | les ruines ne couvrent que 0,1 % des cases |
+| Ashkari | minerais −10 % | **biomasse −10 %** | 86 % avec le malus de minerais |
+
+Couverture des terrains dans l'amas (60 graines) : désert 25,5 %, glace 18,6 %, volcanique 16,3 %, océan 10,2 %, plaine 9,4 %, toxique 9 %, marais 5,6 %, forêt 5,4 %, ruines 0,1 %.
+
+### 11.6 Problème découvert : les planètes « favorables » étaient souvent des pièges (décidé au § 11.7)
+
+Avec le **milieu réel**, le bot choisit comme un joueur : planète favorable d'abord, l'hostile en dernier. Quatre espèces s'effondrent alors :
+
+| Espèce | vs espèces (milieu réel) | Ses planètes favorables |
+|---|---|---|
+| Thrennes | 39 % | volcanique, toxique |
+| Ashkari | 41 % | océanique, lunes |
+| Orrhaïdes | 53 % | glacée, désertique |
+| Vaskhar | 72 % | volcanique, désertique |
+| Kel-Tirr, Liseurs, Synodes, Ondésiens | 131 à 167 % | tempérée, marécageuse, océanique |
+
+Cause : les types volcanique, toxique, glacé et désertique n'ont presque **pas de biomasse** (0 à 0,3, contre 2 à 3 pour les types tempéré, océanique et marécageux), et les lunes sont petites. La colonie finit par manquer de nourriture. Le +1 colon et la croissance +25 % ne compensent pas ce manque. À l'inverse, Ondésiens et Synodes trouvent rarement une planète favorable dans leur système de départ (10 % des parties).
+
+Mesuré, puis retiré du code (en attente de décision) : « sur une planète favorable, les colons consomment 50 % de biomasse et d'eau en moins ». Vaskhar remonte à 117 %, Orrhaïdes à 109 % et Thrennes à 87 %, mais les Ashkari restent à 53 % et les Liseurs montent à 144 %.
+
+Pistes proposées :
+
+1. **Colons adaptés** : sur une planète favorable, biomasse et eau consommées −50 % (la mesure ci-dessus). Les Vaskhar digèrent la roche, les Orrhaïdes vivent de lumière : c'est cohérent avec leur histoire.
+2. **Revoir les milieux favorables** pour que chaque espèce ait un type « riche » (tempéré, océanique ou marécageux) et un type rude. Les Ashkari prendraient océanique + géantes gazeuses habitables à la place des lunes.
+3. Garder tel quel : le joueur choisit sa planète en connaissance de cause (sa fiche affiche les gisements et le badge « favorable »).
+
+Recommandation : **1 + 2**, puis relancer la simulation en milieu réel.
+
+### 11.7 Décision (31/10/2026) : pistes 1 + 2, et valeurs finales
+
+**Piste 1, colons adaptés** (code : `colonyReport`, `economy.js`). Sur une planète favorable à son espèce, la colonie consomme **50 % de biomasse et d'eau en moins**. S'y ajoutent, comme avant, +1 colon au départ et une croissance +25 %.
+
+**Piste 2, milieux favorables revus**. Chaque espèce a désormais un type de planète riche (tempérée, océanique ou marécageuse) et un type rude (volcanique, désertique ou glacée). Ses terrains favoris suivent ce milieu. Résultat : chaque espèce trouve une planète favorable dans son système de départ, dans **100 % des parties** (200 graines testées). Avant, Ondésiens et Synodes n'en trouvaient que dans 10 % des cas.
+
+**Les 8 espèces, valeurs finales** (elles remplacent celles du § 2 ; source : `config.js`)
+
+| Espèce | Force | Faiblesse | Planètes favorables / hostile | Terrains favoris (+25 %) |
+|---|---|---|---|---|
+| Vaskhar | Minerais +20 % | Croissance −20 %, recherche −15 % | volcanique, tempérée / océanique | volcanique |
+| Ondésiens | Biomasse +25 %, eau +10 % | Alliages −20 % | océanique, glacée (océans sous la glace) / volcanique | océan |
+| Kel-Tirr | Vitesse des vaisseaux +25 %, chantier spatial 15 % plus rapide | Défense et durée de vie des vaisseaux −20 % | tempérée, désertique / glacée | forêt, marais |
+| Synodes | Recherche +25 % | Minerais −20 % | marécageuse, volcanique (chaleur des volcans) / désertique | marais, toxique, forêt |
+| Orrhaïdes | Énergie +25 % | Biomasse −25 % | désertique, océanique (dunes et récifs cristallins) / marécageuse | désert |
+| Thrennes | Attaque des vaisseaux et défense des colonies +25 %, alliages +25 % | Recherche −15 % | marécageuse, volcanique / glacée (sang froid) | volcanique, marais |
+| Liseurs de Vey | Fouilles 2× plus rapides (+1 artefact chacune), technologies des Veilleurs −30 % | Énergie −15 % | glacée, tempérée / toxique | glace, ruines |
+| Ashkari | Deutérium +25 %, sauts −25 % de carburant | Défense des colonies −20 %, biomasse −10 % | désertique, tempérée (peuple de caravanes) / volcanique | océan, glace |
+
+**Simulation finale** : 20 graines × planètes du système de départ, soit 60 parties par espèce. Valeur : médiane du rapport à la moyenne des 8 espèces dans la même partie.
+
+En **milieu réel**, le bot choisit comme un joueur : il évite la planète hostile et pèse la taille, la biomasse et le bonus favorable. (La version précédente prenait la planète favorable même stérile, et faussait le résultat.)
+
+| Espèce | Milieu neutralisé | Milieu réel | Verdict |
+|---|---|---|---|
+| Vaskhar | 109 % | 103 % | ✓ |
+| Ondésiens | 105 % | 91 % | ✓ |
+| Kel-Tirr | 95 % | 104 % | ✓ (bonus de vaisseaux non mesurés) |
+| Synodes | 101 % | 94 % | ✓ |
+| Orrhaïdes | 110 % | 103 % | ✓ (limite haute en milieu neutralisé) |
+| Thrennes | 91 % | **87 %** | un peu faible : bonus militaires non mesurés tant que le combat n'existe pas |
+| Liseurs de Vey | 91 % | **120 %** | **trop fort en milieu réel** (planète favorable tempérée, la plus riche) |
+| Ashkari | 94 % | 90 % | ✓ (limite basse) |
+| (Colons de l'Arche, référence) | 95 % | 88 % | sans terrains ni planètes favorables |
+
+**Limites de la mesure.** Le bot est simpliste, et chaque réglage déplace aussi des espèces qu'on n'a pas touchées. Exemple : retirer la forêt des terrains des Liseurs les a fait passer de 113 % à 120 % en milieu réel. J'ai arrêté les réglages ici pour ne pas sur-ajuster ce bot. À trancher en jouant :
+
+- les Liseurs, peut-être en remplaçant leur planète favorable « tempérée » par un type rude ;
+- les Thrennes, à revoir quand le combat existera.
+
+Tests : `docs/outils/test-etape3.mjs`, **28 tests**, tous passent (dont la consommation réduite sur planète favorable).

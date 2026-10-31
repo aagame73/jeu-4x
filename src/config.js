@@ -19,17 +19,17 @@ export const CONFIG = {
 // energie, recherche, growth, shipSpeed, shipDefense, shipLifespan, shipAttack, shipyardTime,
 // colonyDefense, fuel, digSpeed, veilleursTechCost (branche Xéno-archéologie et technologies à artefacts) ;
 // digArtefacts : artefacts ajoutés à chaque fouille terminée (additif, 0 par défaut).
-// habitat : types de planètes favorables / hostiles ('lune' = toute lune habitable) ;
-// favoredTerrains : terrains d'hexagones qui produisent +25 % ; shipStyle : paramètres de ships.js.
+// habitat : types de planètes favorables (un type riche + un type rude) / hostiles ('lune' = toute lune habitable) ;
+// favoredTerrains : terrains d'hexagones qui produisent +25 % (environ 15 à 25 % des cases de l'amas) ; shipStyle : paramètres de ships.js.
 export const SPECIES = {
   vaskhar: {
     label: 'Vaskhar',
     lore: 'Grands invertébrés à carapace minérale, ils digèrent la roche et creusent leurs cités dans le basalte.',
-    strength: 'Minerais +25 %',
-    weakness: 'Croissance de la population −20 %',
-    bonuses: { minerais: 1.25, growth: 0.8 },
-    habitat: { favored: ['volcanique', 'desertique'], hostile: ['oceanique'] },
-    favoredTerrains: ['volcanique', 'desert'],
+    strength: 'Minerais +20 %',
+    weakness: 'Croissance de la population −20 %, recherche −15 %',
+    bonuses: { minerais: 1.2, growth: 0.8, recherche: 0.85 },
+    habitat: { favored: ['volcanique', 'tempere'], hostile: ['oceanique'] },
+    favoredTerrains: ['volcanique'], // un seul terrain : le volcanique est riche en minerais
     accent: '#ffb347',
     arkName: 'Arche Basalte',
     shipStyle: { hullTones: ['#8b5a3c', '#a0522d', '#7a5c44'], segments: [5, 6], profile: 'massif', wings: { ailes: 1, ailerons: 3, anneau: 0, panneaux: 1 }, armor: 0.8, organic: 0, crystals: 0, sails: 0, pods: 0.6, engineGlow: '#ff8a3a' },
@@ -37,11 +37,11 @@ export const SPECIES = {
   ondesiens: {
     label: 'Ondésiens',
     lore: 'Colonies de méduses géantes reliées par des filaments lumineux, nées dans les océans chauds.',
-    strength: 'Biomasse et eau +25 %',
+    strength: 'Biomasse +25 %, eau +10 %',
     weakness: 'Alliages −20 %',
-    bonuses: { biomasse: 1.25, eau: 1.25, alliages: 0.8 },
-    habitat: { favored: ['oceanique', 'marecageuse'], hostile: ['volcanique'] },
-    favoredTerrains: ['ocean', 'marais'],
+    bonuses: { biomasse: 1.25, eau: 1.1, alliages: 0.8 },
+    habitat: { favored: ['oceanique', 'glacee'], hostile: ['volcanique'] }, // océans sous la glace
+    favoredTerrains: ['ocean'],
     accent: '#5fd3ff',
     arkName: 'Arche Marée',
     shipStyle: { hullTones: ['#6fb7c9', '#4f9fb0', '#8fd0d8'], segments: [12, 16], profile: 'bombe', wings: { ailes: 0, ailerons: 0, anneau: 4, panneaux: 0 }, armor: 0, organic: 0.9, crystals: 0, sails: 0, pods: 0.3, engineGlow: '#5fe3ff' },
@@ -52,8 +52,8 @@ export const SPECIES = {
     strength: 'Vitesse des vaisseaux +25 %, chantier spatial 15 % plus rapide',
     weakness: 'Défense et durée de vie des vaisseaux −20 %',
     bonuses: { shipSpeed: 1.25, shipyardTime: 0.85, shipDefense: 0.8, shipLifespan: 0.8 },
-    habitat: { favored: ['tempere', 'marecageuse'], hostile: ['glacee'] },
-    favoredTerrains: ['plaine', 'foret'],
+    habitat: { favored: ['tempere', 'desertique'], hostile: ['glacee'] },
+    favoredTerrains: ['foret', 'marais'],
     accent: '#fff07a',
     arkName: 'Arche Volée',
     shipStyle: { hullTones: ['#e8e2d0', '#d6d2c8', '#f0ead8'], segments: [6, 8], profile: 'effile', wings: { ailes: 5, ailerons: 1, anneau: 0, panneaux: 0 }, armor: 0, organic: 0.2, crystals: 0, sails: 0, pods: 0.1, engineGlow: '#fff07a' },
@@ -64,8 +64,8 @@ export const SPECIES = {
     strength: 'Recherche +25 %',
     weakness: 'Minerais −20 %',
     bonuses: { recherche: 1.25, minerais: 0.8 },
-    habitat: { favored: ['marecageuse', 'toxique'], hostile: ['desertique'] },
-    favoredTerrains: ['marais', 'toxique'],
+    habitat: { favored: ['marecageuse', 'volcanique'], hostile: ['desertique'] }, // réseaux nourris par la chaleur des volcans
+    favoredTerrains: ['marais', 'toxique', 'foret'],
     accent: '#c6a0ff',
     arkName: 'Arche Mycélium',
     shipStyle: { hullTones: ['#8a7aa8', '#6f6390', '#a596c0'], segments: [8, 10], profile: 'modulaire', wings: { ailes: 0, ailerons: 1, anneau: 1, panneaux: 2 }, armor: 0.1, organic: 0.5, crystals: 0, sails: 0, pods: 1, engineGlow: '#c6a0ff' },
@@ -76,8 +76,8 @@ export const SPECIES = {
     strength: 'Énergie +25 %',
     weakness: 'Biomasse −25 %',
     bonuses: { energie: 1.25, biomasse: 0.75 },
-    habitat: { favored: ['glacee', 'desertique'], hostile: ['marecageuse'] },
-    favoredTerrains: ['glace', 'desert'],
+    habitat: { favored: ['desertique', 'oceanique'], hostile: ['marecageuse'] }, // dunes et récifs cristallins
+    favoredTerrains: ['desert'],
     accent: '#cfe8ff',
     arkName: 'Arche Prisme',
     shipStyle: { hullTones: ['#dce8f2', '#c8d8e8', '#eef4fa'], segments: [5, 6], profile: 'effile', wings: { ailes: 1, ailerons: 2, anneau: 0, panneaux: 1 }, armor: 0, organic: 0, crystals: 0.9, sails: 0, pods: 0.2, engineGlow: '#bfe8ff' },
@@ -85,11 +85,11 @@ export const SPECIES = {
   thrennes: {
     label: 'Thrennes',
     lore: 'Reptiles à six membres, à la culture guerrière ritualisée : chaque victoire se grave sur leurs coques.',
-    strength: 'Attaque des vaisseaux et défense des colonies +25 %, alliages +15 %',
-    weakness: 'Recherche −20 %',
-    bonuses: { shipAttack: 1.25, colonyDefense: 1.25, alliages: 1.15, recherche: 0.8 },
-    habitat: { favored: ['volcanique', 'toxique'], hostile: ['tempere'] },
-    favoredTerrains: ['volcanique', 'toxique'],
+    strength: 'Attaque des vaisseaux et défense des colonies +25 %, alliages +25 %',
+    weakness: 'Recherche −15 %',
+    bonuses: { shipAttack: 1.25, colonyDefense: 1.25, alliages: 1.25, recherche: 0.85 },
+    habitat: { favored: ['marecageuse', 'volcanique'], hostile: ['glacee'] }, // reptiles à sang froid
+    favoredTerrains: ['volcanique', 'marais'],
     accent: '#ff6f6f',
     arkName: 'Arche Serment',
     shipStyle: { hullTones: ['#3a3236', '#4a3a3a', '#2e2a30'], segments: [4, 6], profile: 'massif', wings: { ailes: 2, ailerons: 3, anneau: 0, panneaux: 0 }, armor: 1, organic: 0, crystals: 0, sails: 0, pods: 0.3, engineGlow: '#ff5040' },
@@ -110,9 +110,9 @@ export const SPECIES = {
     label: 'Ashkari',
     lore: 'Nomades des géantes gazeuses, marchands et pilotes ; leurs familles vivent à bord depuis toujours.',
     strength: 'Deutérium +25 %, sauts −25 % de carburant',
-    weakness: 'Défense des colonies −20 %, minerais −10 %',
-    bonuses: { deuterium: 1.25, fuel: 0.75, colonyDefense: 0.8, minerais: 0.9 },
-    habitat: { favored: ['oceanique', 'lune'], hostile: ['volcanique'] },
+    weakness: 'Défense des colonies −20 %, biomasse −10 %',
+    bonuses: { deuterium: 1.25, fuel: 0.75, colonyDefense: 0.8, biomasse: 0.9 },
+    habitat: { favored: ['desertique', 'tempere'], hostile: ['volcanique'] }, // peuple de caravanes
     favoredTerrains: ['ocean', 'glace'],
     accent: '#e0a070',
     arkName: 'Arche Caravane',

@@ -5,9 +5,9 @@ import { LEVEL_LABELS, canReach, canAnalyse, starLabel, stats, currentDay, daysL
 import { renderShipThumbnails } from './ships.js';
 import { colonyReport } from './economy.js';
 import { ICONS } from './icons.js';
-import { TECHS } from './research.js';
+import { TECHS, techCost } from './research.js';
 import { createAdvisor } from './advisor.js';
-import { currentSpecies } from './species.js';
+import { currentSpecies, speciesHabitat } from './species.js';
 // Accès tolérant aux règles écrites en parallèle (SIZE_LABELS, shipStats peuvent manquer).
 import * as rules from './game.js';
 
@@ -136,13 +136,13 @@ export function createUI(root, game, actions) {
     const tech = r.current ? TECHS[r.current] : null;
     const progress = Math.floor(r.progress ?? 0);
     const tip = tech
-      ? `Recherche : ${tech.label} — ${progress} / ${tech.cost} points`
+      ? `Recherche : ${tech.label} — ${progress} / ${techCost(tech)} points`
       : 'Aucune recherche en cours : cliquez pour choisir';
     // Les info-bulles du jeu déplacent title dans data-tip au survol.
     if (button.hasAttribute('data-tip')) button.dataset.tip = tip;
     else button.title = tip;
     button.classList.toggle('idle', !tech);
-    button.querySelector('.rs-meter i').style.width = tech ? `${Math.min(100, (progress / tech.cost) * 100).toFixed(1)}%` : '0%';
+    button.querySelector('.rs-meter i').style.width = tech ? `${Math.min(100, (progress / techCost(tech)) * 100).toFixed(1)}%` : '0%';
   }
 
   function shipStatus(ship) {
@@ -298,6 +298,10 @@ export function createUI(root, game, actions) {
     }
     if (planet.size) {
       const index = star.planets.indexOf(planet);
+      const milieu = speciesHabitat(planet);
+      const sp = currentSpecies().label;
+      if (milieu === 'favored') body += `<div class="badge favored" title="Colons adaptés : +1 colon au départ, croissance +25 %, biomasse et eau consommées −50 %">Milieu favorable aux ${sp}</div>`;
+      else if (milieu === 'hostile') body += `<div class="badge hostile" title="Colonie possible avec Adaptation xénobiologique (l'Arche peut s'y poser) : croissance −50 %, 1 colon de moins, production −15 %">Milieu hostile aux ${sp}</div>`;
       if (!foundingProblem(game, selectedShip(game), star.id, index)) {
         body += `<button class="primary surface-btn" data-action="found" data-star="${star.id}" data-planet="${index}">Fonder une colonie ici</button> `;
       }

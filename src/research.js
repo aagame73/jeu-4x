@@ -2,6 +2,8 @@
 // une technologie à la fois, les points produits sans projet en cours sont mis de côté.
 // Chaque technologie débloque un bâtiment, un vaisseau, une commande spatiale ou une amélioration.
 
+import { speciesBonus } from './species.js';
+
 export const BRANCHES = [
   { key: 'propulsion', label: 'Propulsion et navigation' },
   { key: 'structure', label: 'Coques et structures' },
@@ -58,6 +60,8 @@ export const TECHS = {
   'foyers-modulaires': { label: 'Foyers modulaires', branch: 'vie', tier: 2, cost: 120, requires: ['hydroponie'], unlocks: '+1 place de population par foyer.' },
   'habitats-scelles': { label: 'Habitats scellés', branch: 'vie', tier: 2, cost: 170, requires: ['hydroponie', 'coques-moyennes'], unlocks: 'Vaisseau : vaisseau colonie (2 colons). Transport colonial avec coques lourdes.' },
   arcologies: { label: 'Arcologies', branch: 'vie', tier: 3, cost: 300, requires: ['foyers-modulaires'], unlocks: '+2 places de population par foyer.' },
+  'adaptation-xenobiologique': { label: 'Adaptation xénobiologique', branch: 'vie', tier: 2, cost: 160, requires: ['habitats-scelles'], unlocks: 'Colonies possibles sur les planètes hostiles à votre espèce (croissance −50 %, 1 colon de moins, production −15 %).' },
+  'biospheres-adaptatives': { label: 'Biosphères adaptatives', branch: 'vie', tier: 3, cost: 320, requires: ['adaptation-xenobiologique', 'arcologies'], unlocks: 'Malus des planètes hostiles réduit : croissance −25 %, production −5 %, plus de colon en moins.' },
 
   // --- Énergie et matière ---
   'chimie-deuterium': { label: 'Chimie du deutérium', branch: 'energie', tier: 1, cost: 50, requires: [], unlocks: 'Bâtiment : pompe à deutérium.' },
@@ -82,6 +86,13 @@ export function bindResearch(research) {
 }
 
 export const hasTech = (key) => acquired.has(key);
+
+// Coût réel d'une technologie : les technologies des Veilleurs (branche Xéno-archéologie ou payées
+// en artefacts) profitent du bonus d'espèce veilleursTechCost.
+export function techCost(tech) {
+  const veilleurs = tech.branch === 'veilleurs' || tech.artefacts;
+  return Math.ceil(tech.cost * (veilleurs ? speciesBonus('veilleursTechCost') : 1));
+}
 
 export function markTech(research, key) {
   if (!research.done.includes(key)) research.done.push(key);

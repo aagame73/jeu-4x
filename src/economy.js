@@ -3,6 +3,7 @@
 // stock commun ; l'énergie ne se stocke pas : chaque colonie doit produire ce qu'elle consomme.
 import { neighbors } from './surface.js';
 import { hasTech } from './research.js';
+import { productionFactor, growthFactor, speciesBonus, speciesExtra } from './species.js';
 
 export const RESOURCE_LABELS = {
   minerais: 'Minerais',
@@ -288,6 +289,7 @@ export function colonyReport(colony, surface) {
   let energyUse = 0;
   let energyProd = 0;
   const raw = [];
+  const adapted = hasTech('biospheres-adaptatives');
   for (const tile of built) {
     const def = BUILDINGS[tile.building.type];
     const level = levelOf(tile);
@@ -297,7 +299,9 @@ export function colonyReport(colony, surface) {
     workers += def.workers || 0;
     energyUse += (def.energy || 0) * (1 + 0.25 * (level - 1));
     const base = def.output ? def.output(tile, neighbors(surface, tile), colony) : {};
-    const out = Object.fromEntries(Object.entries(base).map(([res, v]) => [res, v * (v > 0 ? bonus : LEVEL_BONUS[level - 1])]));
+    const out = Object.fromEntries(
+      Object.entries(base).map(([res, v]) => [res, v * (v > 0 ? bonus * productionFactor(res, tile.terrain, colony.habitat, adapted) : LEVEL_BONUS[level - 1])]),
+    );
     energyProd += out.energie || 0;
     raw.push({ tile, def, out });
   }
@@ -306,8 +310,10 @@ export function colonyReport(colony, surface) {
   const energyAvailable = energyProd * staffing;
   const power = energyUse > 0 ? Math.min(1, energyAvailable / energyUse) : 1;
 
-  const perDay = { minerais: 0, alliages: 0, biomasse: -colony.population * FOOD_PER_COLONIST, eau: -colony.population * WATER_PER_COLONIST, deuterium: 0, velarine: 0, recherche: 0 };
-  if (colony.orbital?.ecope) perDay.deuterium += ECOPE_PER_DAY;
+  // Sur une planète favorable à son espèce, la colonie est adaptée : elle consomme moitié moins.
+  const needs = colony.habitat === 'favored' ? 0.5 : 1;
+  const perDay = { minerais: 0, alliages: 0, biomasse: -colony.population * FOOD_PER_COLONIST * needs, eau: -colony.population * WATER_PER_COLONIST * needs, deuterium: 0, velarine: 0, recherche: 0 };
+  if (colony.orbital?.ecope) perDay.deuterium += ECOPE_PER_DAY * productionFactor('deuterium', null, colony.habitat, adapted);
   const perTile = new Map();
   for (const { tile, def, out } of raw) {
     const factor = (def.workers ? staffing : 1) * (def.energy ? power : 1);
@@ -418,11 +424,11 @@ export function tickColony(game, colony, surface, days) {
     b.left ??= ARTIFACTS_PER_RUIN;
     b.dig ??= 0;
     if (b.left <= 0) continue;
-    b.dig += (days / (DIG_DAYS / (hasTech('lexique') ? 2 : 1))) * report.staffing;
+    b.dig += (days / (DIG_DAYS / (hasTech('lexique') ? 2 : 1))) * report.staffing * speciesBonus('digSpeed');
     if (b.dig >= 1) {
       b.dig = 0;
       b.left--;
-      game.resources.artefacts = (game.resources.artefacts ?? 0) + 1;
+      game.resources.artefacts = (game.resources.artefacts ?? 0) + 1 + speciesExtra('digArtefacts');
       const fragment = LORE[(game.lore ?? 0) % LORE.length];
       game.lore = (game.lore ?? 0) + 1;
       events.push(`Fouille sur ${colony.name} : un artefact des Veilleurs ! ${fragment}`);
@@ -463,7 +469,7 @@ export function tickColony(game, colony, surface, days) {
   } else {
     colony.famine = false;
     if (colony.population < report.housing) {
-      colony.growth += days / GROWTH_DAYS;
+      colony.growth += (days / GROWTH_DAYS) * growthFactor(colony.habitat, hasTech('biospheres-adaptatives'));
       if (colony.growth >= 1) {
         colony.growth = 0;
         colony.population++;

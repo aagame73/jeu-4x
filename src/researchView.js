@@ -2,7 +2,7 @@
 // Une branche à la fois : onglets en haut (icône, acquises / total), puis ses 4 paliers en rangées.
 // open/close ne gèrent que l'affichage ; main.js met la partie en pause pendant l'écran.
 import * as rules from './game.js';
-import { BRANCHES, TECHS } from './research.js';
+import { BRANCHES, TECHS, techCost } from './research.js';
 import { ICONS } from './icons.js';
 
 const fmt = (x) => Math.floor(x).toLocaleString('fr-FR');
@@ -118,7 +118,7 @@ export function createResearchView(root, game, actions) {
     const arte = tech.artefacts
       ? `<span class="rs-arte" title="Artefacts : dépensés au lancement de la recherche">+ ${tech.artefacts}${ICONS.artefacts}</span>`
       : '';
-    return `<span class="rs-cost"><b>${fmt(tech.cost)}</b> pts ${arte}</span>`;
+    return `<span class="rs-cost"><b>${fmt(techCost(tech))}</b> pts ${arte}</span>`;
   }
 
   // Prérequis : ceux d'une autre branche portent le nom de leur branche et y mènent d'un clic.
@@ -232,20 +232,20 @@ export function createResearchView(root, game, actions) {
             <span class="rs-proj-eta"></span></div>
           <span class="rs-bar big"><i></i></span>`;
       }
-      const ratio = Math.min(1, r.progress / tech.cost);
-      const left = Math.max(0, tech.cost - r.progress);
+      const ratio = Math.min(1, r.progress / techCost(tech));
+      const left = Math.max(0, techCost(tech) - r.progress);
       const eta = rate > 0 ? `≈ ${plural(Math.ceil(left / rate), 'jour')}` : 'aucun laboratoire';
-      project.querySelector('.rs-proj-eta').textContent = `${fmt(r.progress)} / ${fmt(tech.cost)} pts · ${eta}`;
+      project.querySelector('.rs-proj-eta').textContent = `${fmt(r.progress)} / ${fmt(techCost(tech))} pts · ${eta}`;
       project.querySelector('.rs-bar i').style.width = `${(ratio * 100).toFixed(1)}%`;
     }
 
     root.querySelectorAll('.rs-card.current').forEach((card) => {
       const t = TECHS[card.dataset.key];
       const progress = r.current === card.dataset.key ? r.progress : 0;
-      card.querySelector('.rs-bar i').style.width = `${Math.min(100, (progress / t.cost) * 100).toFixed(1)}%`;
-      const left = Math.max(0, t.cost - progress);
+      card.querySelector('.rs-bar i').style.width = `${Math.min(100, (progress / techCost(t)) * 100).toFixed(1)}%`;
+      const left = Math.max(0, techCost(t) - progress);
       card.querySelector('.rs-count').textContent =
-        `${fmt(progress)} / ${fmt(t.cost)}${rate > 0 ? ` · ${plural(Math.ceil(left / rate), 'jour')}` : ''}`;
+        `${fmt(progress)} / ${fmt(techCost(t))}${rate > 0 ? ` · ${plural(Math.ceil(left / rate), 'jour')}` : ''}`;
     });
   }
 
