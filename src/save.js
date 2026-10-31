@@ -2,6 +2,7 @@
 // on n'enregistre que ce qui a changé (connaissances, vaisseaux, colonies, surfaces bâties…).
 import { createGame, getSurface, currentDay, STARTING_RESOURCES } from './game.js';
 import { bindResearch, TECHS } from './research.js';
+import { DEFAULT_SPECIES } from './config.js';
 
 const VERSION = 1;
 const PREFIX = 'amas-inexplore:';
@@ -13,6 +14,7 @@ export function serialize(game) {
     version: VERSION,
     savedAt: Date.now(),
     seed: game.seed,
+    species: game.species,
     time: game.time,
     speedIndex: game.speedIndex,
     selectedStarId: game.selectedStarId,
@@ -36,7 +38,8 @@ export function serialize(game) {
 
 export function restore(data) {
   if (!data || data.version !== VERSION || typeof data.seed !== 'number') throw new Error('Sauvegarde illisible ou d\'une autre version.');
-  const game = createGame(data.seed);
+  // Une partie d'avant le choix d'espèce reçoit le profil neutre « Colons de l'Arche ».
+  const game = createGame(data.seed, data.species ?? DEFAULT_SPECIES);
   Object.assign(game, {
     time: data.time,
     speedIndex: data.speedIndex,

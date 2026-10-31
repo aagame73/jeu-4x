@@ -14,6 +14,8 @@ import { SHIP_NAMES, SHIP_ACCENTS } from './ships.js';
 import { generateSurface, hexDistance } from './surface.js';
 import { tickColony, colonyReport, SHIPYARD, canAfford } from './economy.js';
 import { TECHS, hasTech, bindResearch, markTech } from './research.js';
+import { SPECIES, DEFAULT_SPECIES } from './config.js';
+import { bindSpecies } from './species.js';
 
 export const LEVEL_LABELS = ['Inconnu', 'Lueur repérée', 'Système survolé', 'Système analysé'];
 
@@ -53,10 +55,12 @@ export function shipStats(game, ship) {
   };
 }
 
-export function createGame(seed) {
+// species : clé dans SPECIES (config.js) ; une clé inconnue retombe sur le profil neutre.
+export function createGame(seed, species = DEFAULT_SPECIES) {
   const galaxy = generateCluster(seed);
   const game = {
     seed,
+    species: SPECIES[species] ? species : DEFAULT_SPECIES,
     time: 0, // en jours
     speedIndex: 0,
     paused: true,
@@ -80,7 +84,9 @@ export function createGame(seed) {
   home.level = 2;
   sense(game, home);
   revealCurrents(game, home, false);
+  bindSpecies(game.species);
   const arche = addShip(game, 'arche', home.id);
+  if (SPECIES[game.species].arkName) arche.name = SPECIES[game.species].arkName;
   game.selectedShipId = arche.id;
   addLog(game, `L'${arche.name} sort de l'hyperespace en catastrophe dans le système ${home.name}. Ses moteurs de saut sont hors service : il faudra s'installer ici.`, 'alert');
   addLog(game, 'Analysez le système avec l\'Arche, puis choisissez la planète où fonder la colonie.');
