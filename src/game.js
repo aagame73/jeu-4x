@@ -12,16 +12,46 @@ import { CONFIG } from './config.js';
 import { generateCluster, starDistance, STAR_TYPES } from './galaxy.js';
 import { SHIP_NAMES, SHIP_ACCENTS } from './ships.js';
 import { generateSurface, hexDistance } from './surface.js';
-import { tickColony, SHIPYARD, canAfford } from './economy.js';
+import { tickColony, colonyReport, SHIPYARD, canAfford } from './economy.js';
+import { TECHS, hasTech, bindResearch, markTech } from './research.js';
 
 export const LEVEL_LABELS = ['Inconnu', 'Lueur repérée', 'Système survolé', 'Système analysé'];
 
+export const STARTING_RESOURCES = { minerais: 80, alliages: 10, biomasse: 40, eau: 30, deuterium: 20, velarine: 0, artefacts: 0 };
+const FUEL_PER_LIGHT_YEAR = 1 / 6; // deutérium brûlé par année-lumière (moitié moins sur un courant)
+
 // lifespan : durée de vie en jours (null = sans limite) ; speed : facteur de vitesse.
+// size : petit, moyen, grand, gigantesque ; attack / defense : valeurs de base (vaisseaux de guerre).
 export const SHIP_KINDS = {
-  arche: { label: 'Arche', prefix: 'Arche', registry: 'ARC', speed: 0, lifespan: null, analyse: true, found: true, population: 4 },
-  sonde: { label: 'Sonde', prefix: 'Sonde', registry: 'SX', speed: 1, lifespan: 180, analyse: true, found: false },
-  colonie: { label: 'Vaisseau colonie', prefix: 'Colonie', registry: 'CV', speed: 0.6, lifespan: 300, analyse: false, found: true, population: 2 },
+  arche: { label: 'Arche', prefix: 'Arche', registry: 'ARC', size: 'gigantesque', speed: 0, lifespan: null, attack: 0, defense: 20, analyse: true, found: true, population: 4 },
+  sonde: { label: 'Sonde', prefix: 'Sonde', registry: 'SX', size: 'petit', speed: 1, lifespan: 180, attack: 0, defense: 1, analyse: true, found: false },
+  corvette: { label: 'Corvette', prefix: 'Corvette', registry: 'CO', size: 'petit', speed: 1.2, lifespan: 240, attack: 2, defense: 2, warship: true },
+  fregate: { label: 'Frégate', prefix: 'Frégate', registry: 'FR', size: 'moyen', speed: 1, lifespan: 300, attack: 5, defense: 5, warship: true },
+  colonie: { label: 'Vaisseau colonie', prefix: 'Colonie', registry: 'CV', size: 'moyen', speed: 0.6, lifespan: 300, attack: 0, defense: 3, analyse: false, found: true, population: 2 },
+  croiseur: { label: 'Croiseur', prefix: 'Croiseur', registry: 'CR', size: 'grand', speed: 0.8, lifespan: 400, attack: 10, defense: 12, warship: true },
+  transport: { label: 'Transport colonial', prefix: 'Transport', registry: 'TC', size: 'grand', speed: 0.5, lifespan: 400, attack: 0, defense: 6, analyse: false, found: true, population: 5 },
+  cuirasse: { label: 'Cuirassé', prefix: 'Cuirassé', registry: 'CU', size: 'gigantesque', speed: 0.6, lifespan: 500, attack: 22, defense: 25, warship: true },
 };
+
+export const SIZE_LABELS = { petit: 'Petit', moyen: 'Moyen', grand: 'Grand', gigantesque: 'Gigantesque' };
+const SIZE_FUEL = { petit: 1, moyen: 1.5, grand: 2, gigantesque: 3 }; // deutérium brûlé selon la taille
+
+// Caractéristiques d'un vaisseau, bonus de recherche compris.
+export function shipStats(game, ship) {
+  const def = SHIP_KINDS[ship.kind];
+  const speedBonus = (hasTech('moteurs-ameliores') ? 1.3 : 1) * (hasTech('moteurs-fusion') ? 1.3 : 1) * (hasTech('propulsion-velarine') ? 1.4 : 1);
+  const attackBonus = (hasTech('lasers') ? 1.3 : 1) * (hasTech('torpilles-plasma') ? 1.3 : 1) * (hasTech('lance-gravite') ? 1.5 : 1);
+  const defenseBonus =
+    (hasTech('boucliers-deflecteurs') ? 1.25 : 1) * (hasTech('alliages-composites') ? 1.25 : 1) * (hasTech('blindage-veilleurs') ? 1.5 : 1);
+  const fuelFactor = SIZE_FUEL[def.size] * (hasTech('injecteurs') ? 0.75 : 1) * (hasTech('recyclage-deuterium') ? 0.75 : 1);
+  return {
+    attack: Math.round(def.attack * attackBonus),
+    defense: Math.round(def.defense * defenseBonus),
+    speed: CONFIG.probeSpeed * def.speed * speedBonus,
+    lifespan: lifespan(game, ship),
+    fuelFactor,
+  };
+}
 
 export function createGame(seed) {
   const galaxy = generateCluster(seed);
@@ -38,11 +68,14 @@ export function createGame(seed) {
     log: [],
     selectedStarId: galaxy.homeId,
     selectedShipId: null,
-    resources: { minerais: 80, biomasse: 40, velarine: 0 }, // la cargaison de l'Arche
-    upgrades: { moteurs: false, blindage: false },
+    resources: { ...STARTING_RESOURCES }, // la cargaison de l'Arche
+    lore: 0, // fragments d'histoire des Veilleurs déjà révélés
+    upgrades: { moteurs: false, blindage: false }, // posées par les technologies
+    research: { current: null, progress: 0, done: [], bank: 0, partial: {}, paid: [] },
     surfaces: new Map(), // surfaces générées à la demande, clé "étoile-planète"
     colonies: [],
   };
+  bindResearch(game.research);
   const home = game.stars[game.homeId];
   home.level = 2;
   sense(game, home);
@@ -93,7 +126,7 @@ function removeShip(game, ship) {
 
 export function lifespan(game, ship) {
   const base = SHIP_KINDS[ship.kind].lifespan;
-  return base === null ? null : base * (game.upgrades.blindage ? 1.5 : 1);
+  return base === null ? null : base * (game.upgrades.blindage || hasTech('coques-renforcees') ? 1.5 : 1);
 }
 
 export const currentDay = (game) => Math.floor(game.time) + 1;
@@ -126,7 +159,7 @@ const plural = (n, word) => `${n} ${word}${n > 1 ? 's' : ''}`;
 function sense(game, star) {
   let count = 0;
   for (const s of game.stars) {
-    if (s.level === 0 && starDistance(s, star) <= CONFIG.sensorRange) {
+    if (s.level === 0 && starDistance(s, star) <= CONFIG.sensorRange + (hasTech('cartographie') ? 8 : 0)) {
       s.level = 1;
       count++;
     }
@@ -158,12 +191,18 @@ export function canReach(game, ship, star) {
   if (!def.speed) return { ok: false, reason: `Les moteurs de saut de l'${ship.name} sont hors service.` };
   const distance = starDistance(game.stars[ship.starId], star);
   const viaCurrent = !!currentBetween(game, ship.starId, star.id);
-  if (!viaCurrent && distance > CONFIG.jumpRange) {
-    return { ok: false, reason: `Hors de portée : ${Math.round(distance)} al (portée ${CONFIG.jumpRange} al).` };
+  if (!viaCurrent && distance > jumpRange()) {
+    return { ok: false, reason: `Hors de portée : ${Math.round(distance)} al (portée ${jumpRange()} al).` };
   }
-  const speed = CONFIG.probeSpeed * def.speed * (game.upgrades.moteurs ? 1.3 : 1) * (viaCurrent ? CONFIG.currentSpeedFactor : 1);
-  return { ok: true, distance, speed, days: Math.max(1, Math.ceil(distance / speed)), viaCurrent };
+  const stats = shipStats(game, ship);
+  const speed = stats.speed * (viaCurrent ? CONFIG.currentSpeedFactor : 1);
+  const fuel = Math.max(1, Math.ceil(distance * FUEL_PER_LIGHT_YEAR * stats.fuelFactor * (viaCurrent ? 0.5 : 1)));
+  if ((game.resources.deuterium ?? 0) < fuel) return { ok: false, reason: `Pas assez de deutérium (${fuel} nécessaires).` };
+  return { ok: true, distance, speed, fuel, days: Math.max(1, Math.ceil(distance / speed)), viaCurrent };
 }
+
+// La portée de saut grandit avec la recherche.
+export const jumpRange = () => (hasTech('propulsion-velarine') ? 50 : hasTech('saut-long') ? 40 : hasTech('saut-moyen') ? 30 : CONFIG.jumpRange);
 
 export function reachableStars(game, ship) {
   return game.stars.filter((s) => canReach(game, ship, s).ok);
@@ -172,6 +211,7 @@ export function reachableStars(game, ship) {
 export function sendShip(game, ship, star) {
   const r = canReach(game, ship, star);
   if (!r.ok) return false;
+  game.resources.deuterium -= r.fuel;
   Object.assign(ship, { state: 'travel', fromId: ship.starId, toId: star.id, distance: r.distance, speed: r.speed, progress: 0 });
   addLog(game, `${ship.name} part vers ${starLabel(star)} (${plural(r.days, 'jour')}${r.viaCurrent ? ', par le courant' : ''}).`);
   return true;
@@ -242,7 +282,8 @@ export function foundColony(game, ship, starId, planetIndex, tileIndex) {
     construction: null,
     shipyard: null,
     famine: false,
-    orbital: { dock: false, defense: 0 },
+    orbital: { dock: false, defense: 0, ecope: false },
+    thirst: false,
   });
   addLog(
     game,
@@ -251,20 +292,111 @@ export function foundColony(game, ship, starId, planetIndex, tileIndex) {
       : `${ship.name} fonde une nouvelle colonie sur ${planet.name}.`,
     'discovery',
   );
+  if (first) addLog(game, 'Construisez un laboratoire pour faire avancer la recherche (touche R) : moteurs de saut, spatioport, fonderie…');
   removeShip(game, ship);
   return true;
+}
+
+// --- Recherche --------------------------------------------------------------------------
+
+export function researchPerDay(game) {
+  return game.colonies.reduce((sum, c) => sum + colonyReport(c, getSurface(game, c.starId, c.planetIndex)).perDay.recherche, 0);
+}
+
+export function researchStatus(game, key) {
+  if (hasTech(key)) return 'done';
+  if (game.research.current === key) return 'current';
+  return TECHS[key].requires.every(hasTech) ? 'available' : 'locked';
+}
+
+export function researchProblem(game, key) {
+  const tech = TECHS[key];
+  if (hasTech(key)) return 'Déjà acquise.';
+  if (game.research.current === key) return 'Recherche en cours.';
+  const missing = tech.requires.filter((k) => !hasTech(k));
+  if (missing.length) return `Demande : ${missing.map((k) => TECHS[k].label).join(', ')}.`;
+  if (tech.artefacts && !game.research.paid.includes(key) && (game.resources.artefacts ?? 0) < tech.artefacts) {
+    return `Demande ${tech.artefacts} artefact${tech.artefacts > 1 ? 's' : ''} des Veilleurs.`;
+  }
+  return null;
+}
+
+// Changer de projet garde les points déjà investis dans l'ancien ; les artefacts ne se paient qu'une fois.
+export function startResearch(game, key) {
+  if (researchProblem(game, key)) return false;
+  const r = game.research;
+  const tech = TECHS[key];
+  if (r.current) r.partial[r.current] = r.progress;
+  if (tech.artefacts && !r.paid.includes(key)) {
+    game.resources.artefacts -= tech.artefacts;
+    r.paid.push(key);
+  }
+  r.current = key;
+  r.progress = (r.partial[key] ?? 0) + r.bank;
+  r.bank = 0;
+  delete r.partial[key];
+  addLog(game, `Recherche lancée : ${tech.label}.`);
+  checkResearchDone(game);
+  return true;
+}
+
+function checkResearchDone(game) {
+  const r = game.research;
+  const tech = TECHS[r.current];
+  if (!tech || r.progress < tech.cost) return;
+  const key = r.current;
+  r.bank = r.progress - tech.cost; // le surplus n'est pas perdu
+  r.current = null;
+  r.progress = 0;
+  markTech(r, key);
+  applyTech(game, key);
+  addLog(game, `Recherche terminée : ${tech.label}. ${tech.unlocks}`, 'discovery');
+}
+
+// Défense d'une colonie : anneaux de défense et batteries planétaires, renforcés par la recherche.
+export function colonyDefense(game, colony) {
+  const surface = getSurface(game, colony.starId, colony.planetIndex);
+  const batteries = surface.tiles.filter((t) => t.building?.type === 'batterie' && t.building.done).reduce((sum, t) => sum + 5 * (t.building.level ?? 1), 0);
+  const rings = colony.orbital.defense * 10 * (hasTech('boucliers-deflecteurs') ? 1.25 : 1);
+  return Math.round((rings + batteries) * (hasTech('champ-stase') ? 2 : 1));
+}
+
+function applyTech(game, key) {
+  if (key === 'moteurs-ameliores') game.upgrades.moteurs = true;
+  if (key === 'coques-renforcees') game.upgrades.blindage = true;
+  if (key === 'glyphes') {
+    for (const c of game.currents) {
+      c.known = true;
+      for (const id of [c.a, c.b]) if (game.stars[id].level === 0) game.stars[id].level = 1;
+    }
+  }
+}
+
+function tickResearch(game, days) {
+  const points = researchPerDay(game) * days;
+  const r = game.research;
+  if (!r.current) {
+    r.bank += points;
+    return;
+  }
+  r.progress += points;
+  checkResearchDone(game);
 }
 
 // --- Chantier spatial (sondes, vaisseaux colonie, structures orbitales, améliorations) -----
 
 export function shipyardProblem(game, colony, key) {
   const order = SHIPYARD[key];
+  const missing = [order.tech ?? []].flat().filter((k) => !hasTech(k));
+  if (missing.length) return `Recherche nécessaire : ${missing.map((k) => TECHS[k].label).join(', ')}.`;
   const surface = getSurface(game, colony.starId, colony.planetIndex);
   const hasSpaceport = surface.tiles.some((t) => t.building?.type === 'spatioport' && t.building.done);
   if (!hasSpaceport) return 'Demande un spatioport.';
   if (order.requires === 'dock' && !colony.orbital.dock) return 'Demande un dock spatial.';
   if (key === 'dock' && colony.orbital.dock) return 'Déjà construit.';
   if (key === 'defense' && colony.orbital.defense >= 3) return 'Maximum atteint (3).';
+  if (key === 'ecope' && colony.orbital.ecope) return 'Déjà construite.';
+  if (key === 'ecope' && !game.stars[colony.starId].planets.some((p) => p.type === 'gazeuse')) return 'Aucune géante gazeuse dans ce système.';
   if (order.kind === 'upgrade' && game.upgrades[key]) return 'Déjà acquise.';
   if (colony.shipyard) return 'Le chantier spatial est occupé.';
   if (!canAfford(game.resources, order.cost)) return 'Pas assez de ressources.';
@@ -291,6 +423,9 @@ function completeShipyard(game, colony) {
   } else if (key === 'dock') {
     colony.orbital.dock = true;
     addLog(game, `Le dock spatial de ${colony.name} est en service.`, 'build');
+  } else if (key === 'ecope') {
+    colony.orbital.ecope = true;
+    addLog(game, `L'écope gazeuse de ${colony.name} puise son premier deutérium.`, 'build');
   } else if (key === 'defense') {
     colony.orbital.defense++;
     addLog(game, `Anneau de défense n° ${colony.orbital.defense} opérationnel au-dessus de ${colony.name}.`, 'build');
@@ -336,6 +471,9 @@ export function tick(game, days) {
       }
     }
   }
+  const logLength = game.log.length;
+  tickResearch(game, days);
+  if (game.log.length !== logLength) changed = true;
   for (const colony of game.colonies) {
     for (const text of tickColony(game, colony, getSurface(game, colony.starId, colony.planetIndex), days)) {
       addLog(game, text, 'build');

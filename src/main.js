@@ -1,12 +1,18 @@
 import './style.css';
+import './styles/bandeau.css';
+import './styles/planete.css';
+import './styles/infobulles.css';
+import './styles/recherche.css';
 import { CONFIG } from './config.js';
-import { createGame, tick, currentDay, sendShip, startAnalysis, selectedShip, foundColony, startShipyard } from './game.js';
+import { createGame, tick, currentDay, sendShip, startAnalysis, selectedShip, foundColony, startShipyard, startResearch } from './game.js';
+import { createResearchView } from './researchView.js';
 import { createGalaxyView } from './scene.js';
 import { createUI } from './ui.js';
 import { createPlanetView } from './planetView.js';
-import { startConstruction, demolish } from './economy.js';
+import { startConstruction, demolish, startUpgrade } from './economy.js';
 import { restore, readSlot, writeSlot, takePendingLoad, takeNewGameRequest } from './save.js';
 import { createMenu } from './menu.js';
+import { installTooltips } from './tooltips.js';
 
 // Au démarrage : une sauvegarde à charger (menu), sinon une nouvelle partie.
 // ?graine=1234 dans l'adresse lance directement un amas précis (sans écran d'accueil).
@@ -44,6 +50,7 @@ function refresh() {
   view.update();
   ui.render();
   planetView.update();
+  if (researchView.isOpen) researchView.render();
 }
 
 // Le temps avance à chaque image, sauf en pause. L'interface n'est redessinée en entier
@@ -58,6 +65,7 @@ function advanceTime(dt) {
   } else if (currentDay(game) !== day) {
     ui.renderLive();
     planetView.renderLive();
+    if (researchView.isOpen) researchView.renderLive();
   }
   if (autosave && currentDay(game) !== day && currentDay(game) % AUTOSAVE_DAYS === 0) writeSlot('auto', game);
 }
@@ -131,15 +139,42 @@ const actions = {
   onDemolish(colony, surface, tile) {
     if (demolish(game, colony, surface, tile)) refresh();
   },
+  onUpgrade(colony, surface, tile) {
+    if (startUpgrade(game, colony, surface, tile)) refresh();
+  },
   onShipyard(colony, key) {
     if (startShipyard(game, colony, key)) refresh();
   },
   onOpenMenu() {
+    if (researchView.isOpen) actions.onCloseResearch();
     menu.open();
+  },
+  // L'écran de recherche met la partie en pause, comme le menu.
+  onOpenResearch() {
+    if (researchView.isOpen) return;
+    pausedBeforeResearch = game.paused;
+    game.paused = true;
+    researchView.open();
+    ui.renderLive();
+  },
+  onCloseResearch() {
+    if (!researchView.isOpen) return;
+    researchView.close();
+    game.paused = pausedBeforeResearch;
+    ui.renderLive();
+  },
+  onStartResearch(key) {
+    if (startResearch(game, key)) refresh();
+  },
+  onToggleFullscreen() {
+    if (document.fullscreenElement) document.exitFullscreen();
+    else document.documentElement.requestFullscreen?.().catch(() => {});
   },
 };
 const ui = createUI(document.getElementById('ui'), game, actions);
 const planetView = createPlanetView(document.getElementById('planet-view'), game, actions);
+const researchView = createResearchView(document.getElementById('research'), game, actions);
+let pausedBeforeResearch = true;
 
 // Le menu met la partie en pause et rétablit l'état d'avant à sa fermeture.
 let pausedBeforeMenu = true;
@@ -159,6 +194,7 @@ const menu = createMenu(document.getElementById('menu'), game, {
     ui.renderLive();
   },
 });
+installTooltips();
 if (showStart) menu.open(true);
 
 // Dernière sauvegarde automatique quand on quitte ou cache la page.
@@ -175,9 +211,15 @@ window.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && !document.getElementById('menu').classList.contains('start')) menu.close();
     return;
   }
-  if (e.key === 'Escape') {
+  if (researchView.isOpen && (e.key === 'Escape' || e.code === 'KeyR')) {
+    actions.onCloseResearch();
+  } else if (e.key === 'Escape') {
     if (planetView.isOpen) actions.onClosePlanet();
     else menu.open();
+  } else if (e.code === 'KeyR' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    actions.onOpenResearch();
+  } else if (e.code === 'KeyF' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    actions.onToggleFullscreen();
   } else if (e.code === 'Space') {
     e.preventDefault();
     if (!e.repeat) actions.onTogglePause();

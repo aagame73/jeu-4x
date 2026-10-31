@@ -30,6 +30,8 @@ const DEPOSIT_TERRAINS = {
   energie: ['volcanique', 'desert', 'toxique', 'plaine', 'glace'],
   biomasse: ['foret', 'marais', 'plaine', 'ocean'],
   velarine: ['ruines', 'volcanique', 'toxique', 'desert', 'glace', 'plaine'],
+  eau: ['glace', 'ocean', 'marais', 'plaine'],
+  deuterium: ['ocean', 'glace', 'marais'],
 };
 
 export const SURFACE_RADIUS = { petite: 2, moyenne: 3, grande: 4 };

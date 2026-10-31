@@ -1,0 +1,32 @@
+/* Info-bulles au style « Hologramme » : coins coupés, filet cyan, titre en Orbitron.
+   S'applique aux bulles des vues 3D (étoiles, vaisseaux, cases) et à celles de l'interface. */
+.tooltip {
+  --cut: 8px;
+  z-index: 100;
+  max-width: 260px;
+  padding: 7px 11px 8px;
+  border: none;
+  border-radius: 0;
+  background: linear-gradient(180deg, rgba(14, 24, 48, 0.97), rgba(6, 10, 22, 0.97));
+  box-shadow: inset 0 0 0 1px rgba(95, 227, 255, 0.45), inset 0 2px 0 rgba(95, 227, 255, 0.55), 0 6px 18px rgba(0, 0, 0, 0.45);
+  clip-path: polygon(var(--cut) 0, 100% 0, 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, 0 100%, 0 var(--cut));
+  font-family: 'Exo 2', sans-serif;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #dbe6ff;
+  white-space: normal;
+}
+.tooltip strong {
+  display: block;
+  margin-bottom: 2px;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: #e8f6ff;
+  text-shadow: 0 0 6px rgba(95, 227, 255, 0.55);
+}
+.tooltip span {
+  display: block;
+  color: #9fb0d4;
+}

@@ -1,9 +1,23 @@
 // Économie des colonies : bâtiments, production par jour, énergie, main-d'œuvre, chantiers.
-// Les minerais, la biomasse et la Vélarine s'accumulent dans un stock commun ;
-// l'énergie ne se stocke pas : chaque colonie doit produire ce qu'elle consomme.
+// Minerais, alliages, biomasse, eau, deutérium, Vélarine et artefacts s'accumulent dans un
+// stock commun ; l'énergie ne se stocke pas : chaque colonie doit produire ce qu'elle consomme.
 import { neighbors } from './surface.js';
+import { hasTech } from './research.js';
 
-export const RESOURCE_LABELS = { minerais: 'Minerais', energie: 'Énergie', biomasse: 'Biomasse', velarine: 'Vélarine' };
+export const RESOURCE_LABELS = {
+  minerais: 'Minerais',
+  energie: 'Énergie',
+  biomasse: 'Biomasse',
+  velarine: 'Vélarine',
+  alliages: 'Alliages',
+  deuterium: 'Deutérium',
+  eau: 'Eau',
+  artefacts: 'Artefacts',
+  recherche: 'Recherche',
+};
+
+// Ressources qui varient chaque jour (les artefacts se trouvent un par un, l'énergie ne se stocke pas).
+export const FLOW_RESOURCES = ['minerais', 'alliages', 'biomasse', 'eau', 'deuterium', 'velarine'];
 
 // « gisement de minerais », « gisement d'énergie »…
 export const depositName = (resource) => {
@@ -12,20 +26,43 @@ export const depositName = (resource) => {
 };
 
 const DEPLETION_PER_DAY = 0.004; // un puits perd 0,4 % de rendement par jour d'exploitation…
-const YIELD_FLOOR = 0.4; // …jusqu'à un plancher de 40 %
+// Niveaux des bâtiments (1 à 4, débloqués par la recherche) : la production et les consommations
+// sont multipliées ; l'énergie consommée augmente moins vite.
+export const LEVEL_BONUS = [1, 1.5, 2, 2.5];
+export const maxLevel = () => 1 + ['automatisation', 'robotique', 'nanofabrication'].filter(hasTech).length;
+const levelOf = (tile) => tile.building?.level ?? 1;
+
+const yieldFloor = () => (hasTech('foreuse-croute') ? 0.55 : 0.4); // …jusqu'à un plancher de 40 % (55 % avec la foreuse de croûte)
 const FOOD_PER_COLONIST = 0.2; // biomasse consommée par colon et par jour
+const WATER_PER_COLONIST = 0.1; // eau bue par colon et par jour
+const DIG_DAYS = 25; // jours de fouille pour trouver un artefact (moitié moins avec le lexique des Veilleurs)
+const ARTIFACTS_PER_RUIN = 3;
+const ECOPE_PER_DAY = 3; // deutérium puisé par une écope gazeuse
+
+// Fragments d'histoire des Veilleurs, révélés un par un par les artefacts.
+const LORE = [
+  "Une plaque gravée montre l'amas vu de très loin, relié par des fils de lumière.",
+  "Un cylindre chante doucement quand on l'approche d'une étoile.",
+  "Une carte stellaire où un seul système est barré d'un trait noir.",
+  "Des glyphes répètent le même mot, encore et encore : « veiller ».",
+  "Un cristal garde l'empreinte d'une main à six doigts.",
+  "Le dernier message d'une balise : « Ils reviennent quand la lumière s'éteint. »",
+  "Les plans d'un vaisseau sans moteur, seulement des voiles immenses.",
+  "Une tablette égrène un compte à rebours. Il reste très peu de chiffres.",
+];
 const GROWTH_DAYS = 12; // jours pour qu'un nouveau colon s'installe
 
-// terrains : où l'on peut bâtir ; deposit : gisement obligatoire ; workers : colons requis ;
-// energy : consommation ; output(tile, near) : production de base, adjacences comprises.
+// terrains : où l'on peut bâtir ; deposit : gisement obligatoire ; tech : technologie nécessaire ;
+// workers : colons requis ; energy : consommation ; output(tile, near) : production, adjacences comprises.
 export const BUILDINGS = {
   centre: {
     label: 'Centre colonial',
     desc: 'Cœur de la colonie : loge 4 colons et produit un peu de tout.',
     buildable: false,
+    upgradable: false,
     housing: 4,
     workers: 0,
-    output: () => ({ minerais: 1, energie: 2, biomasse: 2 }),
+    output: () => ({ minerais: 1, energie: 2, biomasse: 2, eau: 1, recherche: 1 }),
   },
   foyer: {
     label: "Foyer d'habitat",
@@ -52,12 +89,14 @@ export const BUILDINGS = {
   },
   fonderie: {
     label: 'Fonderie',
-    desc: '+20 % aux puits de forage voisins. Pollue : -1 biomasse aux serres et fermes voisines.',
-    terrains: ['volcanique', 'desert'],
+    tech: 'metallurgie',
+    desc: 'Fond 2 minerais en 1 alliage par jour. +20 % aux puits de forage voisins. Pollue : -1 biomasse aux serres et fermes voisines.',
+    terrains: ['volcanique', 'desert', 'plaine'],
     cost: { minerais: 35 },
     days: 12,
     workers: 1,
     energy: 2,
+    output: () => ({ alliages: 1, minerais: -2 }),
   },
   centrale: {
     label: 'Centrale géothermique',
@@ -67,7 +106,13 @@ export const BUILDINGS = {
     days: 10,
     workers: 1,
     output: (tile, near) => ({
-      energie: (tile.terrain === 'volcanique' ? 4 : 2) + near.filter((n) => n.terrain === 'volcanique').length + depositBonus(tile, 'energie'),
+      energie:
+        (tile.terrain === 'volcanique' ? 4 : 2) +
+        near.filter((n) => n.terrain === 'volcanique').length +
+        depositBonus(tile, 'energie') +
+        (hasTech('reseau-electrique') ? 1 : 0) +
+        (hasTech('fusion-compacte') ? 1 : 0) +
+        (hasTech('reacteur-velarine') ? 2 : 0),
     }),
   },
   solaire: {
@@ -78,19 +123,25 @@ export const BUILDINGS = {
     days: 6,
     workers: 1,
     output: (tile, near) => ({
-      energie: Math.max(0, 2 + (tile.terrain === 'desert' ? 1 : 0) + (tile.deposit?.resource === 'energie' ? 1 : 0) - near.filter((n) => isActive(n, 'puits') || isActive(n, 'fonderie')).length),
+      energie: Math.max(
+        0,
+        2 + (tile.terrain === 'desert' ? 1 : 0) + (tile.deposit?.resource === 'energie' ? 1 : 0) + (hasTech('reseau-electrique') ? 1 : 0) - near.filter((n) => isActive(n, 'puits') || isActive(n, 'fonderie')).length,
+      ),
     }),
   },
   serre: {
     label: 'Serre-dôme',
-    desc: '+3 biomasse, +1 par serre voisine (max +2), + la richesse d\'un gisement de biomasse.',
+    desc: "+3 biomasse, +1 par serre voisine (max +2), + la richesse d'un gisement de biomasse. Boit 1 eau par jour : sans eau, elle produit moitié moins.",
     terrains: ['plaine', 'glace'],
     cost: { minerais: 20 },
     days: 8,
     workers: 1,
     energy: 1,
-    output: (tile, near) => ({
-      biomasse: Math.max(0, 3 + Math.min(2, near.filter((n) => isActive(n, 'serre')).length) + depositBonus(tile, 'biomasse') - pollution(near)),
+    output: (tile, near, colony) => ({
+      biomasse:
+        Math.max(0, 3 + (hasTech('hydroponie') ? 1 : 0) + Math.min(2, near.filter((n) => isActive(n, 'serre')).length) + depositBonus(tile, 'biomasse') - pollution(near)) *
+        (colony?.thirst ? 0.5 : 1),
+      eau: -1,
     }),
   },
   ferme: {
@@ -106,6 +157,8 @@ export const BUILDINGS = {
   },
   spatioport: {
     label: 'Spatioport',
+    tech: 'mecanique-orbitale',
+    upgradable: false,
     desc: "Relie la surface à l'orbite : ouvre le chantier spatial (sondes, dock, défenses). Un seul par planète.",
     terrains: ['plaine', 'desert'],
     unique: true,
@@ -114,11 +167,62 @@ export const BUILDINGS = {
     workers: 1,
     energy: 1,
   },
+  captage: {
+    label: "Captage d'eau",
+    desc: "+2 eau (+3 sur la glace), + la richesse d'un gisement d'eau.",
+    terrains: ['ocean', 'marais', 'glace'],
+    cost: { minerais: 15 },
+    days: 6,
+    workers: 1,
+    output: (tile) => ({ eau: (tile.terrain === 'glace' ? 3 : 2) + depositBonus(tile, 'eau') }),
+  },
+  pompe: {
+    label: 'Pompe à deutérium',
+    tech: 'chimie-deuterium',
+    desc: "+1 deutérium, + la richesse d'un gisement de deutérium. Le deutérium fait voler les vaisseaux.",
+    terrains: ['ocean', 'glace'],
+    cost: { minerais: 25 },
+    days: 10,
+    workers: 1,
+    energy: 1,
+    output: (tile) => ({ deuterium: 1 + depositBonus(tile, 'deuterium') }),
+  },
+  laboratoire: {
+    label: 'Laboratoire de recherche',
+    desc: '+3 recherche, +2 par case de ruines voisine, +1 par laboratoire voisin.',
+    terrains: ['plaine', 'desert', 'foret'],
+    cost: { minerais: 25 },
+    days: 8,
+    workers: 1,
+    energy: 1,
+    output: (tile, near) => ({ recherche: 3 + 2 * near.filter((n) => n.terrain === 'ruines').length + near.filter((n) => isActive(n, 'laboratoire')).length }),
+  },
+  fouille: {
+    label: 'Fouille archéologique',
+    tech: 'fouilles',
+    upgradable: false,
+    desc: `Fouille les ruines des Veilleurs : un artefact tous les ${DIG_DAYS} jours, ${ARTIFACTS_PER_RUIN} par ruine.`,
+    terrains: ['ruines'],
+    cost: { minerais: 20 },
+    days: 8,
+    workers: 1,
+  },
+  batterie: {
+    label: 'Batterie planétaire',
+    desc: 'Tourelle de défense : +5 de défense de la colonie par niveau.',
+    tech: 'batteries-planetaires',
+    terrains: ['plaine', 'desert', 'glace', 'volcanique'],
+    cost: { minerais: 30, alliages: 15 },
+    days: 10,
+    workers: 1,
+    energy: 1,
+  },
   siphon: {
     label: 'Siphon à Vélarine',
+    tech: 'stabilisation-velarine',
     desc: 'Extrait lentement la Vélarine, la matière exotique que toutes les espèces se disputent.',
     deposit: 'velarine',
-    cost: { minerais: 40 },
+    cost: { minerais: 40, alliages: 10 },
     days: 15,
     workers: 1,
     energy: 2,
@@ -138,9 +242,10 @@ function pollution(near) {
   return near.filter((n) => isActive(n, 'fonderie')).length;
 }
 
-// Peut-on bâtir ce type ici ? Renvoie une raison si non.
-export function buildProblem(tile, type, surface) {
+// Peut-on bâtir ce type ici ? Renvoie une raison si non (ignoreTech : sans tenir compte de la recherche).
+export function buildProblem(tile, type, surface, ignoreTech = false) {
   const def = BUILDINGS[type];
+  if (!ignoreTech && def.tech && !hasTech(def.tech)) return 'Recherche nécessaire.';
   if (tile.building) return 'Case déjà occupée.';
   if (def.unique && surface.tiles.some((t) => t.building?.type === type)) return 'Un seul par planète.';
   if (def.deposit) return tile.deposit?.resource === def.deposit ? null : `Demande un ${depositName(def.deposit)}.`;
@@ -153,15 +258,26 @@ export function buildableTypes(tile, surface) {
   return Object.keys(BUILDINGS).filter((type) => BUILDINGS[type].buildable !== false && !buildProblem(tile, type, surface));
 }
 
-// Chantier spatial : vaisseaux, structures orbitales et améliorations, un à la fois par colonie.
-// requires : 'spatioport' (bâtiment de surface) ou 'dock' (structure orbitale).
+// Bâtiments possibles sur cette case, mais qui attendent une technologie.
+export function lockedTypes(tile, surface) {
+  return Object.keys(BUILDINGS)
+    .filter((type) => BUILDINGS[type].tech && !hasTech(BUILDINGS[type].tech) && !buildProblem(tile, type, surface, true))
+    .map((type) => ({ type, tech: BUILDINGS[type].tech }));
+}
+
+// Chantier spatial : vaisseaux et structures orbitales, un à la fois par colonie.
+// requires : 'spatioport' (bâtiment de surface) ou 'dock' (structure orbitale) ; tech : recherche nécessaire.
 export const SHIPYARD = {
-  sonde: { label: 'Sonde', kind: 'ship', requires: 'spatioport', cost: { minerais: 30 }, days: 10, desc: 'Explore les systèmes voisins. Durée de vie : 180 jours.' },
-  dock: { label: 'Dock spatial', kind: 'orbital', requires: 'spatioport', cost: { minerais: 90 }, days: 20, desc: 'Construit les vaisseaux colonie et améliore toute la flotte.' },
-  defense: { label: 'Anneau de défense', kind: 'orbital', requires: 'spatioport', cost: { minerais: 60 }, days: 15, desc: "Protège la colonie en cas d'attaque (3 au maximum)." },
-  colonie: { label: 'Vaisseau colonie', kind: 'ship', requires: 'dock', cost: { minerais: 100, biomasse: 30 }, days: 25, desc: 'Fonde une nouvelle colonie dans un système analysé. Emporte 2 colons.' },
-  moteurs: { label: 'Moteurs améliorés', kind: 'upgrade', requires: 'dock', cost: { minerais: 60 }, days: 15, desc: '+30 % de vitesse pour tous les vaisseaux.' },
-  blindage: { label: 'Coques renforcées', kind: 'upgrade', requires: 'dock', cost: { minerais: 50 }, days: 12, desc: '+50 % de durée de vie pour tous les vaisseaux.' },
+  corvette: { label: 'Corvette', kind: 'ship', category: 'guerre', size: 'petit', requires: 'spatioport', tech: ['moteurs-saut', 'canons-masse'], cost: { minerais: 30, alliages: 15 }, days: 12, desc: 'Petit vaisseau de guerre rapide. Attaque 2, défense 2.' },
+  fregate: { label: 'Frégate', kind: 'ship', category: 'guerre', size: 'moyen', requires: 'dock', tech: ['coques-moyennes', 'canons-masse'], cost: { minerais: 50, alliages: 30 }, days: 18, desc: 'Vaisseau de guerre polyvalent. Attaque 5, défense 5.' },
+  croiseur: { label: 'Croiseur', kind: 'ship', category: 'guerre', size: 'grand', requires: 'dock', tech: ['coques-lourdes', 'lasers'], cost: { minerais: 90, alliages: 60, velarine: 2 }, days: 26, desc: 'Grand vaisseau de ligne. Attaque 10, défense 12.' },
+  cuirasse: { label: 'Cuirassé', kind: 'ship', category: 'guerre', size: 'gigantesque', requires: 'dock', tech: ['coques-titanesques', 'torpilles-plasma'], cost: { minerais: 160, alliages: 120, velarine: 6 }, days: 40, desc: 'Forteresse volante. Attaque 22, défense 25.' },
+  transport: { label: 'Transport colonial', kind: 'ship', category: 'civil', size: 'grand', requires: 'dock', tech: ['coques-lourdes', 'habitats-scelles'], cost: { minerais: 120, alliages: 50, biomasse: 60, eau: 40 }, days: 35, desc: 'Fonde une colonie avec 5 colons.' },
+  sonde: { label: 'Sonde', kind: 'ship', category: 'civil', size: 'petit', requires: 'spatioport', tech: 'moteurs-saut', cost: { minerais: 20, alliages: 5 }, days: 10, desc: 'Explore les systèmes voisins. Durée de vie : 180 jours.' },
+  dock: { label: 'Dock spatial', kind: 'orbital', category: 'orbital', requires: 'spatioport', tech: 'ingenierie-orbitale', cost: { minerais: 60, alliages: 30 }, days: 20, desc: 'Construit les vaisseaux colonie et améliore toute la flotte.' },
+  defense: { label: 'Anneau de défense', kind: 'orbital', category: 'orbital', requires: 'spatioport', tech: 'boucliers', cost: { minerais: 40, alliages: 20 }, days: 15, desc: "Protège la colonie en cas d'attaque (3 au maximum)." },
+  ecope: { label: 'Écope gazeuse', kind: 'orbital', category: 'orbital', requires: 'dock', tech: 'ecope', cost: { minerais: 50, alliages: 20 }, days: 15, desc: `Puise le deutérium d'une géante gazeuse du système : +${ECOPE_PER_DAY} deutérium par jour.` },
+  colonie: { label: 'Vaisseau colonie', kind: 'ship', category: 'civil', size: 'moyen', requires: 'dock', tech: ['coques-moyennes', 'habitats-scelles'], cost: { minerais: 80, alliages: 25, biomasse: 30, eau: 20 }, days: 25, desc: 'Fonde une nouvelle colonie dans un système analysé. Emporte 2 colons.' },
 };
 
 // Bilan d'une colonie pour un jour : production, énergie, main-d'œuvre.
@@ -174,10 +290,14 @@ export function colonyReport(colony, surface) {
   const raw = [];
   for (const tile of built) {
     const def = BUILDINGS[tile.building.type];
-    housing += def.housing || 0;
+    const level = levelOf(tile);
+    const bonus = LEVEL_BONUS[level - 1] * (hasTech('ingenierie-veilleurs') ? 1.1 : 1);
+    const homeBonus = tile.building.type === 'foyer' ? (hasTech('foyers-modulaires') ? 1 : 0) + (hasTech('arcologies') ? 2 : 0) : 0;
+    housing += ((def.housing || 0) + homeBonus) * (def.upgradable === false ? 1 : level);
     workers += def.workers || 0;
-    energyUse += def.energy || 0;
-    const out = def.output ? def.output(tile, neighbors(surface, tile)) : {};
+    energyUse += (def.energy || 0) * (1 + 0.25 * (level - 1));
+    const base = def.output ? def.output(tile, neighbors(surface, tile), colony) : {};
+    const out = Object.fromEntries(Object.entries(base).map(([res, v]) => [res, v * (v > 0 ? bonus : LEVEL_BONUS[level - 1])]));
     energyProd += out.energie || 0;
     raw.push({ tile, def, out });
   }
@@ -186,7 +306,8 @@ export function colonyReport(colony, surface) {
   const energyAvailable = energyProd * staffing;
   const power = energyUse > 0 ? Math.min(1, energyAvailable / energyUse) : 1;
 
-  const perDay = { minerais: 0, biomasse: -colony.population * FOOD_PER_COLONIST, velarine: 0 };
+  const perDay = { minerais: 0, alliages: 0, biomasse: -colony.population * FOOD_PER_COLONIST, eau: -colony.population * WATER_PER_COLONIST, deuterium: 0, velarine: 0, recherche: 0 };
+  if (colony.orbital?.ecope) perDay.deuterium += ECOPE_PER_DAY;
   const perTile = new Map();
   for (const { tile, def, out } of raw) {
     const factor = (def.workers ? staffing : 1) * (def.energy ? power : 1);
@@ -206,18 +327,59 @@ export function previewBuilding(colony, surface, tile, type) {
   tile.building = { type, done: true };
   const after = colonyReport(colony, surface);
   tile.building = null;
+  const gains = Object.fromEntries([...FLOW_RESOURCES, 'recherche'].map((res) => [res, after.perDay[res] - before.perDay[res]]));
   return {
-    minerais: after.perDay.minerais - before.perDay.minerais,
-    biomasse: after.perDay.biomasse - before.perDay.biomasse,
-    velarine: after.perDay.velarine - before.perDay.velarine,
+    ...gains,
     energie: after.energyProd - after.energyUse - (before.energyProd - before.energyUse),
     housing: after.housing - before.housing,
     workers: after.workers - before.workers,
   };
 }
 
+// --- Amélioration d'un bâtiment (niveau suivant) ---
+export const upgradeCost = (type, level) =>
+  Object.fromEntries(Object.entries(BUILDINGS[type].cost).map(([res, n]) => [res, n * (level + 1)]));
+export const upgradeDays = (type, level) => Math.ceil(BUILDINGS[type].days * 0.6 * (level + 1));
+
+export function upgradeProblem(game, colony, surface, tile) {
+  const b = tile.building;
+  if (!b || !b.done) return 'Aucun bâtiment terminé ici.';
+  const def = BUILDINGS[b.type];
+  if (def.upgradable === false) return 'Ce bâtiment ne s\'améliore pas.';
+  const level = levelOf(tile);
+  if (level >= 4) return 'Niveau maximal atteint.';
+  if (level >= maxLevel()) return `Recherche nécessaire : ${LEVEL_TECH_LABELS[level - 1]}.`;
+  if (colony.construction) return 'Un chantier est déjà en cours.';
+  if (!canAfford(game.resources, upgradeCost(b.type, level))) return 'Ressources insuffisantes.';
+  return null;
+}
+const LEVEL_TECH_LABELS = ['Automatisation', 'Robotique', 'Nanofabrication'];
+
+export function previewUpgrade(colony, surface, tile) {
+  const before = colonyReport(colony, surface);
+  tile.building.level = levelOf(tile) + 1;
+  const after = colonyReport(colony, surface);
+  tile.building.level -= 1;
+  const gains = Object.fromEntries([...FLOW_RESOURCES, 'recherche'].map((res) => [res, after.perDay[res] - before.perDay[res]]));
+  return {
+    ...gains,
+    energie: after.energyProd - after.energyUse - (before.energyProd - before.energyUse),
+    housing: after.housing - before.housing,
+    workers: 0,
+  };
+}
+
+// Le bâtiment continue de produire à son ancien niveau pendant les travaux.
+export function startUpgrade(game, colony, surface, tile) {
+  if (upgradeProblem(game, colony, surface, tile)) return false;
+  const level = levelOf(tile);
+  for (const [res, n] of Object.entries(upgradeCost(tile.building.type, level))) game.resources[res] -= n;
+  colony.construction = { tileIndex: tile.index, type: tile.building.type, daysLeft: upgradeDays(tile.building.type, level), upgrade: true, toLevel: level + 1 };
+  return true;
+}
+
 export function canAfford(resources, cost) {
-  return Object.entries(cost).every(([res, n]) => resources[res] >= n);
+  return Object.entries(cost).every(([res, n]) => (resources[res] ?? 0) >= n);
 }
 
 export function startConstruction(game, colony, surface, tile, type) {
@@ -243,29 +405,61 @@ export function demolish(game, colony, surface, tile) {
 export function tickColony(game, colony, surface, days) {
   const events = [];
   const report = colonyReport(colony, surface);
-  for (const res of ['minerais', 'biomasse', 'velarine']) {
-    game.resources[res] = Math.max(0, game.resources[res] + report.perDay[res] * days);
+  // Une fonderie sans minerais ne coule rien : on ne crée pas d'alliages à partir de rien.
+  if (game.resources.minerais <= 0 && report.perDay.minerais < 0) report.perDay.alliages = Math.min(0, report.perDay.alliages);
+  for (const res of FLOW_RESOURCES) {
+    game.resources[res] = Math.max(0, (game.resources[res] ?? 0) + report.perDay[res] * days);
+  }
+
+  // Fouilles : un artefact des Veilleurs tous les DIG_DAYS jours, tant que la ruine en cache.
+  for (const tile of surface.tiles) {
+    const b = tile.building;
+    if (b?.type !== 'fouille' || !b.done) continue;
+    b.left ??= ARTIFACTS_PER_RUIN;
+    b.dig ??= 0;
+    if (b.left <= 0) continue;
+    b.dig += (days / (DIG_DAYS / (hasTech('lexique') ? 2 : 1))) * report.staffing;
+    if (b.dig >= 1) {
+      b.dig = 0;
+      b.left--;
+      game.resources.artefacts = (game.resources.artefacts ?? 0) + 1;
+      const fragment = LORE[(game.lore ?? 0) % LORE.length];
+      game.lore = (game.lore ?? 0) + 1;
+      events.push(`Fouille sur ${colony.name} : un artefact des Veilleurs ! ${fragment}`);
+      if (b.left === 0) events.push(`Les ruines de ${colony.name} ont livré tous leurs secrets.`);
+    }
   }
 
   for (const tile of surface.tiles) {
     if (tile.deposit && tile.building?.done && BUILDINGS[tile.building.type].deposit) {
-      tile.yield = Math.max(YIELD_FLOOR, tile.yield - DEPLETION_PER_DAY * days * report.staffing * report.power);
+      tile.yield = Math.max(yieldFloor(), tile.yield - DEPLETION_PER_DAY * days * report.staffing * report.power);
     }
   }
 
   if (colony.construction) {
     colony.construction.daysLeft -= days;
     if (colony.construction.daysLeft <= 0) {
-      const tile = surface.tiles[colony.construction.tileIndex];
-      tile.building.done = true;
-      events.push(`Construction terminée sur ${colony.name} : ${BUILDINGS[tile.building.type].label}.`);
+      const c = colony.construction;
+      const tile = surface.tiles[c.tileIndex];
+      if (c.upgrade) {
+        tile.building.level = c.toLevel;
+        events.push(`Amélioration terminée sur ${colony.name} : ${BUILDINGS[tile.building.type].label} niveau ${c.toLevel}.`);
+      } else {
+        tile.building.done = true;
+        events.push(`Construction terminée sur ${colony.name} : ${BUILDINGS[tile.building.type].label}.`);
+      }
       colony.construction = null;
     }
   }
 
+  const thirsty = (game.resources.eau ?? 0) <= 0;
+  if (thirsty && !colony.thirst) events.push(`Pénurie d'eau sur ${colony.name} : la population ne grandit plus et les serres ralentissent.`);
+  colony.thirst = thirsty;
   if (game.resources.biomasse <= 0) {
     if (!colony.famine) events.push(`Famine sur ${colony.name} : la biomasse est épuisée, la population ne grandit plus.`);
     colony.famine = true;
+  } else if (thirsty) {
+    colony.famine = false;
   } else {
     colony.famine = false;
     if (colony.population < report.housing) {
