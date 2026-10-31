@@ -6,7 +6,7 @@ import { CONFIG } from './config.js';
 import { STAR_TYPES, starDistance } from './galaxy.js';
 import { reachableStars, shipProgress, selectedShip } from './game.js';
 import { createSky } from './skybox.js';
-import { createShip } from './ships.js';
+import { createShip, shipScale } from './ships.js';
 import { canvasTexture, glowTexture } from './textures.js';
 
 const PROBE_COLOR = 0x7cff9e; // lignes de portée
@@ -151,8 +151,10 @@ export function createGalaxyView(container, game, callbacks) {
       _look.copy(to).setY(to.y + 1);
     } else {
       const center = game.stars[ship.starId].pos;
-      const angle = game.time * (ship.kind === 'arche' ? 0.12 : 0.35) + ship.id * 2.1;
-      const r = (ship.kind === 'arche' ? 5.5 : 2.6 + (ship.id % 4) * 0.6) * orbitScale;
+      // Les gros vaisseaux orbitent plus loin et plus lentement, pour ne pas masquer l'étoile ni les autres.
+      const big = shipScale(ship.kind) - 1;
+      const angle = game.time * (ship.kind === 'arche' ? 0.12 : 0.35 / (1 + big * 0.8)) + ship.id * 2.1;
+      const r = (ship.kind === 'arche' ? 5.5 : 2.6 + (ship.id % 4) * 0.6 + big * 2.4) * orbitScale;
       const y = center.y + 0.8 + Math.sin(game.time * 0.5 + ship.id) * 0.3;
       _pos.set(center.x + Math.cos(angle) * r, y, center.z + Math.sin(angle) * r);
       _look.set(center.x + Math.cos(angle + 0.3) * r, y, center.z + Math.sin(angle + 0.3) * r);
@@ -362,6 +364,11 @@ export function createGalaxyView(container, game, callbacks) {
         flame.scale.setScalar((traveling ? 0.9 : 0.35) * (1 + Math.sin(time * 30 + v.ship.id) * 0.12));
       }
       for (const ring of v.model.userData.rings) ring.rotation.z += dt * 0.4;
+      // Tourelles qui balaient lentement de gauche à droite ; feux rouges des vaisseaux de guerre.
+      for (const t of v.model.userData.turrets ?? []) {
+        t.rotation.y = t.userData.base + Math.sin(time * t.userData.speed + t.userData.phase) * 0.9;
+      }
+      for (const [i, l] of (v.model.userData.lights ?? []).entries()) l.visible = Math.sin(time * 2.5 + i * 1.3 + v.ship.id) > -0.2;
       v.model.userData.beacon.visible = Math.sin(time * 4 + v.ship.id * 2) > 0.3 || v.ship.state === 'analyse';
 
       const selected = v.ship.id === game.selectedShipId;

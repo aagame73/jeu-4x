@@ -1,6 +1,7 @@
 // Sauvegarde de la partie. L'amas se régénère à l'identique à partir de sa graine :
 // on n'enregistre que ce qui a changé (connaissances, vaisseaux, colonies, surfaces bâties…).
-import { createGame, getSurface, currentDay } from './game.js';
+import { createGame, getSurface, currentDay, STARTING_RESOURCES } from './game.js';
+import { bindResearch, TECHS } from './research.js';
 
 const VERSION = 1;
 const PREFIX = 'amas-inexplore:';
@@ -18,7 +19,9 @@ export function serialize(game) {
     selectedShipId: game.selectedShipId,
     nextShipId: game.nextShipId,
     resources: game.resources,
+    lore: game.lore,
     upgrades: game.upgrades,
+    research: game.research,
     stars: game.stars.map((s) => s.level),
     currents: game.currents.map((c) => c.known),
     ships: game.ships.map(({ thumbnail, ...ship }) => ship),
@@ -41,10 +44,12 @@ export function restore(data) {
     selectedStarId: data.selectedStarId,
     selectedShipId: data.selectedShipId,
     nextShipId: data.nextShipId,
-    resources: data.resources,
+    // Les sauvegardes d'avant les nouvelles ressources reçoivent les valeurs de départ manquantes.
+    resources: { ...STARTING_RESOURCES, ...data.resources },
+    lore: data.lore ?? 0,
     upgrades: data.upgrades,
     ships: data.ships,
-    colonies: data.colonies,
+    colonies: data.colonies.map((c) => ({ ...c, thirst: c.thirst ?? false, orbital: { ecope: false, ...c.orbital } })),
     log: data.log,
   });
   data.stars.forEach((level, i) => (game.stars[i].level = level));
@@ -54,7 +59,44 @@ export function restore(data) {
     const surface = getSurface(game, starId, planetIndex);
     tiles.forEach((tile, i) => Object.assign(surface.tiles[i], tile));
   }
+  game.research = data.research ?? { current: null, progress: 0, done: impliedTechs(game), bank: 0, partial: {}, paid: [] };
+  // L'arbre a grandi : une technologie acquise reçoit aussi ses nouveaux prérequis.
+  game.research.done = withRequirements(game.research.done.filter((k) => TECHS[k]));
+  bindResearch(game.research);
   return game;
+}
+
+// Une partie d'avant la recherche reçoit les technologies de ce qu'elle a déjà construit.
+function impliedTechs(game) {
+  const built = new Set();
+  for (const surface of game.surfaces.values()) for (const t of surface.tiles) if (t.building) built.add(t.building.type);
+  const techs = new Set();
+  const add = (...keys) => keys.forEach((k) => techs.add(k));
+  if (built.has('fonderie')) add('metallurgie');
+  if (built.has('spatioport')) add('metallurgie', 'mecanique-orbitale');
+  if (built.has('pompe')) add('chimie-deuterium');
+  if (built.has('fouille')) add('fouilles');
+  if (built.has('siphon')) add('reseau-electrique', 'fusion-compacte', 'stabilisation-velarine');
+  if (game.ships.some((s) => s.kind === 'sonde') || game.stars.some((s, i) => s.level >= 2 && i !== game.homeId)) add('metallurgie', 'mecanique-orbitale', 'moteurs-saut');
+  const colonies = game.colonies;
+  if (colonies.some((c) => c.orbital.dock)) add('metallurgie', 'mecanique-orbitale', 'ingenierie-orbitale');
+  if (colonies.some((c) => c.orbital.defense)) add('metallurgie', 'mecanique-orbitale', 'reseau-electrique', 'boucliers');
+  if (colonies.some((c) => c.orbital.ecope)) add('chimie-deuterium', 'ingenierie-orbitale', 'ecope');
+  if (colonies.length > 1 || game.ships.some((s) => s.kind === 'colonie')) add('hydroponie', 'habitats-scelles', 'ingenierie-orbitale');
+  if (game.upgrades.moteurs) add('moteurs-saut', 'moteurs-ameliores');
+  if (game.upgrades.blindage) add('ingenierie-orbitale', 'coques-renforcees');
+  return [...techs];
+}
+
+// Ajoute à une liste de technologies tous leurs prérequis.
+function withRequirements(keys) {
+  const all = new Set();
+  const add = (key) => {
+    all.add(key);
+    TECHS[key].requires.forEach(add);
+  };
+  keys.forEach(add);
+  return [...all];
 }
 
 // Résumé affiché dans le menu, sans relire toute la partie.

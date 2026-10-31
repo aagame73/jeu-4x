@@ -4,12 +4,29 @@ import { STAR_TYPES, PLANET_TYPES, PLANET_SIZES, starDistance } from './galaxy.j
 import { LEVEL_LABELS, canReach, canAnalyse, starLabel, stats, currentDay, daysLeft, visiblePlanets, getSurface, colonyOn, selectedShip, SHIP_KINDS, lifespan, foundingProblem } from './game.js';
 import { renderShipThumbnails } from './ships.js';
 import { colonyReport } from './economy.js';
+import { ICONS } from './icons.js';
+import { TECHS } from './research.js';
+// Accès tolérant aux règles écrites en parallèle (SIZE_LABELS, shipStats peuvent manquer).
+import * as rules from './game.js';
 
 const RESOURCES = [
   ['minerais', 'Minerais'],
   ['energie', 'Énergie'],
   ['biomasse', 'Biomasse'],
   ['velarine', 'Vélarine'],
+  ['eau', 'Eau'],
+  ['deuterium', 'Deutérium'],
+];
+
+// Cartouches du bandeau du haut, dans l'ordre d'affichage (les artefacts n'ont pas de variation par jour).
+const STOCKS = [
+  ['minerais', 'Minerais'],
+  ['alliages', 'Alliages'],
+  ['biomasse', 'Biomasse'],
+  ['eau', 'Eau'],
+  ['deuterium', 'Deutérium'],
+  ['velarine', 'Vélarine'],
+  ['artefacts', 'Artefacts'],
 ];
 
 const plural = (n, word) => `${n} ${word}${n > 1 ? 's' : ''}`;
@@ -17,20 +34,30 @@ const plural = (n, word) => `${n} ${word}${n > 1 ? 's' : ''}`;
 export function createUI(root, game, actions) {
   root.innerHTML = `
     <header class="topbar panel">
-      <div class="title">Amas inexploré <span class="tag">prototype</span></div>
+      <div class="title" title="Amas inexploré : prototype"><span class="game-name">Amas<br>inexploré</span></div>
       <div class="stats" id="stats"></div>
-      <button class="menu-btn" data-action="menu" title="Menu : sauvegarder, charger (Échap)">☰ Menu</button>
+      <button class="menu-btn fs-btn" data-action="fullscreen" title="Plein écran (F)" aria-label="Plein écran">${ICONS.pleinEcran}</button>
+      <button class="menu-btn rs-btn" data-action="research" title="Recherche (R)">${ICONS.recherche}<span class="rs-btn-label">Recherche</span><span class="rs-meter"><i></i></span><i class="rs-dot"></i></button>
+      <button class="menu-btn icon-only" data-action="menu" title="Menu : sauvegarder, charger (Échap)" aria-label="Menu">${ICONS.menu}</button>
       <div class="clock">
         <button class="pause" data-action="toggle-pause" title="Pause (Espace)"></button>
-        ${CONFIG.speeds.map((x, i) => `<button class="speed" data-action="speed" data-id="${i}" title="Vitesse x${x}">x${x}</button>`).join('')}
+        ${CONFIG.speeds.map((x, i) => `<button class="speed" data-action="speed" data-id="${i}" title="Vitesse x${x}">${ICONS[`vitesse${x}`] ?? ''}x${x}</button>`).join('')}
       </div>
     </header>
     <aside class="probes panel"><h2>Flotte</h2><div id="probes"></div></aside>
     <aside class="info panel" id="info"></aside>
     <section class="journal panel"><h2>Journal de bord</h2><div id="journal"></div></section>
-    <div class="help">Espace : pause · + / − : vitesse · Clic : sélectionner · Double-clic : centrer · Glisser : pivoter · Clic droit : déplacer · Molette : zoom · 1 à 9 : choisir un vaisseau · Graine ${game.seed}</div>
+    <div class="help">Espace : pause · R : recherche · F : plein écran · + / − : vitesse · Clic : sélectionner · Double-clic : centrer · Glisser : pivoter · Clic droit : déplacer · Molette : zoom · 1 à 9 : choisir un vaisseau · Graine ${game.seed}</div>
   `;
   const $ = (id) => root.querySelector(`#${id}`);
+
+  // L'icône du bouton plein écran suit l'état réel (la touche Échap du navigateur en sort aussi).
+  document.addEventListener('fullscreenchange', () => {
+    const full = !!document.fullscreenElement;
+    const button = root.querySelector('.fs-btn');
+    button.innerHTML = full ? ICONS.quitterPleinEcran : ICONS.pleinEcran;
+    button.title = full ? 'Quitter le plein écran (F)' : 'Plein écran (F)';
+  });
 
   root.addEventListener('click', (e) => {
     if (e.target.tagName === 'INPUT') return;
@@ -39,6 +66,8 @@ export function createUI(root, game, actions) {
     el.blur(); // sinon la touche Espace réactiverait le bouton
     const { action, id } = el.dataset;
     if (action === 'menu') actions.onOpenMenu();
+    else if (action === 'research') actions.onOpenResearch?.();
+    else if (action === 'fullscreen') actions.onToggleFullscreen();
     else if (action === 'rename') startRename(Number(id));
     else if (action === 'focus-ship') actions.onFocusShip(Number(id));
     else if (action === 'found') actions.onOpenPlanet(Number(el.dataset.star), Number(el.dataset.planet), true);
@@ -54,20 +83,54 @@ export function createUI(root, game, actions) {
   // Stock commun et variation par jour, toutes colonies confondues.
   function renderStats() {
     const s = stats(game);
-    const perDay = { minerais: 0, biomasse: 0, velarine: 0 };
+    const perDay = { minerais: 0, alliages: 0, biomasse: 0, eau: 0, deuterium: 0, velarine: 0 };
     for (const colony of game.colonies) {
       const report = colonyReport(colony, getSurface(game, colony.starId, colony.planetIndex));
-      for (const res in perDay) perDay[res] += report.perDay[res];
+      for (const res in perDay) perDay[res] += report.perDay?.[res] ?? 0;
     }
     const rate = (x) => `${x >= 0 ? '+' : ''}${x.toFixed(1).replace('.', ',')}/j`;
-    const stock = (res, label) =>
-      `<span class="res res-${res}" title="${label}"><i></i><b>${Math.floor(game.resources[res])}</b><small class="${perDay[res] < 0 ? 'down' : ''}">${rate(perDay[res])}</small></span>`;
+    // Petite jauge sous une valeur (ratio entre 0 et 1).
+    const gauge = (ratio) => `<span class="gauge"><span style="width:${Math.round(Math.min(1, Math.max(0, ratio)) * 100)}%"></span></span>`;
+    // Ressource compacte : icône néon colorée, stock, variation par jour en petit dessous, jauge fine
+    // (relative à un plafond qui recule : stock / (stock + 200)). Le nom n'apparaît qu'en infobulle.
+    const stock = (res, label) => {
+      const value = Math.floor(game.resources?.[res] ?? 0);
+      if (res === 'artefacts') {
+        return `<span class="res res-${res}" title="${label} : objets anciens découverts">${ICONS[res]}<span class="res-body">
+          <b>${value}</b><small class="flat">pièces</small></span></span>`;
+      }
+      const day = perDay[res] ?? 0;
+      const flat = Math.abs(day) < 0.05;
+      return `<span class="res res-${res}" title="${label} : stock commun et variation par jour">${ICONS[res]}<span class="res-body">
+        <b>${value}</b><small class="${day < 0 ? 'down' : flat ? 'flat' : ''}">${rate(day)}</small>
+        ${gauge(value / (value + 200))}</span></span>`;
+    };
+    // Compteur compact : icône et valeur (le libellé est dans l'infobulle).
+    const counter = (cls, iconName, value, title, extra = '') =>
+      `<span class="counter ${cls}" title="${title}">${ICONS[iconName]}<span class="counter-body"><b>${value}</b>${extra}</span></span>`;
     $('stats').innerHTML = `
-      ${stock('minerais', 'Minerais')}${stock('biomasse', 'Biomasse')}${stock('velarine', 'Vélarine')}
+      ${STOCKS.map(([res, label]) => stock(res, label)).join('')}
       <span class="sep"></span>
-      <span>Jour <b>${currentDay(game)}</b></span>
-      <span title="Systèmes visités (dont analysés : ${s.analysed})">Systèmes <b>${s.explored}</b> / ${s.total}</span>
-      <span>Lueurs <b>${s.seen - s.explored}</b></span>`;
+      ${counter('day', 'calendrier', String(currentDay(game)).padStart(3, '0'), 'Jour de la partie')}
+      ${counter('systems', 'systemes', `${s.explored}<small>/${s.total}</small>`, `Systèmes visités (dont analysés : ${s.analysed})`, gauge(s.explored / Math.max(1, s.total)))}
+      ${counter('glows', 'lueurs', s.seen - s.explored, 'Lueurs repérées mais pas encore visitées')}`;
+    renderResearchButton();
+  }
+
+  // Bouton « Recherche » : barre fine du projet en cours, ou point or s'il n'y en a pas.
+  function renderResearchButton() {
+    const button = root.querySelector('.rs-btn');
+    const r = game.research ?? {};
+    const tech = r.current ? TECHS[r.current] : null;
+    const progress = Math.floor(r.progress ?? 0);
+    const tip = tech
+      ? `Recherche : ${tech.label} — ${progress} / ${tech.cost} points`
+      : 'Aucune recherche en cours : cliquez pour choisir';
+    // Les info-bulles du jeu déplacent title dans data-tip au survol.
+    if (button.hasAttribute('data-tip')) button.dataset.tip = tip;
+    else button.title = tip;
+    button.classList.toggle('idle', !tech);
+    button.querySelector('.rs-meter i').style.width = tech ? `${Math.min(100, (progress / tech.cost) * 100).toFixed(1)}%` : '0%';
   }
 
   function shipStatus(ship) {
@@ -79,6 +142,27 @@ export function createUI(root, game, actions) {
   // La liste n'est reconstruite que lorsqu'un vaisseau apparaît ou disparaît ; sinon elle est
   // mise à jour sur place (un bouton recréé pendant un clic ferait perdre ce clic).
   let fleetKey = null;
+  // Pastilles d'une carte de vaisseau : taille, puis attaque / défense pour un vaisseau de guerre
+  function shipTags(ship) {
+    const kind = SHIP_KINDS[ship.kind] ?? {};
+    const tags = [];
+    if (kind.size) {
+      const label = rules.SIZE_LABELS?.[kind.size] ?? kind.size;
+      tags.push(`<span class="ship-tag size size-${kind.size}" title="Taille : ${label}">${ICONS.taille}${label}</span>`);
+    }
+    if (kind.warship) {
+      tags.push(`<span class="ship-tag atk" title="Attaque (avec les bonus de recherche)">${ICONS.attaque}<b class="atk-value"></b></span>`);
+      tags.push(`<span class="ship-tag def" title="Défense (avec les bonus de recherche)">${ICONS.defense}<b class="def-value"></b></span>`);
+    }
+    return tags.length ? `<span class="ship-tags">${tags.join('')}</span>` : '';
+  }
+  function combatStats(ship) {
+    const kind = SHIP_KINDS[ship.kind] ?? {};
+    const s = typeof rules.shipStats === 'function' ? rules.shipStats(game, ship) : null;
+    return { attack: s?.attack ?? kind.attack ?? 0, defense: s?.defense ?? kind.defense ?? 0 };
+  }
+  const statText = (x) => (Math.round(x * 10) / 10).toLocaleString('fr-FR');
+
   function buildFleet() {
     for (const ship of game.ships) {
       ship.thumbnail ??= renderShipThumbnails([{ seed: ship.shipSeed, accent: ship.accent, registry: ship.registry, kind: ship.kind }])[0];
@@ -100,6 +184,7 @@ export function createUI(root, game, actions) {
             ${i < 9 ? `<kbd>${i + 1}</kbd>` : ''}
           </span>
           <span class="probe-registry">${SHIP_KINDS[ship.kind].label} · ${ship.registry}</span>
+          ${shipTags(ship)}
           <span class="probe-status"><i class="dot"></i><span class="status-text"></span></span>
           ${SHIP_KINDS[ship.kind].lifespan ? '<span class="wear" title="Usure"><i></i></span>' : ''}
         </span>
@@ -121,6 +206,12 @@ export function createUI(root, game, actions) {
       const name = el.querySelector('.name-text');
       if (!name.querySelector('input')) name.textContent = ship.name;
       el.querySelector('.status-text').textContent = shipStatus(ship);
+      const atk = el.querySelector('.atk-value');
+      if (atk) {
+        const c = combatStats(ship);
+        atk.textContent = statText(c.attack);
+        el.querySelector('.def-value').textContent = statText(c.defense);
+      }
       const wear = el.querySelector('.wear i');
       if (wear) {
         const used = Math.min(1, ship.age / lifespan(game, ship));
@@ -160,7 +251,15 @@ export function createUI(root, game, actions) {
 
   function renderClock() {
     const pause = root.querySelector('.pause');
-    pause.textContent = game.paused ? '▶ Reprendre' : '❚❚ Pause';
+    // Bouton compact : icône seule, l'action est donnée par l'infobulle
+    const label = game.paused ? 'Reprendre' : 'Pause';
+    const html = game.paused ? ICONS.lecture : ICONS.pause;
+    if (pause.dataset.state !== label) {
+      pause.dataset.state = label;
+      pause.innerHTML = html;
+      pause.title = `${label} (Espace)`;
+      pause.setAttribute('aria-label', label);
+    }
     pause.classList.toggle('paused', game.paused);
     root.querySelectorAll('.speed').forEach((el, i) => el.classList.toggle('active', i === game.speedIndex));
   }
@@ -174,7 +273,7 @@ export function createUI(root, game, actions) {
     const size = planet.size ? `${planet.size}, ${PLANET_SIZES[planet.size]} hexagones` : 'non colonisable';
     let body = '';
     if (level === 3) {
-      const deposits = RESOURCES.filter(([key]) => planet.deposits[key] > 0)
+      const deposits = RESOURCES.filter(([key]) => (planet.deposits?.[key] ?? 0) > 0)
         .map(([key, label]) => `<span class="deposit ${key}">${label} ${depositBar(planet.deposits[key], key === 'velarine' ? 2 : 3)}</span>`)
         .join('');
       body = `<div class="deposits">${deposits || '<span class="muted">Aucun gisement notable</span>'}</div>`;
@@ -212,7 +311,9 @@ export function createUI(root, game, actions) {
       }
       const r = canReach(game, ship, star);
       if (r.ok) {
-        parts.push(`<button class="primary" data-action="send">Envoyer ${ship.name} · ${plural(r.days, 'jour')}${r.viaCurrent ? ' (courant)' : ''}</button>`);
+        // Coût en deutérium (si les règles le fournissent) : nombre suivi de l'icône
+        const fuel = r.fuel != null ? ` · <span class="fuel" title="Deutérium consommé">${r.fuel}${ICONS.deuterium}</span>` : '';
+        parts.push(`<button class="primary" data-action="send">Envoyer ${ship.name} · ${plural(r.days, 'jour')}${r.viaCurrent ? ' (courant)' : ''}${fuel}</button>`);
       } else if (!(ship.starId === star.id && ship.state === 'idle')) {
         parts.push(`<p class="muted small">${r.reason}</p>`);
       }

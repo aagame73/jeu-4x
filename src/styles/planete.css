@@ -1,0 +1,825 @@
+/* Écran planète : horizon planétaire et panneau de colonie. */
+
+/* ---------------------------------------------------------------------------------
+   Couleurs par type de planète (attribut posé sur #planet-view à chaque ouverture).
+   --sky-*  : ciel (du bas vers le haut)      --neb-* : nébuleuse
+   --hz-*   : surface de la planète vue d'orbite (du point éclairé vers l'ombre)
+   --rim    : liseré d'atmosphère (triplet r,g,b)   --band : nuages / bandes
+   --orb-*  : pastille de l'en-tête du panneau
+   --------------------------------------------------------------------------------- */
+#planet-view,
+#planet-view[data-planet-type='tempere'] {
+  --sky-1: #0b1430; --sky-2: #050918; --sky-3: #02040a;
+  --neb-1: rgba(199, 125, 255, 0.2); --neb-2: rgba(95, 227, 255, 0.12); --neb-3: rgba(255, 122, 138, 0.08); --neb-4: rgba(95, 140, 255, 0.1);
+  --hz-1: #5aa6d6; --hz-2: #2b6c9e; --hz-3: #143a63; --hz-4: #081a33; --hz-5: #030914;
+  --rim: 95, 227, 255; --rim-in: 170, 245, 255; --band: 220, 240, 255; --band-2: 140, 200, 140;
+  --glow: 255, 230, 190;
+  --orb-1: #a6e3ff; --orb-2: #4f9a6a; --orb-3: #2a6290; --orb-4: #0b1e3a; --orb-glow: 95, 227, 255;
+}
+#planet-view[data-planet-type='oceanique'] {
+  --sky-1: #0a2a4a; --sky-2: #061a30; --sky-3: #02040a;
+  --neb-1: rgba(95, 180, 255, 0.18); --neb-2: rgba(95, 227, 255, 0.14); --neb-3: rgba(124, 255, 210, 0.07); --neb-4: rgba(120, 120, 255, 0.1);
+  --hz-1: #8fdcff; --hz-2: #2a8fd0; --hz-3: #0f4f8a; --hz-4: #062448; --hz-5: #020a18;
+  --rim: 120, 220, 255; --rim-in: 190, 245, 255; --band: 235, 248, 255; --band-2: 200, 235, 255;
+  --glow: 230, 240, 255;
+  --orb-1: #c8f0ff; --orb-2: #3aa0e0; --orb-3: #1a5a9a; --orb-4: #071a38; --orb-glow: 120, 220, 255;
+}
+#planet-view[data-planet-type='marecageuse'] {
+  --sky-1: #1e2e1a; --sky-2: #0e1712; --sky-3: #04070a;
+  --neb-1: rgba(124, 255, 158, 0.1); --neb-2: rgba(95, 227, 200, 0.08); --neb-3: rgba(200, 220, 120, 0.07); --neb-4: rgba(95, 140, 120, 0.1);
+  --hz-1: #a9c873; --hz-2: #5a7a3a; --hz-3: #2e4422; --hz-4: #121c10; --hz-5: #05080a;
+  --rim: 170, 230, 120; --rim-in: 210, 245, 170; --band: 200, 225, 170; --band-2: 120, 160, 90;
+  --glow: 230, 240, 190;
+  --orb-1: #d8f0a0; --orb-2: #6a8a3a; --orb-3: #3a5a2a; --orb-4: #0f1a0c; --orb-glow: 170, 230, 120;
+}
+#planet-view[data-planet-type='desertique'] {
+  --sky-1: #4a3220; --sky-2: #2a1d22; --sky-3: #0c0812;
+  --neb-1: rgba(255, 170, 110, 0.12); --neb-2: rgba(255, 209, 102, 0.08); --neb-3: rgba(199, 125, 255, 0.08); --neb-4: rgba(255, 140, 120, 0.08);
+  --hz-1: #e8b878; --hz-2: #b9814a; --hz-3: #6e4628; --hz-4: #2a1a10; --hz-5: #0c0806;
+  --rim: 255, 200, 130; --rim-in: 255, 225, 180; --band: 255, 220, 170; --band-2: 200, 150, 100;
+  --glow: 255, 210, 140;
+  --orb-1: #fff0c8; --orb-2: #e0a860; --orb-3: #9a6230; --orb-4: #2a1608; --orb-glow: 255, 209, 102;
+}
+#planet-view[data-planet-type='volcanique'] {
+  --sky-1: #4a1c0e; --sky-2: #2a120c; --sky-3: #07040a;
+  --neb-1: rgba(120, 60, 30, 0.35); --neb-2: rgba(90, 40, 25, 0.4); --neb-3: rgba(255, 110, 50, 0.08); --neb-4: rgba(80, 50, 40, 0.3);
+  --hz-1: #8a2e14; --hz-2: #4a170c; --hz-3: #1c0a07; --hz-4: #0a0406; --hz-5: #050204;
+  --rim: 255, 110, 50; --rim-in: 255, 160, 90; --band: 90, 60, 50; --band-2: 60, 40, 35;
+  --glow: 255, 150, 90;
+  --orb-1: #ffc080; --orb-2: #d0502a; --orb-3: #5a1a0c; --orb-4: #120604; --orb-glow: 255, 110, 50;
+}
+#planet-view[data-planet-type='toxique'] {
+  --sky-1: #2e3410; --sky-2: #171b0a; --sky-3: #06070a;
+  --neb-1: rgba(212, 240, 74, 0.14); --neb-2: rgba(150, 200, 60, 0.12); --neb-3: rgba(199, 125, 255, 0.07); --neb-4: rgba(180, 160, 40, 0.1);
+  --hz-1: #e4f05a; --hz-2: #a6b02a; --hz-3: #5a6216; --hz-4: #20240a; --hz-5: #080a04;
+  --rim: 212, 240, 74; --rim-in: 235, 255, 150; --band: 230, 240, 140; --band-2: 160, 180, 50;
+  --glow: 240, 250, 170;
+  --orb-1: #f4ffb0; --orb-2: #b8c83a; --orb-3: #5e6a18; --orb-4: #161a06; --orb-glow: 212, 240, 74;
+}
+#planet-view[data-planet-type='glacee'] {
+  --sky-1: #0e2a44; --sky-2: #071628; --sky-3: #02040a;
+  --neb-1: rgba(124, 255, 158, 0.08); --neb-2: rgba(95, 227, 255, 0.12); --neb-3: rgba(199, 125, 255, 0.08); --neb-4: rgba(160, 200, 255, 0.1);
+  --hz-1: #f2f8ff; --hz-2: #b9d6ee; --hz-3: #5f88ad; --hz-4: #1d3a58; --hz-5: #07121f;
+  --rim: 200, 240, 255; --rim-in: 235, 250, 255; --band: 255, 255, 255; --band-2: 200, 225, 245;
+  --glow: 220, 235, 255;
+  --orb-1: #ffffff; --orb-2: #cfe6f6; --orb-3: #6d97bd; --orb-4: #12263c; --orb-glow: 200, 240, 255;
+}
+
+/* ---------------------------------------------------------------------------------
+   Arrière-plan : horizon planétaire (derrière le canvas WebGL transparent)
+   --------------------------------------------------------------------------------- */
+.pv-sky {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  background: radial-gradient(ellipse 120% 90% at 60% 100%, var(--sky-1) 0%, var(--sky-2) 50%, var(--sky-3) 100%);
+}
+.pv-sky > div {
+  position: absolute;
+}
+.sky-nebula {
+  inset: 0;
+  background:
+    radial-gradient(ellipse 30vw 16vh at 78% 22%, var(--neb-1), transparent 70%),
+    radial-gradient(ellipse 24vw 13vh at 64% 34%, var(--neb-2), transparent 70%),
+    radial-gradient(ellipse 21vw 15vh at 92% 40%, var(--neb-3), transparent 70%),
+    radial-gradient(ellipse 33vw 12vh at 40% 18%, var(--neb-4), transparent 70%);
+  filter: blur(6px);
+}
+.sky-nebula.flip {
+  transform: scaleX(-1);
+}
+/* Un seul point, démultiplié par box-shadow (positions en vw/vh, données par le JS). */
+.sky-stars {
+  left: 0;
+  top: 0;
+  width: 1px;
+  height: 1px;
+  border-radius: 50%;
+}
+.sky-moon {
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 30% 38%, rgba(60, 66, 90, 0.45) 0 9%, transparent 10%),
+    radial-gradient(circle at 60% 58%, rgba(60, 66, 90, 0.4) 0 6%, transparent 7%),
+    radial-gradient(circle at 34% 32%, #e6e9f2 0%, #a8afc2 35%, #4a5068 70%, #151a2a 100%);
+  box-shadow: 0 0 18px rgba(200, 215, 255, 0.25);
+}
+/* Lumière de l'étoile, venant de la droite. */
+.sky-glow {
+  right: -10vw;
+  top: 30%;
+  width: 34vw;
+  height: 40vh;
+  background: radial-gradient(ellipse at center, rgba(var(--glow), 0.14), transparent 65%);
+}
+/* L'immense planète : seul le haut de la sphère dépasse au bas de l'écran. */
+.pv-sky > .sky-horizon {
+  left: 50%;
+  top: 70%;
+  width: max(190vw, 1800px);
+  aspect-ratio: 1;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  overflow: hidden;
+  background: radial-gradient(circle at 60% 1%, var(--hz-1) 0%, var(--hz-2) 6%, var(--hz-3) 14%, var(--hz-4) 26%, var(--hz-5) 42%);
+  box-shadow:
+    0 0 22px 4px rgba(var(--rim), 0.55),
+    0 0 90px 30px rgba(var(--rim), 0.18),
+    0 0 220px 80px rgba(var(--rim), 0.08);
+}
+.sky-horizon > div {
+  position: absolute;
+}
+.sky-rim {
+  inset: 0;
+  border-radius: 50%;
+  box-shadow: inset 0 10px 18px rgba(var(--rim-in), 0.55), inset 0 40px 60px rgba(var(--rim), 0.18);
+}
+/* Bandes nuageuses (positions en % de la sphère : haut visible seulement). */
+.sky-bands {
+  inset: 0;
+}
+.sky-bands i {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(10px);
+}
+.sky-bands i:nth-child(1) { left: 30%; top: 1.1%; width: 38%; height: 1.7%; background: rgba(var(--band), 0.18); }
+.sky-bands i:nth-child(2) { left: 44%; top: 3%; width: 25%; height: 1.3%; background: rgba(var(--band), 0.12); }
+.sky-bands i:nth-child(3) { left: 35%; top: 4.6%; width: 18%; height: 1.1%; background: rgba(var(--band-2), 0.12); }
+/* Volcanique : coulées de lave sur la courbure. */
+.sky-lava {
+  inset: 0;
+}
+.sky-lava i {
+  position: absolute;
+  height: 0.25%;
+  border-radius: 4px;
+  filter: blur(2px);
+  background: #ff8a3c;
+  box-shadow: 0 0 10px rgba(255, 110, 50, 0.8);
+}
+.sky-lava i:nth-child(1) { left: 42%; top: 1.4%; width: 10%; transform: rotate(-4deg); }
+.sky-lava i:nth-child(2) { left: 58%; top: 2.2%; width: 6%; background: #ffb35c; transform: rotate(5deg); }
+.sky-lava i:nth-child(3) { left: 50%; top: 3.6%; width: 4%; transform: rotate(-2deg); opacity: 0.7; }
+/* Glacée : aurores. */
+.sky-aurora {
+  inset: 0;
+}
+.sky-aurora i {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(14px);
+  animation: pv-aurora 9s ease-in-out infinite alternate;
+}
+.sky-aurora i:nth-child(1) {
+  left: 18%; top: 12%; width: 42vw; height: 9vh;
+  background: linear-gradient(90deg, transparent, rgba(124, 255, 158, 0.42), rgba(95, 227, 255, 0.32), transparent);
+  transform: rotate(-8deg) skewX(-20deg);
+}
+.sky-aurora i:nth-child(2) {
+  left: 30%; top: 20%; width: 32vw; height: 6vh;
+  background: linear-gradient(90deg, transparent, rgba(199, 125, 255, 0.32), rgba(124, 255, 158, 0.28), transparent);
+  transform: rotate(-4deg) skewX(-25deg);
+  animation-delay: -4s;
+}
+@keyframes pv-aurora {
+  from { opacity: 0.55; }
+  to { opacity: 1; }
+}
+/* Désertique : deux soleils au crépuscule. */
+.sky-suns {
+  inset: 0;
+}
+.sky-suns i {
+  position: absolute;
+  border-radius: 50%;
+}
+.sky-suns i:nth-child(1) {
+  left: 70%; top: 18%; width: 34px; height: 34px;
+  background: radial-gradient(circle, #fff8e0 0%, #ffd166 55%, #e8a23a 100%);
+  box-shadow: 0 0 18px 6px rgba(255, 209, 102, 0.45), 0 0 60px 20px rgba(255, 180, 80, 0.15);
+}
+.sky-suns i:nth-child(2) {
+  left: 76%; top: 27%; width: 18px; height: 18px;
+  background: radial-gradient(circle, #ffffff 0%, #ffc2a0 60%, #ff8a5c 100%);
+  box-shadow: 0 0 12px 4px rgba(255, 150, 110, 0.45);
+}
+/* Toxique et marécageuse : voile de brume au-dessus de l'horizon. */
+.sky-haze {
+  left: 0;
+  right: 0;
+  top: 52%;
+  height: 22%;
+  background: radial-gradient(ellipse 70% 60% at 50% 100%, rgba(var(--band-2), 0.22), transparent 75%);
+  filter: blur(8px);
+}
+
+/* ---------------------------------------------------------------------------------
+   Panneau de colonie (gauche)
+   --------------------------------------------------------------------------------- */
+#pv-colony {
+  --cut: 14px;
+  width: 330px;
+  /* S'arrête au-dessus du journal de bord (150 px, collé en bas à gauche). */
+  max-height: calc(100vh - 270px);
+  padding: 14px 14px 12px;
+  border: none;
+  border-radius: 0;
+  /* Accents cyan aux coins coupés, dessinés en fond (ils ne défilent pas avec le contenu). */
+  background:
+    linear-gradient(rgba(95, 227, 255, 0.7), rgba(95, 227, 255, 0.7)) 0 var(--cut) / 1px 26px no-repeat,
+    linear-gradient(rgba(95, 227, 255, 0.7), rgba(95, 227, 255, 0.7)) var(--cut) 0 / 26px 1px no-repeat,
+    linear-gradient(rgba(95, 227, 255, 0.7), rgba(95, 227, 255, 0.7)) right 0 bottom var(--cut) / 1px 26px no-repeat,
+    linear-gradient(rgba(95, 227, 255, 0.7), rgba(95, 227, 255, 0.7)) right var(--cut) bottom 0 / 26px 1px no-repeat,
+    linear-gradient(180deg, rgba(14, 22, 46, 0.88), rgba(8, 13, 28, 0.86));
+  box-shadow: inset 0 0 0 1px rgba(120, 170, 255, 0.22), inset 0 1px 0 rgba(160, 200, 255, 0.25), 0 10px 40px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(12px);
+  clip-path: polygon(var(--cut) 0, 100% 0, 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, 0 100%, 0 var(--cut));
+  scrollbar-width: thin;
+  scrollbar-color: rgba(120, 170, 255, 0.35) transparent;
+}
+#pv-colony-live,
+#pv-yard {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+#pv-yard:not(:empty) {
+  margin-top: 10px;
+}
+#pv-colony p {
+  margin: 0;
+}
+
+/* En-tête */
+#pv-colony .pv-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+#pv-colony .pv-orb {
+  width: 44px;
+  height: 44px;
+  flex: none;
+  border-radius: 50%;
+  background: radial-gradient(circle at 32% 30%, var(--orb-1) 0%, var(--orb-2) 28%, var(--orb-3) 55%, var(--orb-4) 85%);
+  box-shadow: 0 0 0 1px rgba(var(--orb-glow), 0.5), 0 0 14px rgba(var(--orb-glow), 0.35);
+}
+#pv-colony .pv-title {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+#pv-colony .pv-name {
+  margin: 0;
+  font-family: 'Orbitron', sans-serif;
+  font-weight: 700;
+  font-size: 18px;
+  letter-spacing: 0.06em;
+  text-transform: none;
+  color: #dbe6ff;
+  overflow-wrap: anywhere;
+}
+#pv-colony .pv-sub {
+  font-size: 11.5px;
+  line-height: 1.3;
+  color: #8794b8;
+}
+
+/* Titres de rubrique */
+#pv-colony .pv-sec {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+#pv-colony .pv-sec span {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #8794b8;
+}
+#pv-colony .pv-sec i {
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(120, 170, 255, 0.35), transparent);
+}
+
+/* Jauges */
+#pv-colony .pv-gauge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+}
+#pv-colony .pv-gi {
+  display: flex;
+  color: #dbe6ff;
+}
+#pv-colony .pv-gi .icon-svg {
+  width: 16px;
+  height: 16px;
+}
+#pv-colony .pv-gauge.nrj .pv-gi {
+  color: #ffd166;
+}
+#pv-colony .pv-gl {
+  width: 112px;
+  flex: none;
+}
+#pv-colony .pv-bar {
+  flex: 1;
+  height: 7px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+}
+#pv-colony .pv-bar i {
+  display: block;
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.4s;
+}
+#pv-colony .pop .pv-bar i {
+  background: linear-gradient(90deg, #4fbf74, #7cff9e);
+  box-shadow: 0 0 8px rgba(124, 255, 158, 0.6);
+}
+#pv-colony .work .pv-bar i {
+  background: #5fe3ff;
+  box-shadow: 0 0 8px rgba(95, 227, 255, 0.6);
+}
+#pv-colony .nrj .pv-bar {
+  background: rgba(255, 209, 102, 0.12);
+  box-shadow: inset 0 0 0 1px rgba(255, 209, 102, 0.35);
+}
+#pv-colony .nrj .pv-bar i {
+  background: #ffd166;
+  box-shadow: 0 0 8px rgba(255, 209, 102, 0.55);
+}
+#pv-colony .pv-gauge.warn .pv-bar i {
+  background: #ff7a8a;
+  box-shadow: 0 0 8px rgba(255, 122, 138, 0.6);
+}
+#pv-colony .pv-gauge.warn .pv-gi,
+#pv-colony .pv-gauge.warn .pv-gv {
+  color: #ff7a8a;
+}
+#pv-colony .pv-gv {
+  min-width: 46px;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 11px;
+  text-align: right;
+  white-space: nowrap;
+}
+#pv-colony .pv-gv small {
+  font-size: inherit;
+  color: #8794b8;
+}
+#pv-colony .pv-note {
+  padding-left: 24px;
+  font-size: 11px;
+  color: #8794b8;
+}
+#pv-colony .pv-note .ok {
+  color: #7cff9e;
+}
+#pv-colony .pv-note .bad {
+  color: #ff7a8a;
+}
+
+/* Production */
+#pv-colony .pv-prods {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+#pv-colony .pv-prod {
+  --res: 210, 166, 121;
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 9px;
+  border-radius: 4px;
+  background: linear-gradient(135deg, rgba(var(--res), 0.16), rgba(var(--res), 0.04));
+  border: 1px solid rgba(var(--res), 0.35);
+  color: rgb(var(--res));
+}
+#pv-colony .pv-prod.res-biomasse { --res: 123, 216, 143; }
+#pv-colony .pv-prod.res-velarine { --res: 199, 125, 255; }
+#pv-colony .pv-prod.res-alliages { --res: 159, 180, 200; }
+#pv-colony .pv-prod.res-deuterium { --res: 95, 227, 255; }
+#pv-colony .pv-prod.res-eau { --res: 74, 168, 255; }
+#pv-colony .pv-prod.res-artefacts { --res: 255, 209, 102; }
+/* Jusqu'à trois tuiles par ligne quand les nouvelles ressources s'ajoutent. */
+#pv-colony .pv-prods .pv-prod { flex-basis: calc(33.33% - 6px); }
+#pv-colony .pv-prod .icon-svg {
+  width: 26px;
+  height: 26px;
+  stroke-width: 1.5;
+}
+#pv-colony .pv-prod div {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+#pv-colony .pv-prod b {
+  font-family: 'Orbitron', sans-serif;
+  font-weight: 700;
+  font-size: 19px;
+  line-height: 1;
+}
+#pv-colony .pv-prod.down b {
+  color: #ff7a8a;
+}
+#pv-colony .pv-prod span {
+  font-size: 11px;
+  line-height: 1.2;
+  color: #8794b8;
+}
+
+/* Alertes */
+#pv-colony .pv-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 4px;
+  background: rgba(255, 122, 138, 0.1);
+  border: 1px solid rgba(255, 122, 138, 0.35);
+  font-size: 11.5px;
+  line-height: 1.3;
+  color: #ffb3bc;
+}
+#pv-colony .pv-alert .icon-svg {
+  margin-top: 1px;
+  color: #ff7a8a;
+}
+
+/* Chantiers en cours */
+#pv-colony .pv-job {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 10px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(120, 170, 255, 0.18);
+}
+#pv-colony .pv-ring {
+  position: relative;
+  width: 46px;
+  height: 46px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  color: #7cff9e;
+}
+#pv-colony .pv-ring > svg:not(.icon-svg) {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+#pv-colony .pv-ring circle {
+  fill: none;
+  stroke-width: 3;
+}
+#pv-colony .pv-ring .track {
+  stroke: rgba(255, 255, 255, 0.08);
+}
+#pv-colony .pv-ring .fill {
+  stroke: #7cff9e;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.4s;
+}
+#pv-colony .pv-ring .icon-svg {
+  width: 22px;
+  height: 22px;
+}
+#pv-colony .pv-job-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+#pv-colony .pv-job-text b {
+  font-size: 14px;
+  font-weight: 600;
+}
+#pv-colony .pv-job-text span,
+#pv-colony .pv-job-days span {
+  font-size: 11px;
+  color: #8794b8;
+}
+#pv-colony .pv-job-days {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+#pv-colony .pv-job-days b {
+  font-family: 'Orbitron', sans-serif;
+  font-weight: 700;
+  font-size: 18px;
+  line-height: 1;
+  color: #7cff9e;
+  white-space: nowrap;
+}
+
+/* En orbite */
+#pv-colony .pv-orbit {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+}
+#pv-colony .pv-orbit .chip .icon-svg {
+  color: #5fe3ff;
+}
+
+/* Commandes spatiales : liste compacte */
+#pv-yard {
+  gap: 4px;
+}
+#pv-yard .yard-cat {
+  margin: 5px 0 1px;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #8794b8;
+}
+#pv-yard .yard-option {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 7px;
+  margin: 0;
+  padding: 4px 6px 4px 7px;
+  cursor: default;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(120, 170, 255, 0.14);
+}
+#pv-yard .yard-icon {
+  display: flex;
+  color: #5fe3ff;
+}
+#pv-yard .yard-icon .icon-svg {
+  width: 17px;
+  height: 17px;
+}
+#pv-yard .yard-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-size: 12.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+#pv-yard .yard-size {
+  padding: 0 5px;
+  border-radius: 3px;
+  border: 1px solid rgba(135, 148, 184, 0.4);
+  font-size: 9.5px;
+  line-height: 14px;
+  letter-spacing: 0.03em;
+  color: #aab4d4;
+}
+#pv-yard .yard-size.size-moyen { border-color: rgba(95, 227, 255, 0.45); color: #8fe9ff; }
+#pv-yard .yard-size.size-grand { border-color: rgba(201, 167, 255, 0.5); color: #c9a7ff; }
+#pv-yard .yard-size.size-gigantesque { border-color: rgba(255, 209, 102, 0.55); color: #ffd166; }
+#pv-yard .yard-stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 10.5px;
+}
+#pv-yard .yard-stat .icon-svg {
+  width: 11px;
+  height: 11px;
+}
+#pv-yard .yard-stat.atk { color: #ff8a8a; }
+#pv-yard .yard-stat.def { color: #7fc8ff; }
+#pv-yard .yard-days {
+  min-width: 26px;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 10px;
+  text-align: right;
+  color: #8794b8;
+}
+#pv-yard .yard-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+#pv-yard .yard-main b {
+  font-size: 13px;
+  font-weight: 600;
+}
+#pv-yard .yard-main .chip {
+  padding: 1px 7px 1px 5px;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 10.5px;
+}
+#pv-yard .chip.res-minerais { background: rgba(210, 166, 121, 0.14); color: #d2a679; }
+#pv-yard .chip.res-biomasse { background: rgba(123, 216, 143, 0.14); color: #7bd88f; }
+#pv-yard .chip.res-velarine { background: rgba(199, 125, 255, 0.14); color: #c77dff; }
+#pv-yard .chip.res-alliages { background: rgba(159, 180, 200, 0.14); color: #9fb4c8; }
+#pv-yard .chip.res-deuterium { background: rgba(95, 227, 255, 0.14); color: #5fe3ff; }
+#pv-yard .chip.res-eau { background: rgba(74, 168, 255, 0.14); color: #4aa8ff; }
+#pv-yard .chip.res-artefacts { background: rgba(255, 209, 102, 0.14); color: #ffd166; }
+#pv-yard .chip .icon-svg {
+  width: 11px;
+  height: 11px;
+}
+#pv-yard button[data-pv='shipyard'] {
+  padding: 2px 8px;
+  border-radius: 3px;
+  border: 1px solid rgba(124, 255, 158, 0.6);
+  background: rgba(124, 255, 158, 0.12);
+  color: #7cff9e;
+  font-size: 11.5px;
+  font-weight: 700;
+}
+#pv-yard button[data-pv='shipyard']:hover:not(:disabled) {
+  background: rgba(124, 255, 158, 0.22);
+}
+#pv-yard button[data-pv='shipyard']:disabled {
+  opacity: 1;
+  border-color: rgba(135, 148, 184, 0.35);
+  background: transparent;
+  color: #8794b8;
+}
+/* Motif de refus : sur sa propre ligne, sous la commande, seulement s'il y en a un. */
+#pv-yard .reason {
+  flex-basis: 100%;
+  padding-left: 24px;
+  font-size: 10.5px;
+  line-height: 1.25;
+  color: #8794b8;
+}
+#pv-yard .reason:empty {
+  display: none;
+}
+
+/* Nouvelles ressources : pastilles (coûts, gains) et ligne de gisement de la vue planète */
+.planet-panel .chip.res-alliages .icon-svg { color: #9fb4c8; }
+.planet-panel .chip.res-deuterium .icon-svg { color: #5fe3ff; }
+.planet-panel .chip.res-eau .icon-svg { color: #4aa8ff; }
+.planet-panel .chip.res-artefacts .icon-svg { color: #ffd166; }
+.planet-panel .deposit-line.res-alliages { color: #c3d2e0; }
+.planet-panel .deposit-line.res-deuterium { color: #9ff0ff; }
+.planet-panel .deposit-line.res-eau { color: #8cc8ff; }
+.planet-panel .deposit-line.res-artefacts { color: #ffe09a; }
+
+/* Fouille archéologique : artefacts restants et avancement */
+#pv-tile .pv-dig {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 4px 8px;
+  margin: 8px 0;
+  padding: 7px 9px;
+  border-radius: 4px;
+  background: linear-gradient(135deg, rgba(255, 209, 102, 0.14), rgba(255, 209, 102, 0.03));
+  border: 1px solid rgba(255, 209, 102, 0.35);
+  color: #ffd166;
+  font-size: 12.5px;
+}
+#pv-tile .pv-dig .icon-svg {
+  width: 18px;
+  height: 18px;
+}
+#pv-tile .pv-dig span:not(.pv-bar) {
+  grid-column: 2 / 4;
+}
+#pv-tile .pv-dig .pv-bar {
+  grid-column: 1 / 3;
+  height: 6px;
+  border-radius: 4px;
+  background: rgba(255, 209, 102, 0.12);
+  overflow: hidden;
+}
+#pv-tile .pv-dig .pv-bar i {
+  display: block;
+  height: 100%;
+  background: #ffd166;
+  box-shadow: 0 0 8px rgba(255, 209, 102, 0.6);
+  transition: width 0.4s;
+}
+#pv-tile .pv-dig b {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 11px;
+}
+
+/* Recherche : pastilles, tuile de production, ligne de détail */
+#pv-colony .pv-prod.res-recherche { --res: 201, 167, 255; }
+#pv-yard .chip.res-recherche { background: rgba(201, 167, 255, 0.14); color: #c9a7ff; }
+.planet-panel .chip.res-recherche .icon-svg { color: #c9a7ff; }
+
+/* Bâtiments verrouillés par une technologie : carte atténuée, cadenas, nom de la recherche */
+#pv-tile .build-card.locked {
+  opacity: 1;
+  cursor: default;
+  border-style: dashed;
+  border-color: rgba(201, 167, 255, 0.3);
+  background: rgba(201, 167, 255, 0.04);
+}
+#pv-tile .build-card.locked:hover {
+  background: rgba(201, 167, 255, 0.04);
+}
+#pv-tile .build-card.locked .big-icon {
+  position: relative;
+}
+#pv-tile .build-card.locked .card-name {
+  color: #8794b8;
+}
+#pv-tile .build-card.locked .lock-svg {
+  position: absolute;
+  right: -7px;
+  bottom: -3px;
+  width: 14px;
+  height: 14px;
+  color: #c9a7ff;
+}
+#pv-tile .build-card.locked .big-icon .icon-svg {
+  opacity: 0.4;
+}
+#pv-tile .build-card.locked .lock-reason {
+  font-size: 11px;
+  line-height: 1.25;
+  color: #c9a7ff;
+}
+
+/* Niveau d'un bâtiment : libellé et crans (atteints, possibles, verrouillés) */
+#pv-tile .pv-level {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 8px 0 4px;
+  font-size: 12.5px;
+  color: #dbe6ff;
+}
+#pv-tile .pv-level .icon-svg { width: 16px; height: 16px; color: #7cff9e; }
+#pv-tile .pv-level b { font-family: 'Orbitron', sans-serif; }
+#pv-tile .pv-notches { display: flex; gap: 3px; margin-left: auto; }
+#pv-tile .pv-notches i {
+  width: 16px;
+  height: 6px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.06);
+  box-shadow: inset 0 0 0 1px rgba(135, 148, 184, 0.25);
+}
+#pv-tile .pv-notches i.open { box-shadow: inset 0 0 0 1px rgba(124, 255, 158, 0.55); }
+#pv-tile .pv-notches i.on { background: #7cff9e; box-shadow: 0 0 6px rgba(124, 255, 158, 0.6); }
+#pv-tile .pv-upnote { margin: 2px 0 8px; }
+/* Carte « Améliorer au niveau N » */
+#pv-tile .pv-upgrade {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 6px 0 10px;
+  padding: 8px 10px;
+  border-radius: 4px;
+  background: linear-gradient(135deg, rgba(124, 255, 158, 0.1), rgba(124, 255, 158, 0.02));
+  border: 1px solid rgba(124, 255, 158, 0.3);
+}
+#pv-tile .pv-up-title { display: flex; align-items: center; gap: 6px; font-size: 13px; }
+#pv-tile .pv-up-title .icon-svg { width: 16px; height: 16px; color: #7cff9e; }
+#pv-tile .pv-upgrade .chips { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+#pv-tile .pv-upgrade button { align-self: flex-start; }
+#pv-tile .pv-upgrade .reason { font-size: 11px; color: #8794b8; }
+#pv-tile .pv-upgrade .reason:empty { display: none; }
+/* Niveau suivant bloqué par une recherche */
+#pv-tile .pv-uplock {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 4px 0 10px;
+  padding: 6px 9px;
+  border-radius: 4px;
+  border: 1px dashed rgba(201, 167, 255, 0.35);
+  font-size: 11.5px;
+  color: #c9a7ff;
+}
+#pv-tile .pv-uplock .lock-svg { width: 13px; height: 13px; flex: none; }
+
+/* Défense de la colonie (rangée « Défense et orbite ») */
+#pv-colony .pv-orbit .chip.pv-defense { color: #ffb0b0; border-color: rgba(255, 122, 138, 0.4); }
+#pv-colony .pv-orbit .chip.pv-defense .icon-svg { color: #ff8a8a; }
+#pv-colony .pv-orbit .chip.pv-defense.none { color: #8794b8; }
+#pv-colony .pv-orbit .chip.pv-defense.none .icon-svg { color: #8794b8; }

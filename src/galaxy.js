@@ -60,7 +60,37 @@ export function generateCluster(seed) {
   placeRuins(rng, stars, homeId);
   placeRivals(stars, homeId);
   const currents = createCurrents(rng, stars, homeId);
+  addWaterAndFuel(seed, stars, homeId);
   return { seed, stars, currents, homeId };
+}
+
+// Eau et deutérium : tirés avec leur propre générateur, après tout le reste, pour que les
+// amas déjà générés (et les parties sauvegardées) gardent exactement les mêmes étoiles et planètes.
+const WATER_FUEL = {
+  tempere: [1.5, 0.5],
+  oceanique: [3, 2],
+  marecageuse: [2, 1],
+  desertique: [0.3, 0],
+  volcanique: [0.2, 0.3],
+  toxique: [0.5, 0.5],
+  glacee: [3, 1.5],
+  gazeuse: [0, 3],
+  asteroides: [1, 0],
+};
+
+function addWaterAndFuel(seed, stars, homeId) {
+  const rng = createRng((seed ^ 0x9e3779b9) >>> 0);
+  for (const star of stars) {
+    for (const planet of star.planets) {
+      const [water, fuel] = WATER_FUEL[planet.type];
+      const roll = (base) => Math.max(0, Math.min(3, Math.round(base * rng.range(0.4, 1.3) + rng.gauss() * 0.5)));
+      planet.deposits.eau = roll(water);
+      planet.deposits.deuterium = roll(fuel);
+    }
+  }
+  // Le monde tempéré du système de départ a toujours un peu d'eau.
+  const home = stars[homeId].planets.find((p) => p.type === 'tempere');
+  if (home) home.deposits.eau = Math.max(1, home.deposits.eau);
 }
 
 function placeStars(rng) {

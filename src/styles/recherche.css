@@ -1,0 +1,547 @@
+/* Écran de recherche (arbre des technologies). */
+
+#research {
+  position: fixed;
+  inset: 0;
+  z-index: 45;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14px;
+  background: rgba(2, 4, 10, 0.6);
+  backdrop-filter: blur(4px);
+}
+#research[hidden] {
+  display: none;
+}
+
+/* Panneau : coins coupés, filet cyan (fond = filet, ::before = panneau intérieur) */
+.research.panel {
+  --cut: 16px;
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  flex-direction: column;
+  width: min(1240px, 100%);
+  height: min(860px, 100%);
+  padding: 12px 16px 14px;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  background: linear-gradient(90deg, rgba(95, 227, 255, 0.55), rgba(120, 170, 255, 0.22) 30%, rgba(120, 170, 255, 0.22) 70%, rgba(95, 227, 255, 0.55));
+  clip-path: polygon(var(--cut) 0, calc(100% - var(--cut)) 0, 100% var(--cut), 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, var(--cut) 100%, 0 calc(100% - var(--cut)), 0 var(--cut));
+  font-family: 'Exo 2', sans-serif;
+  color: #dbe6ff;
+}
+.research.panel::before {
+  content: '';
+  position: absolute;
+  inset: 1px;
+  z-index: -1;
+  background: linear-gradient(180deg, rgba(14, 24, 48, 0.97), rgba(6, 10, 22, 0.97));
+  box-shadow: inset 0 1px 0 rgba(95, 227, 255, 0.35);
+  clip-path: inherit;
+}
+
+/* En-tête : titre, chiffres, projet en cours, fermer */
+.rs-head {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding-bottom: 10px;
+  margin-bottom: 10px;
+  border-bottom: 1px solid rgba(120, 170, 255, 0.18);
+}
+.rs-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #e8f6ff;
+  text-shadow: 0 0 10px rgba(95, 227, 255, 0.5);
+}
+.rs-title .icon-svg {
+  width: 22px;
+  height: 22px;
+  color: #5fe3ff;
+  stroke-width: 1.4;
+  filter: drop-shadow(0 0 4px #5fe3ff);
+}
+.rs-figures {
+  display: flex;
+  gap: 14px;
+}
+.rs-fig {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.1;
+}
+.rs-fig small,
+.rs-proj-line small {
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #8794b8;
+}
+.rs-fig b {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 15px;
+  color: #7cff9e;
+}
+.rs-fig + .rs-fig b {
+  color: #ffd166;
+}
+.rs-project {
+  flex: 1;
+  min-width: 0;
+}
+.rs-proj-line {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 4px;
+  white-space: nowrap;
+}
+.rs-proj-name {
+  min-width: 0;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: none;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: #5fe3ff;
+}
+.rs-proj-eta {
+  margin-left: auto;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 10.5px;
+  color: #dbe6ff;
+}
+.rs-none {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #ffd166;
+}
+.rs-glow {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ffd166;
+  box-shadow: 0 0 8px #ffd166;
+  animation: rs-pulse 1.6s ease-in-out infinite;
+}
+@keyframes rs-pulse {
+  50% { opacity: 0.35; box-shadow: 0 0 2px #ffd166; }
+}
+.rs-close {
+  flex: none;
+  padding: 3px 10px;
+  border-radius: 0;
+  border-color: rgba(95, 227, 255, 0.45);
+  background: rgba(95, 227, 255, 0.06);
+  color: #8794b8;
+  clip-path: polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px);
+}
+.rs-close:hover {
+  background: rgba(95, 227, 255, 0.16);
+  color: #dbe6ff;
+}
+
+/* Barres de progression */
+.rs-bar {
+  display: block;
+  height: 4px;
+  background: rgba(95, 227, 255, 0.15);
+}
+.rs-bar.big {
+  height: 6px;
+}
+.rs-bar i {
+  display: block;
+  height: 100%;
+  background: #5fe3ff;
+  box-shadow: 0 0 6px #5fe3ff;
+  transition: width 0.3s;
+}
+
+/* Couleurs des 7 branches */
+.rs-b-propulsion { --branch: #5fe3ff; }
+.rs-b-structure { --branch: #9fb4c8; }
+.rs-b-armement { --branch: #ff7a8a; }
+.rs-b-industrie { --branch: #d2a679; }
+.rs-b-vie { --branch: #7bd88f; }
+.rs-b-energie { --branch: #ffd166; }
+.rs-b-veilleurs { --branch: #c77dff; }
+
+/* Onglets des branches : icône, libellé, acquises / total, jauge fine */
+.rs-tabs {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 5px;
+  margin-bottom: 10px;
+}
+.rs-tab {
+  --cut: 7px;
+  position: relative;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto;
+  align-items: center;
+  column-gap: 6px;
+  row-gap: 1px;
+  min-width: 0;
+  padding: 6px 8px 8px;
+  border: 1px solid color-mix(in srgb, var(--branch) 30%, transparent);
+  border-radius: 0;
+  background: rgba(8, 13, 28, 0.9);
+  clip-path: polygon(var(--cut) 0, 100% 0, 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, 0 100%, 0 var(--cut));
+  color: color-mix(in srgb, var(--branch) 70%, #8794b8);
+  text-align: left;
+  cursor: pointer;
+}
+.rs-tab:hover {
+  background: color-mix(in srgb, var(--branch) 10%, rgba(8, 13, 28, 0.9));
+  color: var(--branch);
+}
+.rs-tab.selected {
+  border-color: var(--branch);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--branch) 22%, transparent), rgba(8, 13, 28, 0.9));
+  box-shadow: inset 0 -2px 0 var(--branch);
+  color: var(--branch);
+}
+.rs-tab .icon-svg {
+  grid-row: 1 / 3;
+  width: 22px;
+  height: 22px;
+  stroke-width: 1.4;
+  filter: drop-shadow(0 0 3px var(--branch));
+}
+.rs-tab-label {
+  overflow: hidden;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  line-height: 1.2;
+  text-transform: uppercase;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  padding-right: 6px;
+}
+.rs-tab-count {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 9.5px;
+  color: #8794b8;
+}
+.rs-tab-count b {
+  font-size: 11px;
+  color: #dbe6ff;
+}
+.rs-tab.complete .rs-tab-count b {
+  color: #7cff9e;
+}
+.rs-tab-meter {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: 3px;
+  height: 2px;
+  background: color-mix(in srgb, var(--branch) 15%, transparent);
+}
+.rs-tab-meter i {
+  display: block;
+  height: 100%;
+  background: var(--branch);
+  box-shadow: 0 0 4px var(--branch);
+}
+/* Repères : projet en cours (cyan) ou recherche disponible (vert) dans la branche */
+.rs-mark {
+  position: absolute;
+  top: 5px;
+  right: 6px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+.rs-mark.current {
+  background: #5fe3ff;
+  box-shadow: 0 0 6px #5fe3ff;
+  animation: rs-pulse 1.6s ease-in-out infinite;
+}
+.rs-mark.open {
+  background: #7cff9e;
+  box-shadow: 0 0 5px #7cff9e;
+}
+
+/* Arbre de la branche : 4 rangées de paliers, défilement interne si besoin */
+.rs-tree {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding-right: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.rs-row {
+  display: grid;
+  grid-template-columns: 52px 1fr;
+  gap: 10px;
+  align-items: stretch;
+}
+.rs-tier {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  border-left: 1px solid color-mix(in srgb, var(--branch) 45%, transparent);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--branch) 10%, transparent), transparent);
+  color: #8794b8;
+}
+.rs-tier small {
+  font-size: 8.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.rs-tier b {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 18px;
+  color: var(--branch);
+  text-shadow: 0 0 6px color-mix(in srgb, var(--branch) 60%, transparent);
+}
+/* Fil reliant les paliers */
+.rs-row + .rs-row .rs-tier::before {
+  content: '';
+  position: absolute;
+  top: -9px;
+  left: 50%;
+  width: 1px;
+  height: 9px;
+  background: color-mix(in srgb, var(--branch) 45%, transparent);
+}
+.rs-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+}
+.rs-cards > .rs-card {
+  flex: 1 1 250px;
+  max-width: 380px;
+}
+.rs-empty {
+  align-self: center;
+  margin: 0;
+  font-size: 11px;
+  font-style: italic;
+  color: #5d6888;
+}
+
+/* Cartes de technologie */
+.rs-card {
+  --cut: 7px;
+  --edge: rgba(120, 170, 255, 0.3);
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 7px 8px 7px;
+  background: var(--edge);
+  clip-path: polygon(var(--cut) 0, 100% 0, 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, 0 100%, 0 var(--cut));
+  font-size: 11.5px;
+  line-height: 1.3;
+}
+.rs-card::before {
+  content: '';
+  position: absolute;
+  inset: 1px;
+  z-index: -1;
+  background: linear-gradient(180deg, rgba(16, 26, 50, 0.98), rgba(8, 13, 28, 0.98));
+  box-shadow: inset 3px 0 0 -1px var(--branch);
+  clip-path: inherit;
+}
+.rs-card-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px;
+}
+.rs-name {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: #e8f6ff;
+}
+.rs-cost {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 10px;
+  color: #8794b8;
+}
+.rs-cost b {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 10.5px;
+  color: #dbe6ff;
+}
+.rs-arte {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  color: #ffd166;
+}
+.rs-arte .icon-svg {
+  width: 13px;
+  height: 13px;
+  stroke-width: 1.5;
+  filter: drop-shadow(0 0 2px #ffd166);
+}
+.rs-unlocks {
+  color: #c4d2f0;
+}
+.rs-req {
+  font-size: 10px;
+  color: #8794b8;
+}
+.rs-req .ok {
+  color: #7cff9e;
+}
+.rs-req .missing {
+  color: #ff7a8a;
+}
+/* Prérequis d'une autre branche : lien vers cette branche, son nom en petit */
+.rs-link {
+  display: inline;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: none;
+  font: inherit;
+  text-decoration: underline dotted color-mix(in srgb, var(--branch) 70%, transparent);
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.rs-link small {
+  font-size: 9px;
+  color: var(--branch);
+  opacity: 0.85;
+}
+.rs-link:hover {
+  filter: brightness(1.3);
+}
+.rs-card.flash {
+  animation: rs-flash 1.2s ease-out;
+}
+@keyframes rs-flash {
+  0%, 40% { --edge: var(--branch); filter: brightness(1.5); }
+}
+.rs-foot {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 2px;
+  font-size: 10.5px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.rs-foot .icon-svg {
+  width: 13px;
+  height: 13px;
+  stroke-width: 2;
+}
+.rs-start {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: 0;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  clip-path: polygon(5px 0, 100% 0, 100% calc(100% - 5px), calc(100% - 5px) 100%, 0 100%, 0 5px);
+}
+.rs-start .icon-svg {
+  width: 13px;
+  height: 13px;
+  stroke-width: 1.5;
+}
+.rs-why {
+  font-size: 10px;
+  color: #ff7a8a;
+}
+
+/* États */
+.rs-card.done {
+  --edge: rgba(124, 255, 158, 0.55);
+}
+.rs-card.done .rs-done {
+  color: #7cff9e;
+}
+.rs-card.done .rs-done .icon-svg {
+  filter: drop-shadow(0 0 3px #7cff9e);
+}
+.rs-card.current {
+  --edge: #5fe3ff;
+  box-shadow: 0 0 12px rgba(95, 227, 255, 0.35);
+}
+.rs-card.current::before {
+  background: linear-gradient(180deg, rgba(20, 44, 70, 0.98), rgba(8, 16, 32, 0.98));
+}
+.rs-card.current .rs-name {
+  color: #5fe3ff;
+  text-shadow: 0 0 6px rgba(95, 227, 255, 0.6);
+}
+.rs-live {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 3px;
+}
+.rs-live .rs-bar {
+  width: 100%;
+}
+.rs-count {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 9.5px;
+  letter-spacing: 0;
+  color: #5fe3ff;
+  text-transform: none;
+}
+.rs-card.available {
+  --edge: rgba(124, 255, 158, 0.35);
+}
+.rs-card.available[data-research] {
+  cursor: pointer;
+}
+.rs-card.available[data-research]:hover {
+  --edge: rgba(124, 255, 158, 0.8);
+}
+.rs-card.locked {
+  --edge: rgba(120, 170, 255, 0.15);
+}
+.rs-card.locked > :not(.rs-req) {
+  opacity: 0.5;
+}
+.rs-card.locked .rs-lock {
+  color: #8794b8;
+}

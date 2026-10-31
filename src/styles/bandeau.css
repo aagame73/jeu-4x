@@ -1,0 +1,424 @@
+/* Bandeau du haut « Hologramme » et polices (Orbitron + Exo 2). */
+
+/* Polices : Exo 2 pour le texte, Orbitron pour les titres et les chiffres */
+html,
+body {
+  font-family: 'Exo 2', 'Segoe UI', system-ui, sans-serif;
+}
+.panel h2,
+.menu-title {
+  font-family: 'Orbitron', 'Exo 2', sans-serif;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+}
+.info.panel h2 {
+  font-size: 18px;
+  letter-spacing: 0.03em;
+}
+
+/* Cadre à coins coupés : fond = filet lumineux, ::before = panneau intérieur */
+.topbar.panel {
+  --cut: 14px;
+  isolation: isolate;
+  gap: 8px;
+  padding: 7px 12px;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  white-space: nowrap;
+  background: linear-gradient(90deg, rgba(95, 227, 255, 0.55), rgba(120, 170, 255, 0.22) 30%, rgba(120, 170, 255, 0.22) 70%, rgba(95, 227, 255, 0.55));
+  clip-path: polygon(var(--cut) 0, calc(100% - var(--cut)) 0, 100% var(--cut), 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, var(--cut) 100%, 0 calc(100% - var(--cut)), 0 var(--cut));
+}
+.topbar.panel::before {
+  content: '';
+  position: absolute;
+  inset: 1px;
+  z-index: -1;
+  background: linear-gradient(180deg, rgba(14, 24, 48, 0.95), rgba(6, 10, 22, 0.95));
+  box-shadow: inset 0 1px 0 rgba(95, 227, 255, 0.35);
+  clip-path: inherit;
+}
+
+/* Titre du jeu */
+.topbar .title {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: none;
+}
+.topbar .game-name {
+  font-family: 'Orbitron', sans-serif;
+  font-weight: 700;
+  font-size: 9px;
+  line-height: 1.25;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  text-shadow: 0 0 8px rgba(95, 227, 255, 0.6);
+}
+.topbar .tag {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  border-radius: 0;
+  background: none;
+  font-size: 8.5px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--current);
+}
+.topbar .tag::before {
+  content: '';
+  width: 16px;
+  height: 1px;
+  background: var(--current);
+  box-shadow: 0 0 4px var(--current);
+}
+
+/* Zone des valeurs */
+.topbar .stats {
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+.topbar .stats b {
+  font-family: 'Orbitron', sans-serif;
+  font-weight: 700;
+  color: var(--text);
+}
+.topbar .stats .sep {
+  flex: none;
+  width: 1px;
+  height: 34px;
+  align-self: center;
+  margin: 0 2px;
+  background: linear-gradient(180deg, transparent, var(--current), transparent);
+}
+.topbar .icon-svg {
+  stroke-width: 1.2;
+}
+
+/* Ressources : cartouches compacts à deux coins coupés (icône + valeur, variation dessous) */
+.topbar .res {
+  --cut: 6px;
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 4px 5px 4px 4px;
+  background: color-mix(in srgb, var(--res) 45%, transparent);
+  clip-path: polygon(var(--cut) 0, 100% 0, 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, 0 100%, 0 var(--cut));
+}
+.topbar .res::before {
+  content: '';
+  position: absolute;
+  inset: 1px;
+  z-index: -1;
+  background: rgba(10, 16, 32, 0.96);
+  clip-path: inherit;
+}
+.topbar .res-minerais { --res: #d2a679; --res-light: #e8c49a; }
+.topbar .res-alliages { --res: #9fb4c8; --res-light: #cfdbe6; }
+.topbar .res-biomasse { --res: #7bd88f; --res-light: #9be8ab; }
+.topbar .res-eau { --res: #4aa8ff; --res-light: #9dd0ff; }
+.topbar .res-deuterium { --res: #5fe3ff; --res-light: #b3f3ff; }
+.topbar .res-velarine { --res: var(--velarine); --res-light: #dcb3ff; }
+.topbar .res-artefacts { --res: #ffd166; --res-light: #ffe3a0; }
+.topbar .res > .icon-svg {
+  flex: none;
+  width: 17px;
+  height: 17px;
+  color: var(--res-light);
+  filter: drop-shadow(0 0 3px var(--res));
+}
+.topbar .res-body,
+.topbar .counter-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  line-height: 1;
+}
+.topbar .res-body {
+  min-width: 32px;
+}
+.topbar .res b {
+  font-size: 12px;
+  color: var(--res-light);
+}
+.topbar .res small {
+  font-size: 8.5px;
+  color: var(--accent);
+}
+.topbar .res small.flat {
+  color: var(--muted);
+}
+.topbar .res small.down {
+  color: var(--rival, #ff6b6b);
+}
+
+/* Jauges sous les valeurs */
+.topbar .gauge {
+  display: block;
+  height: 3px;
+  margin-top: 1px;
+  background: color-mix(in srgb, var(--res) 18%, transparent);
+}
+.topbar .gauge > span {
+  display: block;
+  height: 100%;
+  background: var(--res);
+  box-shadow: 0 0 5px var(--res);
+}
+
+/* Compteurs : jour, systèmes, lueurs */
+.topbar .counter {
+  --res: var(--current);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.topbar .counter > .icon-svg {
+  flex: none;
+  width: 15px;
+  height: 15px;
+  color: var(--current);
+  filter: drop-shadow(0 0 3px var(--current));
+}
+.topbar .counter b {
+  font-size: 12px;
+}
+.topbar .counter b small {
+  font-size: 9.5px;
+  color: var(--muted);
+}
+.topbar .counter.glows > .icon-svg {
+  color: var(--gold);
+  filter: drop-shadow(0 0 3px var(--gold));
+}
+.topbar .counter.glows b {
+  color: var(--gold);
+}
+
+/* Boutons : menu, pause et vitesses */
+.topbar .menu-btn,
+.topbar .clock button {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  border-radius: 0;
+  padding: 6px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+.topbar .menu-btn {
+  flex: none;
+  border: 1px solid rgba(95, 227, 255, 0.45);
+  background: rgba(95, 227, 255, 0.06);
+  clip-path: polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px);
+}
+.topbar .menu-btn:hover {
+  background: rgba(95, 227, 255, 0.16);
+}
+.topbar .menu-btn .icon-svg {
+  color: var(--current);
+  stroke-width: 1.6;
+}
+.topbar .clock {
+  flex: none;
+  gap: 3px;
+}
+.topbar .clock .pause {
+  justify-content: center;
+  min-width: 34px;
+  clip-path: polygon(6px 0, 100% 0, 100% 100%, 0 100%, 0 6px);
+}
+.topbar .clock .pause .icon-svg {
+  width: 12px;
+  height: 12px;
+  stroke-width: 2;
+}
+.topbar .clock .pause.paused {
+  border-color: rgba(255, 209, 102, 0.6);
+  background: rgba(255, 209, 102, 0.12);
+  box-shadow: inset 0 0 10px rgba(255, 209, 102, 0.25);
+  color: #fff3d1;
+}
+.topbar .clock .pause.paused .icon-svg {
+  color: var(--gold);
+  filter: drop-shadow(0 0 3px var(--gold));
+}
+.topbar .clock .speed {
+  gap: 1px;
+  padding: 6px 4px;
+  border-color: rgba(120, 170, 255, 0.3);
+  background: transparent;
+  color: var(--muted);
+  font-family: 'Orbitron', sans-serif;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.topbar .clock .speed:last-child {
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%);
+}
+.topbar .clock .speed .icon-svg {
+  width: 12px;
+  height: 12px;
+  stroke-width: 2;
+}
+.topbar .clock .speed:hover {
+  background: rgba(120, 170, 255, 0.12);
+  color: var(--text);
+}
+.topbar .clock .speed.active {
+  border-color: rgba(124, 255, 158, 0.6);
+  background: rgba(124, 255, 158, 0.14);
+  color: var(--accent);
+}
+.topbar .clock .speed.active .icon-svg {
+  filter: drop-shadow(0 0 3px var(--accent));
+}
+
+/* Bouton plein écran : icône seule, même cadre que le menu */
+.topbar .fs-btn {
+  padding: 6px 7px;
+}
+.topbar .fs-btn .icon-svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* Coût en deutérium sur le bouton « Envoyer » de la fiche */
+.fuel {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  white-space: nowrap;
+}
+.fuel .icon-svg {
+  width: 13px;
+  height: 13px;
+  color: #5fe3ff;
+  vertical-align: -2px;
+}
+
+/* Barres de gisements des nouvelles ressources (fiche du système) */
+.deposit.eau .on { background: #4aa8ff; }
+.deposit.deuterium .on { background: #5fe3ff; }
+
+/* Boutons à icône seule (menu) */
+.topbar .menu-btn.icon-only {
+  padding: 6px 7px;
+}
+.topbar .menu-btn.icon-only .icon-svg {
+  width: 15px;
+  height: 15px;
+}
+
+/* Bouton « Recherche » : barre fine du projet en cours sous le libellé, point or sans projet */
+.topbar .rs-btn {
+  position: relative;
+}
+.topbar .rs-btn .icon-svg {
+  width: 15px;
+  height: 15px;
+  stroke-width: 1.3;
+  filter: drop-shadow(0 0 3px var(--current));
+}
+.topbar .rs-meter {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: 2px;
+  height: 2px;
+  background: rgba(95, 227, 255, 0.18);
+}
+.topbar .rs-meter i {
+  display: block;
+  height: 100%;
+  width: 0;
+  background: var(--current);
+  box-shadow: 0 0 4px var(--current);
+  transition: width 0.3s;
+}
+.topbar .rs-dot {
+  display: none;
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--gold);
+  box-shadow: 0 0 6px var(--gold);
+  animation: rs-btn-pulse 1.6s ease-in-out infinite;
+}
+.topbar .rs-btn.idle .rs-dot {
+  display: block;
+}
+.topbar .rs-btn.idle .rs-meter {
+  display: none;
+}
+.topbar .rs-btn.idle {
+  border-color: rgba(255, 209, 102, 0.55);
+}
+@keyframes rs-btn-pulse {
+  50% { opacity: 0.35; box-shadow: 0 0 2px var(--gold); }
+}
+/* Écran étroit : le bouton Recherche passe en icône seule pour que le bandeau tienne sur une ligne */
+@media (max-width: 1180px) {
+  .topbar .rs-btn {
+    padding: 6px 8px;
+  }
+  .topbar .rs-btn-label {
+    display: none;
+  }
+}
+
+/* Panneau Flotte : pastilles taille / attaque / défense sous l'immatriculation */
+.ship-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  margin: 2px 0 1px;
+}
+.ship-tag {
+  --tag: #9fb4c8;
+  --cut: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 5px 1px 3px;
+  background: color-mix(in srgb, var(--tag) 14%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tag) 45%, transparent);
+  clip-path: polygon(var(--cut) 0, 100% 0, 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, 0 100%, 0 var(--cut));
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  line-height: 1.3;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--tag) 80%, #dbe6ff);
+  white-space: nowrap;
+}
+.ship-tag .icon-svg {
+  width: 11px;
+  height: 11px;
+  stroke-width: 1.8;
+  filter: drop-shadow(0 0 2px var(--tag));
+}
+.ship-tag b {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 9.5px;
+  letter-spacing: 0;
+  color: #e8f6ff;
+}
+.ship-tag.size-petit { --tag: #8fd3ff; }
+.ship-tag.size-moyen { --tag: #7cff9e; }
+.ship-tag.size-grand { --tag: #ffd166; }
+.ship-tag.size-gigantesque { --tag: #c77dff; }
+.ship-tag.atk { --tag: #ff7a8a; }
+.ship-tag.def { --tag: #5fe3ff; }
