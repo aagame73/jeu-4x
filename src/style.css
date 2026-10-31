@@ -897,3 +897,9 @@ button.big .small {
   padding: 6px 12px;
   white-space: nowrap;
 }
+
+/* Lunes rangées sous leur planète dans la fiche du système */
+.planet.moon {
+  margin-left: 18px;
+  border-left: 1px dashed rgba(120, 170, 255, 0.3);
+}

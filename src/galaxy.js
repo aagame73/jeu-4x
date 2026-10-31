@@ -23,6 +23,7 @@ export const PLANET_TYPES = {
   glacee: { label: 'Glacée', dep: { minerais: 1, energie: 1, biomasse: 0.3, velarine: 0.1 } },
   gazeuse: { label: 'Géante gazeuse', dep: { minerais: 0, energie: 1.5, biomasse: 0, velarine: 0.6 }, colonisable: false },
   asteroides: { label: "Ceinture d'astéroïdes", dep: { minerais: 3, energie: 0, biomasse: 0, velarine: 0.2 }, colonisable: false },
+  rocheuse: { label: 'Lune rocheuse', dep: { minerais: 1.5, energie: 0.5, biomasse: 0, velarine: 0.1 }, colonisable: false },
 };
 
 // Nombre d'hexagones de surface selon la taille.
@@ -61,6 +62,7 @@ export function generateCluster(seed) {
   placeRivals(stars, homeId);
   const currents = createCurrents(rng, stars, homeId);
   addWaterAndFuel(seed, stars, homeId);
+  addMoonsAndRings(seed, stars);
   return { seed, stars, currents, homeId };
 }
 
@@ -76,6 +78,7 @@ const WATER_FUEL = {
   glacee: [3, 1.5],
   gazeuse: [0, 3],
   asteroides: [1, 0],
+  rocheuse: [0.4, 0],
 };
 
 function addWaterAndFuel(seed, stars, homeId) {
@@ -91,6 +94,51 @@ function addWaterAndFuel(seed, stars, homeId) {
   // Le monde tempéré du système de départ a toujours un peu d'eau.
   const home = stars[homeId].planets.find((p) => p.type === 'tempere');
   if (home) home.deposits.eau = Math.max(1, home.deposits.eau);
+}
+
+// Lunes et anneaux, eux aussi tirés à part et ajoutés EN FIN de liste des planètes : les numéros
+// des planètes existantes (colonies, surfaces, sauvegardes) ne changent pas.
+// Une lune porte `moonOf` = numéro de sa planète ; certaines sont habitables (avec une surface).
+const MOON_COUNT = {
+  gazeuse: [[0, 1], [1, 3], [2, 3], [3, 2]],
+  grande: [[0, 5], [1, 4], [2, 1]],
+  moyenne: [[0, 7], [1, 3]],
+  petite: [[0, 9], [1, 1]],
+};
+const MOON_TYPES = {
+  gazeuse: [['rocheuse', 4], ['glacee', 3], ['volcanique', 2], ['toxique', 1], ['oceanique', 0.5], ['tempere', 0.4]],
+  tellurique: [['rocheuse', 6], ['glacee', 2], ['desertique', 1], ['volcanique', 1]],
+};
+
+function addMoonsAndRings(seed, stars) {
+  const rng = createRng((seed ^ 0x51ed270b) >>> 0);
+  for (const star of stars) {
+    const count = star.planets.length;
+    for (let index = 0; index < count; index++) {
+      const parent = star.planets[index];
+      if (parent.type === 'asteroides') continue;
+      if (parent.type === 'gazeuse') parent.ring = rng.chance(0.5);
+      const moons = rng.weighted(MOON_COUNT[parent.type === 'gazeuse' ? 'gazeuse' : parent.size]);
+      for (let k = 0; k < moons; k++) {
+        const type = rng.weighted(MOON_TYPES[parent.type === 'gazeuse' ? 'gazeuse' : 'tellurique']);
+        const colonisable = PLANET_TYPES[type].colonisable !== false;
+        const deposits = rollDeposits(rng, type);
+        const [water, fuel] = WATER_FUEL[type];
+        const roll = (base) => Math.max(0, Math.min(3, Math.round(base * rng.range(0.4, 1.3) + rng.gauss() * 0.5)));
+        deposits.eau = roll(water);
+        deposits.deuterium = roll(fuel);
+        star.planets.push({
+          name: `${parent.name} ${'abcd'[k]}`,
+          type,
+          size: colonisable ? (rng.chance(0.8) ? 'petite' : 'moyenne') : null,
+          deposits,
+          ruins: false,
+          inhabitedBy: null,
+          moonOf: index,
+        });
+      }
+    }
+  }
 }
 
 function placeStars(rng) {

@@ -3,9 +3,11 @@ import './styles/bandeau.css';
 import './styles/planete.css';
 import './styles/infobulles.css';
 import './styles/recherche.css';
+import './styles/systeme.css';
 import { CONFIG } from './config.js';
 import { createGame, tick, currentDay, sendShip, startAnalysis, selectedShip, foundColony, startShipyard, startResearch } from './game.js';
 import { createResearchView } from './researchView.js';
+import { createSystemView } from './systemView.js';
 import { createGalaxyView } from './scene.js';
 import { createUI } from './ui.js';
 import { createPlanetView } from './planetView.js';
@@ -50,6 +52,7 @@ function refresh() {
   view.update();
   ui.render();
   planetView.update();
+  systemView.update();
   if (researchView.isOpen) researchView.render();
 }
 
@@ -65,6 +68,7 @@ function advanceTime(dt) {
   } else if (currentDay(game) !== day) {
     ui.renderLive();
     planetView.renderLive();
+    systemView.renderLive();
     if (researchView.isOpen) researchView.renderLive();
   }
   if (autosave && currentDay(game) !== day && currentDay(game) % AUTOSAVE_DAYS === 0) writeSlot('auto', game);
@@ -77,6 +81,9 @@ const view = createGalaxyView(document.getElementById('scene'), game, {
   },
   onSelectShip(id) {
     actions.onSelectShip(id);
+  },
+  onOpenSystem(id) {
+    actions.onOpenSystem(id);
   },
   onFrame: advanceTime,
 });
@@ -118,14 +125,40 @@ const actions = {
   },
   // founding : la vue s'ouvre pour choisir la case où poser une nouvelle colonie.
   onOpenPlanet(starId, planetIndex, founding = false) {
+    returnToSystem = systemView.isOpen ? starId : returnToSystem;
+    if (systemView.isOpen) {
+      systemView.close();
+      document.body.classList.remove('system-open');
+    }
     planetView.open(starId, planetIndex, founding ? game.selectedShipId : null);
     view.setActive(false);
     document.body.classList.add('planet-open');
   },
+  // Retour : vers la vue du système si la planète a été ouverte depuis elle, sinon vers l'amas.
   onClosePlanet() {
     planetView.close();
-    view.setActive(true);
     document.body.classList.remove('planet-open');
+    if (returnToSystem !== null) {
+      const starId = returnToSystem;
+      returnToSystem = null;
+      actions.onOpenSystem(starId);
+    } else {
+      view.setActive(true);
+    }
+  },
+  onOpenSystem(starId) {
+    if (game.stars[starId].level < 2) return;
+    game.selectedStarId = starId;
+    systemView.open(starId);
+    view.setActive(false);
+    document.body.classList.add('system-open');
+    refresh();
+  },
+  onCloseSystem() {
+    systemView.close();
+    returnToSystem = null;
+    view.setActive(true);
+    document.body.classList.remove('system-open');
   },
   onFoundColony(shipId, starId, planetIndex, tileIndex) {
     const ship = game.ships.find((s) => s.id === shipId);
@@ -174,6 +207,8 @@ const actions = {
 const ui = createUI(document.getElementById('ui'), game, actions);
 const planetView = createPlanetView(document.getElementById('planet-view'), game, actions);
 const researchView = createResearchView(document.getElementById('research'), game, actions);
+const systemView = createSystemView(document.getElementById('system-view'), game, actions);
+let returnToSystem = null; // système à rouvrir en quittant la vue d'une planète
 let pausedBeforeResearch = true;
 
 // Le menu met la partie en pause et rétablit l'état d'avant à sa fermeture.
@@ -215,6 +250,7 @@ window.addEventListener('keydown', (e) => {
     actions.onCloseResearch();
   } else if (e.key === 'Escape') {
     if (planetView.isOpen) actions.onClosePlanet();
+    else if (systemView.isOpen) actions.onCloseSystem();
     else menu.open();
   } else if (e.code === 'KeyR' && !e.ctrlKey && !e.metaKey && !e.altKey) {
     actions.onOpenResearch();

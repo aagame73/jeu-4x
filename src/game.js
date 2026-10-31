@@ -495,6 +495,7 @@ export function tick(game, days) {
 // Au premier passage, on ne repère que les grosses planètes (géantes gazeuses, grandes
 // planètes, et une moyenne sur deux) ; l'analyse révèle toutes les autres.
 function isDetectable(planet, index) {
+  if (planet.moonOf !== undefined) return false; // les lunes ne se voient qu'à l'analyse
   return planet.type === 'gazeuse' || planet.size === 'grande' || (planet.size === 'moyenne' && index % 2 === 0);
 }
 

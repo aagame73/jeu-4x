@@ -1,0 +1,414 @@
+/* ---------------------------------------------------------------------------------
+   Vue du système stellaire (#system-view) : plein écran sous le bandeau du haut.
+   --------------------------------------------------------------------------------- */
+#system-view {
+  position: fixed;
+  inset: 0;
+  background: #02040a;
+}
+#system-view[hidden] {
+  display: none;
+}
+.sv-canvas {
+  position: absolute;
+  inset: 0;
+}
+.sv-canvas canvas {
+  display: block;
+}
+.sv-labels {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+body.system-open .probes,
+body.system-open .info,
+body.system-open .help {
+  display: none;
+}
+body.system-open .journal {
+  width: 330px;
+  max-height: 150px;
+}
+
+/* Étiquettes des corps (CSS2D) */
+.sv-label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 6px;
+  font-family: 'Exo 2', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  color: #cfe0ff;
+  text-shadow: 0 0 4px #000, 0 0 8px rgba(0, 0, 0, 0.9);
+  pointer-events: none;
+  user-select: none;
+  transition: color 0.15s;
+}
+.sv-label.moon {
+  font-size: 10.5px;
+  font-weight: 500;
+  color: #9fb0d4;
+}
+.sv-label.hover,
+.sv-label.selected {
+  color: #ffffff;
+}
+.sv-label.selected .name {
+  color: #9ff0ff;
+  text-shadow: 0 0 6px rgba(95, 227, 255, 0.8), 0 0 4px #000;
+}
+.sv-label.colony .name { color: #a8ffbe; }
+.sv-label.rival .name { color: #ffb0ba; }
+
+/* Petites étiquettes (liste et 3D) */
+#system-view .tag {
+  font-style: normal;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 0 4px;
+  border: 1px solid currentColor;
+  line-height: 13px;
+}
+#system-view .tag.colony { color: #7cff9e; background: rgba(124, 255, 158, 0.12); }
+#system-view .tag.rival { color: #ff7a8a; background: rgba(255, 122, 138, 0.12); }
+#system-view .tag.habitable { color: #8fe9ff; background: rgba(95, 227, 255, 0.1); text-transform: none; letter-spacing: 0; }
+#system-view .tag.ruins { color: #ffd166; border: none; padding: 0; font-size: 12px; text-shadow: 0 0 6px rgba(255, 209, 102, 0.7); }
+
+/* Panneaux « Hologramme » */
+.sv-panel {
+  --cut: 14px;
+  position: absolute;
+  top: 72px;
+  padding: 14px 14px 12px;
+  border: none;
+  border-radius: 0;
+  overflow: auto;
+  background:
+    linear-gradient(rgba(95, 227, 255, 0.7), rgba(95, 227, 255, 0.7)) 0 var(--cut) / 1px 26px no-repeat,
+    linear-gradient(rgba(95, 227, 255, 0.7), rgba(95, 227, 255, 0.7)) var(--cut) 0 / 26px 1px no-repeat,
+    linear-gradient(rgba(95, 227, 255, 0.7), rgba(95, 227, 255, 0.7)) right 0 bottom var(--cut) / 1px 26px no-repeat,
+    linear-gradient(rgba(95, 227, 255, 0.7), rgba(95, 227, 255, 0.7)) right var(--cut) bottom 0 / 26px 1px no-repeat,
+    linear-gradient(180deg, rgba(14, 22, 46, 0.88), rgba(8, 13, 28, 0.86));
+  box-shadow: inset 0 0 0 1px rgba(120, 170, 255, 0.22), inset 0 1px 0 rgba(160, 200, 255, 0.25), 0 10px 40px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(12px);
+  clip-path: polygon(var(--cut) 0, 100% 0, 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, 0 100%, 0 var(--cut));
+  scrollbar-width: thin;
+  scrollbar-color: rgba(120, 170, 255, 0.35) transparent;
+  font-family: 'Exo 2', sans-serif;
+  color: #dbe6ff;
+}
+.sv-panel[hidden] {
+  display: none;
+}
+#sv-info {
+  left: 12px;
+  width: 280px;
+  /* Au-dessus du journal de bord (150 px, collé en bas à gauche). */
+  max-height: calc(100vh - 270px);
+}
+#sv-planet {
+  right: 12px;
+  width: 300px;
+  max-height: calc(100vh - 140px);
+}
+.sv-panel p {
+  margin: 0;
+}
+
+/* En-tête : astre + nom */
+.sv-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.sv-title {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.sv-panel .sv-name {
+  margin: 0;
+  font-family: 'Orbitron', sans-serif;
+  font-weight: 700;
+  font-size: 17px;
+  letter-spacing: 0.06em;
+  text-transform: none;
+  color: #dbe6ff;
+  overflow-wrap: anywhere;
+}
+.sv-sub {
+  font-size: 11.5px;
+  color: #8794b8;
+}
+.sv-star {
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 50%, #fff 0%, var(--c) 45%, color-mix(in srgb, var(--c) 30%, transparent) 75%, transparent 100%);
+  box-shadow: 0 0 18px 4px color-mix(in srgb, var(--c) 45%, transparent);
+  animation: sv-pulse 3.5s ease-in-out infinite;
+}
+@keyframes sv-pulse {
+  50% { box-shadow: 0 0 24px 7px color-mix(in srgb, var(--c) 55%, transparent); }
+}
+.sv-orb {
+  flex: none;
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 32% 30%, color-mix(in srgb, var(--c) 40%, #fff) 0%, var(--c) 40%, color-mix(in srgb, var(--c) 35%, #000) 90%);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.12);
+}
+.sv-orb.big {
+  width: 42px;
+  height: 42px;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--c) 60%, transparent), 0 0 14px color-mix(in srgb, var(--c) 40%, transparent);
+}
+.sv-orb.t-asteroides {
+  background:
+    radial-gradient(circle at 30% 35%, #b0aa9e 0 12%, transparent 13%),
+    radial-gradient(circle at 65% 55%, #8f8a80 0 16%, transparent 17%),
+    radial-gradient(circle at 45% 75%, #a09a90 0 9%, transparent 10%),
+    radial-gradient(circle at 75% 25%, #7a756c 0 8%, transparent 9%);
+  box-shadow: none;
+}
+
+/* Compteurs et état */
+.sv-counts {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  font-size: 12.5px;
+}
+.sv-counts b {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  color: #9ff0ff;
+}
+.sv-counts small {
+  color: #8794b8;
+}
+.sv-status {
+  margin-top: 6px !important;
+  font-size: 11.5px;
+  line-height: 1.35;
+}
+.sv-status.ok { color: #7cff9e; }
+.sv-status.warn {
+  padding: 6px 8px;
+  color: #ffd9a0;
+  background: rgba(255, 209, 102, 0.08);
+  border-left: 2px solid rgba(255, 209, 102, 0.6);
+}
+.sv-hint,
+.sv-muted {
+  margin-top: 6px !important;
+  font-size: 11px;
+  color: #8794b8;
+}
+
+/* Liste des corps */
+.sv-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.sv-item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  padding: 4px 6px;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  font-size: 12.5px;
+}
+.sv-item:hover {
+  background: rgba(95, 227, 255, 0.08);
+}
+.sv-item.on {
+  background: rgba(95, 227, 255, 0.14);
+  box-shadow: inset 2px 0 0 #5fe3ff;
+}
+.sv-item.moon {
+  padding-left: 22px;
+  font-size: 11.5px;
+  color: #aab8da;
+}
+.sv-item.moon .sv-orb {
+  width: 9px;
+  height: 9px;
+}
+.sv-item-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Fiche de la planète */
+.sv-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.sv-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12.5px;
+}
+.sv-row span {
+  color: #8794b8;
+}
+.sv-row b {
+  font-weight: 600;
+  text-align: right;
+}
+.sv-row b small {
+  font-weight: 400;
+  color: #8794b8;
+}
+.sv-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 8px;
+}
+.sv-badge {
+  padding: 2px 7px;
+  font-size: 11px;
+  font-weight: 600;
+  clip-path: polygon(5px 0, 100% 0, 100% calc(100% - 5px), calc(100% - 5px) 100%, 0 100%, 0 5px);
+}
+.sv-badge.colony { color: #7cff9e; background: rgba(124, 255, 158, 0.14); }
+.sv-badge.rival { color: #ff9aa6; background: rgba(255, 122, 138, 0.14); }
+.sv-badge.ruins { color: #ffd166; background: rgba(255, 209, 102, 0.14); }
+.sv-badge.habitable { color: #8fe9ff; background: rgba(95, 227, 255, 0.12); }
+
+.sv-sec {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+.sv-sec span {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #5fe3ff;
+}
+.sv-sec i {
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(95, 227, 255, 0.45), transparent);
+}
+
+.sv-deps {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  margin-top: 6px;
+}
+.sv-dep {
+  --res: 135, 148, 184;
+  display: grid;
+  grid-template-columns: 18px 1fr;
+  grid-template-rows: auto auto;
+  column-gap: 5px;
+  align-items: center;
+  padding: 4px 6px;
+  background: rgba(var(--res), 0.09);
+  box-shadow: inset 2px 0 0 rgba(var(--res), 0.7);
+}
+.sv-dep .icon-svg {
+  grid-row: span 2;
+  width: 17px;
+  height: 17px;
+  color: rgb(var(--res));
+  filter: drop-shadow(0 0 3px rgba(var(--res), 0.6));
+}
+.sv-dep b {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #dbe6ff;
+}
+.sv-dep small {
+  font-size: 10.5px;
+  color: rgb(var(--res));
+}
+.sv-dep.rich-3 small { font-weight: 700; }
+.sv-dep.res-minerais { --res: 210, 166, 121; }
+.sv-dep.res-energie { --res: 255, 209, 102; }
+.sv-dep.res-biomasse { --res: 123, 216, 143; }
+.sv-dep.res-velarine { --res: 199, 125, 255; }
+.sv-dep.res-eau { --res: 74, 168, 255; }
+.sv-dep.res-deuterium { --res: 95, 227, 255; }
+
+/* Boutons */
+.sv-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 14px;
+}
+.sv-btn,
+.sv-back {
+  border: 1px solid rgba(95, 227, 255, 0.45);
+  border-radius: 0;
+  background: rgba(95, 227, 255, 0.07);
+  font-family: 'Orbitron', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #cfeeff;
+  clip-path: polygon(7px 0, 100% 0, 100% calc(100% - 7px), calc(100% - 7px) 100%, 0 100%, 0 7px);
+}
+.sv-btn {
+  padding: 8px 10px;
+  text-align: center;
+}
+.sv-btn:hover,
+.sv-back:hover {
+  background: rgba(95, 227, 255, 0.18);
+}
+.sv-btn.primary {
+  border-color: rgba(124, 255, 158, 0.6);
+  background: rgba(124, 255, 158, 0.14);
+  color: #e6ffec;
+}
+.sv-btn.primary:hover {
+  background: rgba(124, 255, 158, 0.26);
+}
+.sv-back {
+  position: absolute;
+  bottom: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 9px 16px;
+  background: rgba(8, 13, 28, 0.86);
+  backdrop-filter: blur(8px);
+}
+.sv-back kbd {
+  font-family: 'Exo 2', sans-serif;
+  letter-spacing: 0;
+  text-transform: none;
+}

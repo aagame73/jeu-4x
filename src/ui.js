@@ -77,6 +77,7 @@ export function createUI(root, game, actions) {
     else if (action === 'send') actions.onSend();
     else if (action === 'analyse') actions.onAnalyse();
     else if (action === 'focus') actions.onFocusStar(Number(id));
+    else if (action === 'open-system') actions.onOpenSystem(Number(id));
     else if (action === 'open-planet') actions.onOpenPlanet(Number(el.dataset.star), Number(el.dataset.planet));
   });
 
@@ -292,9 +293,10 @@ export function createUI(root, game, actions) {
       const label = colonyOn(game, star.id, index) ? 'Gérer la colonie' : 'Voir la surface';
       body += `<button class="surface-btn" data-action="open-planet" data-star="${star.id}" data-planet="${index}">${label}</button>`;
     }
+    const moon = planet.moonOf !== undefined;
     return `
-      <li class="planet planet-${planet.type}">
-        <div class="planet-head"><i class="planet-dot"></i><b>${planet.name}</b><span class="muted">${type.label}</span></div>
+      <li class="planet planet-${planet.type}${moon ? ' moon' : ''}">
+        <div class="planet-head"><i class="planet-dot"></i><b>${planet.name}</b><span class="muted">${moon ? `Lune · ${type.label}` : type.label}</span></div>
         <div class="muted small">${size}</div>
         ${body}
       </li>`;
@@ -318,6 +320,7 @@ export function createUI(root, game, actions) {
         parts.push(`<p class="muted small">${r.reason}</p>`);
       }
     }
+    if (star.level >= 2) parts.push(`<button data-action="open-system" data-id="${star.id}">Voir le système</button>`);
     parts.push(`<button data-action="focus" data-id="${star.id}">Centrer la vue</button>`);
     return `<div class="actions">${parts.join('')}</div>`;
   }
@@ -340,9 +343,16 @@ export function createUI(root, game, actions) {
     if (star.level === 1) {
       body = '<p>Une étoile repérée de loin. Envoyez une sonde pour découvrir ses planètes.</p>';
     } else {
-      const planets = visiblePlanets(star);
+      // Chaque lune est rangée juste sous sa planète.
+      const visible = visiblePlanets(star);
+      const planets = visible
+        .filter((p) => p.moonOf === undefined)
+        .flatMap((p) => [p, ...visible.filter((m) => m.moonOf === star.planets.indexOf(p))]);
+      const moons = visible.filter((p) => p.moonOf !== undefined).length;
       if (star.level === 3) {
-        body = planets.length ? `<h3>${plural(planets.length, 'planète')}</h3>` : '<p class="muted">Aucune planète en orbite.</p>';
+        body = planets.length
+          ? `<h3>${plural(planets.length - moons, 'planète')}${moons ? ` · ${plural(moons, 'lune')}` : ''}</h3>`
+          : '<p class="muted">Aucune planète en orbite.</p>';
       } else {
         const n = planets.length;
         body = `<h3>${n === 0 ? 'Aucune planète détectée' : `${plural(n, 'planète')} ${n > 1 ? 'détectées' : 'détectée'}`}</h3>`;
