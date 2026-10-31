@@ -4,7 +4,9 @@ import './styles/planete.css';
 import './styles/infobulles.css';
 import './styles/recherche.css';
 import './styles/systeme.css';
-import { CONFIG } from './config.js';
+import './styles/especes.css';
+import { CONFIG, SPECIES, DEFAULT_SPECIES } from './config.js';
+import { createSpeciesView } from './speciesView.js';
 import { createGame, tick, currentDay, sendShip, startAnalysis, selectedShip, foundColony, startShipyard, startResearch } from './game.js';
 import { createResearchView } from './researchView.js';
 import { createSystemView } from './systemView.js';
@@ -12,15 +14,19 @@ import { createGalaxyView } from './scene.js';
 import { createUI } from './ui.js';
 import { createPlanetView } from './planetView.js';
 import { startConstruction, demolish, startUpgrade } from './economy.js';
-import { restore, readSlot, writeSlot, takePendingLoad, takeNewGameRequest } from './save.js';
+import { restore, readSlot, writeSlot, takePendingLoad, takeNewGameRequest, newGameAndRestart } from './save.js';
 import { createMenu } from './menu.js';
 import { installTooltips } from './tooltips.js';
 
 // Au démarrage : une sauvegarde à charger (menu), sinon une nouvelle partie.
-// ?graine=1234 dans l'adresse lance directement un amas précis (sans écran d'accueil).
-const urlSeed = Number(new URLSearchParams(location.search).get('graine'));
+// ?graine=1234 dans l'adresse lance directement un amas précis (sans écran d'accueil),
+// ?espece=vaskhar saute l'écran de choix de l'espèce.
+const params = new URLSearchParams(location.search);
+const urlSeed = Number(params.get('graine'));
 const pending = takePendingLoad();
-const wantsNewGame = takeNewGameRequest();
+const newGameRequest = takeNewGameRequest(); // null, '' (espèce à choisir) ou la clé de l'espèce
+const wantsNewGame = newGameRequest !== null;
+const chosenSpecies = [newGameRequest, params.get('espece')].find((key) => key && SPECIES[key] && !SPECIES[key].hidden) ?? null;
 let game = null;
 if (pending) {
   try {
@@ -29,11 +35,13 @@ if (pending) {
     game = null;
   }
 }
-game ??= createGame(urlSeed || Math.floor(Math.random() * 1e6));
+game ??= createGame(urlSeed || Math.floor(Math.random() * 1e6), chosenSpecies ?? DEFAULT_SPECIES);
 // L'écran d'accueil propose de continuer la partie enregistrée ; tant que le joueur n'a pas
 // choisi, la sauvegarde automatique est suspendue pour ne pas l'écraser.
 const showStart = !pending && !wantsNewGame && !urlSeed && !!readSlot('auto');
-let autosave = !showStart && !urlSeed; // une partie lancée par ?graine= sert aux tests : elle n'écrase pas la sauvegarde
+// Une nouvelle partie sans espèce passe d'abord par l'écran de choix (la page est rechargée ensuite).
+const needsSpecies = !pending && !chosenSpecies && !showStart;
+let autosave = !showStart && !needsSpecies && !urlSeed; // une partie lancée par ?graine= sert aux tests : elle n'écrase pas la sauvegarde
 const AUTOSAVE_DAYS = 5;
 
 function selectNextIdleShip() {
@@ -219,18 +227,25 @@ const menu = createMenu(document.getElementById('menu'), game, {
     game.paused = true;
     ui.renderLive();
   },
-  onClose(fromStart) {
-    if (fromStart) {
-      autosave = true; // « Nouvelle partie » choisie à l'accueil
-      writeSlot('auto', game);
-    } else {
-      game.paused = pausedBeforeMenu;
-    }
+  onClose() {
+    game.paused = pausedBeforeMenu;
     ui.renderLive();
   },
+  onNewGame() {
+    menu.close();
+    speciesView.open(); // depuis l'accueil
+  },
+});
+const speciesView = createSpeciesView(document.getElementById('species'), {
+  onChoose(key) {
+    if (urlSeed) location.search = `?graine=${urlSeed}&espece=${key}`;
+    else newGameAndRestart(key);
+  },
+  onBack: showStart ? () => menu.open(true) : null,
 });
 installTooltips();
 if (showStart) menu.open(true);
+else if (needsSpecies) speciesView.open();
 
 // Dernière sauvegarde automatique quand on quitte ou cache la page.
 const saveOnLeave = () => autosave && writeSlot('auto', game);
@@ -242,6 +257,7 @@ if (import.meta.env.DEV) window.jeu = { game, actions, refresh, tick };
 
 window.addEventListener('keydown', (e) => {
   if (e.target.tagName === 'INPUT') return; // saisie d'un nom en cours
+  if (speciesView.isOpen) return;
   if (menu.isOpen) {
     if (e.key === 'Escape' && !document.getElementById('menu').classList.contains('start')) menu.close();
     return;

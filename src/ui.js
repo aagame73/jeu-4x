@@ -6,6 +6,8 @@ import { renderShipThumbnails } from './ships.js';
 import { colonyReport } from './economy.js';
 import { ICONS } from './icons.js';
 import { TECHS } from './research.js';
+import { createAdvisor } from './advisor.js';
+import { currentSpecies } from './species.js';
 // Accès tolérant aux règles écrites en parallèle (SIZE_LABELS, shipStats peuvent manquer).
 import * as rules from './game.js';
 
@@ -46,7 +48,15 @@ export function createUI(root, game, actions) {
     </header>
     <aside class="probes panel"><h2>Flotte</h2><div id="probes"></div></aside>
     <aside class="info panel" id="info"></aside>
-    <section class="journal panel"><h2>Journal de bord</h2><div id="journal"></div></section>
+    <section class="advisor panel" id="advisor">
+      <canvas class="advisor-portrait"></canvas>
+      <div class="advisor-body">
+        <div class="advisor-head"><span class="advisor-name">Conseiller · ${currentSpecies().label}</span><button data-action="journal" title="Toutes les nouvelles">Journal</button></div>
+        <div class="advisor-bubble" id="advisor-bubble" title="Clic : passer"></div>
+        <div class="advisor-queue" id="advisor-queue"></div>
+      </div>
+      <div class="advisor-history" id="journal" hidden></div>
+    </section>
     <div class="help">Espace : pause · R : recherche · F : plein écran · + / − : vitesse · Clic : sélectionner · Double-clic : centrer · Glisser : pivoter · Clic droit : déplacer · Molette : zoom · 1 à 9 : choisir un vaisseau · Graine ${game.seed}</div>
   `;
   const $ = (id) => root.querySelector(`#${id}`);
@@ -68,6 +78,7 @@ export function createUI(root, game, actions) {
     if (action === 'menu') actions.onOpenMenu();
     else if (action === 'research') actions.onOpenResearch?.();
     else if (action === 'fullscreen') actions.onToggleFullscreen();
+    else if (action === 'journal') $('journal').hidden = !$('journal').hidden;
     else if (action === 'rename') startRename(Number(id));
     else if (action === 'focus-ship') actions.onFocusShip(Number(id));
     else if (action === 'found') actions.onOpenPlanet(Number(el.dataset.star), Number(el.dataset.planet), true);
@@ -365,7 +376,10 @@ export function createUI(root, game, actions) {
     $('info').innerHTML = header + renderActions(star) + body;
   }
 
+  const advisor = createAdvisor($('advisor'), game, game.species);
+
   function renderJournal() {
+    advisor.update();
     $('journal').innerHTML = game.log
       .slice(-30)
       .reverse()

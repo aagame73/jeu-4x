@@ -1,0 +1,228 @@
+/* Écran de choix de l'espèce et conseiller qui parle (à la place du journal). */
+
+#species {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: radial-gradient(ellipse at center, rgba(8, 14, 32, 0.75), rgba(2, 4, 10, 0.95));
+}
+#species[hidden] {
+  display: none;
+}
+.species.panel {
+  width: min(1100px, 100%);
+  max-height: 100%;
+  overflow: auto;
+  padding: 18px 22px;
+}
+.species .menu-title {
+  margin: 0 0 4px;
+  font-size: 24px;
+}
+.sp-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 10px;
+  margin: 14px 0;
+}
+.sp-card {
+  display: grid;
+  grid-template-columns: 76px 1fr;
+  grid-template-rows: auto 1fr;
+  gap: 2px 10px;
+  align-items: start;
+  padding: 8px;
+  text-align: left;
+  color: var(--text);
+  background: rgba(10, 18, 38, 0.8);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+}
+.sp-card:hover {
+  border-color: var(--sp);
+  transform: translateY(-1px);
+}
+.sp-card.selected {
+  border-color: var(--sp);
+  box-shadow: 0 0 0 1px var(--sp), 0 0 18px color-mix(in srgb, var(--sp) 35%, transparent);
+}
+.sp-card .sp-portrait {
+  grid-row: span 2;
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 40%, color-mix(in srgb, var(--sp) 22%, transparent), rgba(2, 4, 10, 0.6) 70%);
+}
+.sp-name {
+  font-family: 'Orbitron', 'Exo 2', sans-serif;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  color: var(--sp);
+}
+.sp-traits {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 12px;
+}
+.sp-plus {
+  color: #9dffb8;
+}
+.sp-minus {
+  color: #ff9a9a;
+}
+.sp-detail {
+  display: flex;
+  gap: 18px;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid color-mix(in srgb, var(--sp) 45%, transparent);
+  border-radius: 8px;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--sp) 10%, transparent), transparent 60%);
+}
+.sp-portrait.big {
+  flex: none;
+  width: 190px;
+  height: 190px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 40%, color-mix(in srgb, var(--sp) 25%, transparent), rgba(2, 4, 10, 0.6) 70%);
+}
+.sp-detail h2 {
+  margin: 0 0 6px;
+  color: var(--sp);
+}
+.sp-lore {
+  font-style: italic;
+}
+.sp-hint {
+  text-align: center;
+  padding: 24px 0;
+}
+.sp-actions {
+  justify-content: flex-end;
+  margin-top: 14px;
+}
+@media (max-width: 640px) {
+  .sp-detail {
+    flex-direction: column;
+    text-align: center;
+  }
+  .sp-portrait.big {
+    width: 140px;
+    height: 140px;
+  }
+}
+
+/* Conseiller : portrait animé de l'espèce qui lit les nouvelles du journal. */
+.advisor.panel {
+  position: absolute;
+  bottom: 36px;
+  left: 12px;
+  width: 460px;
+  display: grid;
+  grid-template-columns: 96px 1fr;
+  gap: 10px;
+  padding: 10px;
+  font-size: 13px;
+  --sp: var(--accent);
+}
+body.planet-open .advisor.panel,
+body.system-open .advisor.panel {
+  width: 340px;
+  grid-template-columns: 70px 1fr;
+}
+.advisor-portrait {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--sp) 50%, transparent);
+  background: radial-gradient(circle at 50% 40%, color-mix(in srgb, var(--sp) 22%, transparent), rgba(2, 4, 10, 0.7) 70%);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--sp) 25%, transparent);
+}
+body.planet-open .advisor-portrait,
+body.system-open .advisor-portrait {
+  width: 70px;
+  height: 70px;
+}
+.advisor-body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.advisor-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+.advisor-name {
+  font-family: 'Orbitron', 'Exo 2', sans-serif;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--sp);
+}
+.advisor-head button {
+  padding: 2px 8px;
+  font-size: 11px;
+}
+.advisor-bubble {
+  position: relative;
+  margin-top: 5px;
+  padding: 7px 10px;
+  min-height: 52px;
+  border: 1px solid color-mix(in srgb, var(--sp) 35%, transparent);
+  border-radius: 4px 10px 10px 10px;
+  background: rgba(10, 18, 38, 0.75);
+}
+.advisor-bubble .day {
+  margin-right: 6px;
+  color: var(--muted);
+  font-size: 11px;
+}
+.advisor-bubble.log-alert {
+  border-color: var(--rival);
+}
+.advisor-bubble.log-discovery {
+  border-color: var(--gold);
+}
+.advisor-bubble .caret {
+  display: inline-block;
+  width: 6px;
+  height: 1em;
+  margin-left: 2px;
+  vertical-align: -2px;
+  background: var(--sp);
+  animation: advisor-caret 0.7s steps(1) infinite;
+}
+@keyframes advisor-caret {
+  50% {
+    opacity: 0;
+  }
+}
+.advisor-queue {
+  margin-top: 3px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.advisor-history {
+  grid-column: 1 / -1;
+  max-height: 180px;
+  overflow: auto;
+  font-size: 12px;
+  border-top: 1px solid var(--border);
+  padding-top: 4px;
+}
+.advisor-history[hidden] {
+  display: none;
+}
+.sp-actions button.big {
+  width: auto;
+  min-width: 240px;
+}

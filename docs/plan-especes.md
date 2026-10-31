@@ -1,6 +1,6 @@
 # Plan : choix de l'espèce en début de partie
 
-État : **plan validé**. Étape 1 (données) faite le 31/10/2026 ; étapes 2 à 5 à venir. Les décisions de design sont en fin de document.
+État : **plan validé**. Étapes 1 (données) et 2 (écran de choix, avec portraits animés et conseiller qui remplace le journal) faites le 31/10/2026 ; étapes 3 à 5 à venir. Décisions de design au § 10 ; revue d'avant l'étape 3 au § 11 (**validée**, ajustements d'équilibre reportés dans `config.js`).
 
 ## 1. Le parcours du joueur
 
@@ -123,7 +123,7 @@ Fichiers qui appellent `createShip` : `scene.js` (modèles de l'amas), `ui.js` (
 
 1. **Données** — `SPECIES` dans `config.js`, `species.js`, `game.species`, sauvegarde avec valeur par défaut. *Test* : Node — une partie de chaque espèce se crée, s'enregistre et se recharge ; une ancienne sauvegarde se charge avec « Colons de l'Arche ».
 2. **Écran de choix** — `speciesView.js`, branchement dans `menu.js`, `save.js`, `main.js`. *Test* : navigateur — Accueil → Nouvelle partie → choix → l'Arche arrive avec le bon nom ; `?espece=` saute l'écran ; Retour fonctionne.
-3. **Bonus** — économie, croissance, recherche, vaisseaux, défense, milieu. *Test* : Node — même graine, 100 jours simulés avec deux espèces : les écarts attendus (+25 % / −20 %) apparaissent sur les bons axes, et rien d'autre ne change.
+3. **Bonus** — économie, croissance, recherche, vaisseaux, défense, milieu, colonisation des planètes hostiles (§ 11.1). *Test* : Node — (a) même graine, deux espèces : les écarts attendus apparaissent sur les bons axes et rien d'autre ne change ; (b) **comparaison des 8 espèces + profil neutre sur 200 jours simulés**, même graine et même stratégie automatique, tableau au § 11.5 ; (c) une colonie hostile est refusée sans la technologie, acceptée avec, et subit le malus.
 4. **Vaisseaux** — paramètre `style` dans `ships.js`, branché partout. *Test* : navigateur — vignettes des 8 espèces × 3 types côte à côte, chacune reconnaissable ; vaisseaux de l'amas et de la flotte au style de l'espèce jouée.
 5. **(Si oui à la question 2) Rivaux** — les espèces rivales tirées parmi les 7 restantes, noms et couleurs dans la carte et les fiches. *Test* : navigateur et Node.
 
@@ -133,3 +133,101 @@ Fichiers qui appellent `createShip` : `scene.js` (modèles de l'amas), `ui.js` (
 2. **Empires de l'ordinateur** : oui, chacun prend une des 7 espèces non choisies (données et style préparés maintenant, comportement avec l'étape « espèces rivales »).
 3. **Anciennes sauvegardes** : profil neutre « Colons de l'Arche », sans bonus ni malus.
 4. **Espèces** : les 8 propositions du § 2 sont validées.
+
+## 11. Revue avant l'étape 3 (31/10/2026) — propositions validées le 31/10/2026
+
+### 11.1 Planètes hostiles : colonisation bloquée, puis débloquée par la recherche
+
+Constat : le § 10 ne prévoit qu'une croissance −50 %. Il manque le blocage et le déblocage.
+
+Proposition :
+
+| Moment | Règle |
+|---|---|
+| Au départ | Un vaisseau colonie ou un transport **ne peut pas** fonder sur une planète hostile. `foundingProblem` répond : « Milieu hostile aux Vaskhar : recherchez Adaptation xénobiologique. » La fiche de la planète affiche un badge « hostile » (et « favorable » dans le cas inverse). |
+| Technologie **Adaptation xénobiologique** (branche Vie, palier 2, 160 points, requiert Habitats scellés) | La fondation devient possible, avec malus : **croissance −50 %**, **1 colon de moins au départ** (minimum 1) et **−15 % sur toute la production de la colonie** (équipements de survie). |
+| Technologie **Biosphères adaptatives** (branche Vie, palier 3, 320 points, requiert Adaptation xénobiologique et Arcologies) | Malus divisé par deux : croissance −25 %, production −5 %, plus de colon en moins. |
+| Exception : **l'Arche** | Elle peut toujours se poser sur une planète hostile : ses moteurs sont cassés, et un refus bloquerait la partie pour de bon si le système de départ n'offrait qu'un milieu hostile. Elle subit le malus complet, et la fiche le signale avant le choix. |
+
+Ces deux technologies servent à toutes les espèces (chacune a un type hostile). Anciennes parties : sans objet (profil neutre, aucun type hostile).
+
+### 11.2 Équilibre des 8 espèces
+
+Constat : Ondésiens, Kel-Tirr, Thrennes, Liseurs et Ashkari ont deux bonus, les trois autres un seul. Le nombre compte moins que la **valeur réelle dans le jeu actuel**, où il n'y a encore **ni combat ni attaque**. Barème indicatif : axe central (minerais, énergie, recherche, croissance) = 3 ; axe secondaire (alliages, biomasse + eau, vitesse des vaisseaux, chantier) = 2 ; axe de niche (deutérium, carburant, fouilles, durée de vie) = 1 ; axe militaire = **0 aujourd'hui**, 2 quand le combat existera.
+
+| Espèce | Force (valeur) | Faiblesse (coût) | Solde aujourd'hui | Solde avec combat | Avis |
+|---|---|---|---|---|---|
+| Vaskhar | minerais 3 | croissance −3 | 0 | 0 | équilibré ; la croissance pèse surtout au début : à surveiller |
+| Ondésiens | biomasse + eau 2 | alliages −2 | 0 | 0 | équilibré |
+| Kel-Tirr | vitesse 2, chantier 2 | défense 0, durée de vie −1 | **+3** | +1 | un peu fort aujourd'hui |
+| Synodes | recherche 3 | minerais −3 | 0 | 0 | équilibré |
+| Orrhaïdes | énergie 3 | biomasse −2 | +1 | +1 | légèrement fort |
+| Thrennes | attaque 0, défense des colonies 0 | recherche −3 | **−3** | +1 | **trop faible tant que le combat n'existe pas** |
+| Liseurs de Vey | fouilles 1, techno. des Veilleurs 1 | énergie −3 | **−1** | −1 | faible : dépend des ruines proches (9 sur 140 étoiles) |
+| Ashkari | deutérium 1, carburant 1 | défense des colonies 0 | **+2** | 0 | malus gratuit tant que le combat n'existe pas |
+
+Ajustements proposés (chiffres finaux calés par la simulation du § 11.5) :
+
+1. **Thrennes** : ajouter **alliages +15 %** (industrie de guerre), ou ramener leur faiblesse à recherche −15 %.
+2. **Ashkari** : ajouter **minerais −10 %** à leur faiblesse (peuple de bord, peu de mineurs).
+3. **Liseurs de Vey** : faiblesse ramenée à **énergie −15 %**, et chaque fouille terminée donne **+1 artefact**.
+4. **Kel-Tirr** : chantier spatial **−15 %** de durée au lieu de −20 %.
+5. **Orrhaïdes** : biomasse **−25 %** au lieu de −20 %.
+6. Préciser « technologies des Veilleurs » = toute la branche Xéno-archéologie **et** toutes les technologies qui coûtent des artefacts (ex. Blindage des Veilleurs, branche Structure).
+
+Règle conservée : une force et une faiblesse **thématiques** par espèce (une force peut toucher deux axes proches).
+
+### 11.3 Cumul espèce + terrain (ex. Vaskhar, puits de forage sur case volcanique)
+
+Calcul actuel (`colonyReport`) : `base × bonus de niveau (1 / 1,5 / 2 / 2,5) × 1,1 si Ingénierie des Veilleurs`, puis × encadrement × énergie.
+
+L'étape 3 ajoute deux facteurs d'espèce. **Multipliés**, ils donnent 1,25 (minerais) × 1,25 (terrain favori) = **1,5625**, soit +56 % ; un puits de niveau 4 avec Ingénierie des Veilleurs atteint alors 2,5 × 1,1 × 1,5625 ≈ **4,3 fois** la base.
+
+Proposition : **additionner les bonus d'espèce entre eux**, puis multiplier le total par le reste :
+
+`facteur d'espèce = 1 + (bonus de ressource − 1) + (0,25 si terrain favori) − (malus de planète hostile)`
+
+| Cas | Facteur |
+|---|---|
+| Vaskhar, minerais, case volcanique | 1 + 0,25 + 0,25 = **1,50** |
+| Synodes, minerais (−20 %), case toxique favorite | 1 − 0,20 + 0,25 = **1,05** |
+| Vaskhar, minerais, case volcanique, colonie hostile (−15 %) | 1 + 0,25 + 0,25 − 0,15 = **1,35** |
+
+**Plafond : facteur d'espèce entre 0,5 et 1,5.** Avec les valeurs actuelles, 1,5 est déjà le maximum : le plafond protège surtout les ajouts futurs (technologies d'espèce, rivaux). Maximum global : 2,5 × 1,1 × 1,5 ≈ 4,1 fois la base, acceptable (le niveau 4 coûte cher et les terrains favoris ne couvrent qu'une partie des cases).
+
+Précision : le bonus de terrain s'applique à toutes les productions positives de la case (un laboratoire sur case favorite produit +25 % de recherche), jamais aux consommations ni aux places de population. L'infobulle de production détaillera « espèce +25 %, terrain +25 % ».
+
+### 11.4 Profil neutre et style de vaisseaux (étape 4)
+
+Vérifié dans `config.js` : le profil **`'sans-espece'`** (« Colons de l'Arche ») existe, caché de l'écran de choix, avec `bonuses: {}`, `habitat` vide, `favoredTerrains: []` et **`shipStyle: null`**. Une clé absente ou inconnue retombe sur lui (`bindSpecies`, `createGame`, `restore`, testés à l'étape 1).
+
+Risque : si l'étape 4 lit `style.hullTones` sans vérification, une ancienne sauvegarde plantera. Deux options :
+
+- **(recommandée)** `shipStyle: null` = « générateur d'origine » : `createShip(seed, accent, registry, kind, style = null)` ne prend la branche « style d'espèce » que si `style` existe. Les vaisseaux des anciennes parties restent **identiques**, ce qu'un `shipStyle` imitant l'ancien générateur ne garantirait pas (l'ordre des tirages aléatoires changerait).
+- donner au profil neutre un `shipStyle` complet qui imite l'ancien style.
+
+Ajout au test de l'étape 4 : charger une sauvegarde sans espèce, ouvrir la flotte et l'amas : aucune erreur, vignettes identiques à avant.
+
+### 11.5 Comparaison des 8 espèces sur 200 jours simulés (test de l'étape 3)
+
+Protocole (script Node, sans navigateur) :
+
+- **Même graine** (42) pour toutes les espèces, plus le profil neutre comme référence.
+- **Même stratégie automatique** : l'Arche analyse puis fonde sur la **même planète et la même case** (neutre pour toutes) ; ordre de construction fixe (le premier bâtiment abordable d'une liste : foyer, puits, solaire, serre, pompe, laboratoire, fonderie, spatioport…) ; ordre de recherche fixe ; améliorations de niveau dès que possible ; aucune sonde (on mesure l'économie seule).
+- Deuxième passe : chaque espèce sur une planète **favorable** (même graine, ou la graine la plus proche qui en offre une), pour mesurer l'effet du milieu.
+- Mesures au jour 200 : population, production par jour (minerais, alliages, biomasse, eau, deutérium, énergie nette, recherche), technologies acquises, bâtiments et niveaux, jour où la 1re sonde est possible.
+- Critère : un **score économique** (somme pondérée des productions et de la recherche) à **±10 %** du profil neutre. Une espèce hors fourchette est ajustée (§ 11.2) et la simulation relancée. Les bonus militaires (Thrennes, Kel-Tirr, Ashkari) ne se mesurent pas tant que le combat n'existe pas : revus à l'étape « espèces rivales ».
+
+Tableau des résultats (rempli à l'étape 3) :
+
+| Espèce | Population | Minerais/j | Alliages/j | Biomasse/j | Eau/j | Deutérium/j | Énergie nette | Recherche/j | Technologies | Score vs neutre |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Colons de l'Arche (référence) | | | | | | | | | | 100 % |
+| Vaskhar | | | | | | | | | | |
+| Ondésiens | | | | | | | | | | |
+| Kel-Tirr | | | | | | | | | | |
+| Synodes | | | | | | | | | | |
+| Orrhaïdes | | | | | | | | | | |
+| Thrennes | | | | | | | | | | |
+| Liseurs de Vey | | | | | | | | | | |
+| Ashkari | | | | | | | | | | |
