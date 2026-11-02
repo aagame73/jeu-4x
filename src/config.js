@@ -32,7 +32,7 @@ export const SPECIES = {
     favoredTerrains: ['volcanique'], // un seul terrain : le volcanique est riche en minerais
     accent: '#ffb347',
     arkName: 'Arche Basalte',
-    shipStyle: { hullTones: ['#8b5a3c', '#a0522d', '#7a5c44'], segments: [5, 6], profile: 'massif', wings: { ailes: 1, ailerons: 3, anneau: 0, panneaux: 1 }, armor: 0.8, organic: 0, crystals: 0, sails: 0, pods: 0.6, engineGlow: '#ff8a3a' },
+    shipStyle: { hullTones: ['#8b5a3c', '#a0522d', '#7a5c44'], segments: [5, 6], profile: 'massif', armor: 0.8, organic: 0, crystals: 0, sails: 0, pods: 0.6, engineGlow: '#ff8a3a' },
   },
   ondesiens: {
     label: 'Ondésiens',
@@ -44,7 +44,7 @@ export const SPECIES = {
     favoredTerrains: ['ocean'],
     accent: '#5fd3ff',
     arkName: 'Arche Marée',
-    shipStyle: { hullTones: ['#6fb7c9', '#4f9fb0', '#8fd0d8'], segments: [12, 16], profile: 'bombe', wings: { ailes: 0, ailerons: 0, anneau: 4, panneaux: 0 }, armor: 0, organic: 0.9, crystals: 0, sails: 0, pods: 0.3, engineGlow: '#5fe3ff' },
+    shipStyle: { hullTones: ['#6fb7c9', '#4f9fb0', '#8fd0d8'], segments: [12, 16], profile: 'bombe', armor: 0, organic: 0.9, crystals: 0, sails: 0, pods: 0.3, engineGlow: '#5fe3ff' },
   },
   keltirr: {
     label: 'Kel-Tirr',
@@ -56,7 +56,7 @@ export const SPECIES = {
     favoredTerrains: ['foret', 'marais'],
     accent: '#fff07a',
     arkName: 'Arche Volée',
-    shipStyle: { hullTones: ['#e8e2d0', '#d6d2c8', '#f0ead8'], segments: [6, 8], profile: 'effile', wings: { ailes: 5, ailerons: 1, anneau: 0, panneaux: 0 }, armor: 0, organic: 0.2, crystals: 0, sails: 0, pods: 0.1, engineGlow: '#fff07a' },
+    shipStyle: { hullTones: ['#e8e2d0', '#d6d2c8', '#f0ead8'], segments: [6, 8], profile: 'effile', armor: 0, organic: 0.2, crystals: 0, sails: 0, pods: 0.1, engineGlow: '#fff07a' },
   },
   synodes: {
     label: 'Synodes',
@@ -68,7 +68,7 @@ export const SPECIES = {
     favoredTerrains: ['marais', 'toxique', 'foret'],
     accent: '#c6a0ff',
     arkName: 'Arche Mycélium',
-    shipStyle: { hullTones: ['#8a7aa8', '#6f6390', '#a596c0'], segments: [8, 10], profile: 'modulaire', wings: { ailes: 0, ailerons: 1, anneau: 1, panneaux: 2 }, armor: 0.1, organic: 0.5, crystals: 0, sails: 0, pods: 1, engineGlow: '#c6a0ff' },
+    shipStyle: { hullTones: ['#8a7aa8', '#6f6390', '#a596c0'], segments: [8, 10], profile: 'modulaire', armor: 0.1, organic: 0.5, crystals: 0, sails: 0, pods: 1, engineGlow: '#c6a0ff' },
   },
   orrhaides: {
     label: 'Orrhaïdes',
@@ -80,7 +80,7 @@ export const SPECIES = {
     favoredTerrains: ['desert'],
     accent: '#cfe8ff',
     arkName: 'Arche Prisme',
-    shipStyle: { hullTones: ['#dce8f2', '#c8d8e8', '#eef4fa'], segments: [5, 6], profile: 'effile', wings: { ailes: 1, ailerons: 2, anneau: 0, panneaux: 1 }, armor: 0, organic: 0, crystals: 0.9, sails: 0, pods: 0.2, engineGlow: '#bfe8ff' },
+    shipStyle: { hullTones: ['#dce8f2', '#c8d8e8', '#eef4fa'], segments: [5, 6], profile: 'effile', armor: 0, organic: 0, crystals: 0.9, sails: 0, pods: 0.2, engineGlow: '#bfe8ff' },
   },
   thrennes: {
     label: 'Thrennes',
@@ -92,7 +92,7 @@ export const SPECIES = {
     favoredTerrains: ['volcanique', 'marais'],
     accent: '#ff6f6f',
     arkName: 'Arche Serment',
-    shipStyle: { hullTones: ['#3a3236', '#4a3a3a', '#2e2a30'], segments: [4, 6], profile: 'massif', wings: { ailes: 2, ailerons: 3, anneau: 0, panneaux: 0 }, armor: 1, organic: 0, crystals: 0, sails: 0, pods: 0.3, engineGlow: '#ff5040' },
+    shipStyle: { hullTones: ['#3a3236', '#4a3a3a', '#2e2a30'], segments: [4, 6], profile: 'massif', armor: 1, organic: 0, crystals: 0, sails: 0, pods: 0.3, engineGlow: '#ff5040' },
   },
   liseurs: {
     label: 'Liseurs de Vey',
@@ -104,7 +104,7 @@ export const SPECIES = {
     favoredTerrains: ['glace', 'ruines'],
     accent: '#ffd166',
     arkName: 'Arche Glyphe',
-    shipStyle: { hullTones: ['#c9b79c', '#d8c49a', '#b8a888'], segments: [8, 10], profile: 'effile', wings: { ailes: 1, ailerons: 0, anneau: 1, panneaux: 1 }, armor: 0, organic: 0.2, crystals: 0.2, sails: 1, pods: 0.1, engineGlow: '#ffd166' },
+    shipStyle: { hullTones: ['#c9b79c', '#d8c49a', '#b8a888'], segments: [8, 10], profile: 'effile', armor: 0, organic: 0.2, crystals: 0.2, sails: 1, pods: 0.1, engineGlow: '#ffd166' },
   },
   ashkari: {
     label: 'Ashkari',
@@ -116,7 +116,7 @@ export const SPECIES = {
     favoredTerrains: ['ocean', 'glace'],
     accent: '#e0a070',
     arkName: 'Arche Caravane',
-    shipStyle: { hullTones: ['#b07850', '#9a6a48', '#c08a60'], segments: [6, 8], profile: 'modulaire', wings: { ailes: 0, ailerons: 1, anneau: 1, panneaux: 2 }, armor: 0.3, organic: 0, crystals: 0, sails: 0, pods: 1, engineGlow: '#ffb070' },
+    shipStyle: { hullTones: ['#b07850', '#9a6a48', '#c08a60'], segments: [6, 8], profile: 'modulaire', armor: 0.3, organic: 0, crystals: 0, sails: 0, pods: 1, engineGlow: '#ffb070' },
   },
   // Profil neutre des parties commencées avant le choix d'espèce : aucun bonus, vaisseaux d'origine.
   'sans-espece': {

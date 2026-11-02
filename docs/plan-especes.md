@@ -1,6 +1,6 @@
 # Plan : choix de l'espèce en début de partie
 
-État : **plan validé**. Étapes 1 (données) et 2 (écran de choix, avec portraits animés et conseiller qui remplace le journal) faites le 31/10/2026 ; étape 3 (bonus) faite le 31/10/2026, avec la décision du § 11.7 ; étapes 4 et 5 à venir. Décisions de design au § 10 ; revue d'avant l'étape 3 au § 11 (**validée**, ajustements d'équilibre reportés dans `config.js`).
+État : **plan validé**. Étapes 1 (données) et 2 (écran de choix, avec portraits animés et conseiller qui remplace le journal) faites le 31/10/2026 ; étape 3 (bonus) faite le 31/10/2026, avec la décision du § 11.7 ; étape 4 (vaisseaux au style de l'espèce, textures, propulsion animée) faite le 02/11/2026, voir § 11.8 ; étape 5 à venir. Décisions de design au § 10 ; revue d'avant l'étape 3 au § 11 (**validée**, ajustements d'équilibre reportés dans `config.js`).
 
 ## 1. Le parcours du joueur
 
@@ -124,7 +124,7 @@ Fichiers qui appellent `createShip` : `scene.js` (modèles de l'amas), `ui.js` (
 1. **Données** — `SPECIES` dans `config.js`, `species.js`, `game.species`, sauvegarde avec valeur par défaut. *Test* : Node — une partie de chaque espèce se crée, s'enregistre et se recharge ; une ancienne sauvegarde se charge avec « Colons de l'Arche ».
 2. **Écran de choix** — `speciesView.js`, branchement dans `menu.js`, `save.js`, `main.js`. *Test* : navigateur — Accueil → Nouvelle partie → choix → l'Arche arrive avec le bon nom ; `?espece=` saute l'écran ; Retour fonctionne.
 3. **Bonus** — économie, croissance, recherche, vaisseaux, défense, milieu, colonisation des planètes hostiles (§ 11.1). *Test* : Node — (a) même graine, deux espèces : les écarts attendus apparaissent sur les bons axes et rien d'autre ne change ; (b) **comparaison des 8 espèces + profil neutre sur 200 jours simulés**, même graine et même stratégie automatique, tableau au § 11.5 ; (c) une colonie hostile est refusée sans la technologie, acceptée avec, et subit le malus.
-4. **Vaisseaux** — paramètre `style` dans `ships.js`, branché partout. *Test* : navigateur — vignettes des 8 espèces × 3 types côte à côte, chacune reconnaissable ; vaisseaux de l'amas et de la flotte au style de l'espèce jouée.
+4. **Vaisseaux** (✓ fait le 02/11/2026) — paramètre `style` dans `ships.js`, branché partout. *Test* : navigateur — vignettes des 8 espèces × 3 types côte à côte, chacune reconnaissable ; vaisseaux de l'amas et de la flotte au style de l'espèce jouée.
 5. **(Si oui à la question 2) Rivaux** — les espèces rivales tirées parmi les 7 restantes, noms et couleurs dans la carte et les fiches. *Test* : navigateur et Node.
 
 ## 10. Décisions (validées le 31/10/2026)
@@ -206,7 +206,7 @@ Risque : si l'étape 4 lit `style.hullTones` sans vérification, une ancienne sa
 - **(recommandée)** `shipStyle: null` = « générateur d'origine » : `createShip(seed, accent, registry, kind, style = null)` ne prend la branche « style d'espèce » que si `style` existe. Les vaisseaux des anciennes parties restent **identiques**, ce qu'un `shipStyle` imitant l'ancien générateur ne garantirait pas (l'ordre des tirages aléatoires changerait).
 - donner au profil neutre un `shipStyle` complet qui imite l'ancien style.
 
-Ajout au test de l'étape 4 : charger une sauvegarde sans espèce, ouvrir la flotte et l'amas : aucune erreur, vignettes identiques à avant.
+Ajout au test de l'étape 4 : charger une sauvegarde sans espèce, ouvrir la flotte et l'amas : aucune erreur, vignettes de même forme qu'avant (seuls les jets de propulsion animés s'ajoutent, voir § 11.8).
 
 ### 11.5 Comparaison des 8 espèces sur 200 jours simulés (test de l'étape 3)
 
@@ -337,3 +337,7 @@ En **milieu réel**, le bot choisit comme un joueur : il évite la planète host
 - les Thrennes, à revoir quand le combat existera.
 
 Tests : `docs/outils/test-etape3.mjs`, **28 tests**, tous passent (dont la consommation réduite sur planète favorable).
+
+### 11.8 Décision (02/11/2026) : propulsion animée pour tous les vaisseaux
+
+Les vaisseaux d'espèce ont des textures procédurales (plaques, usure, relief, hublots éclairés) et des silhouettes propres ; seuls les Ondésiens gardent des anneaux. Les jets de propulsion animés (pulsation, scintillement, halo ; plus forts en voyage) s'appliquent **à tous les vaisseaux, y compris sans espèce** (option b, choisie par l'utilisateur). Les parties sans espèce et les anciennes sauvegardes gardent donc la même forme de vaisseaux, mais avec les nouveaux jets. Aucun tirage aléatoire n'est ajouté : la forme reste identique pour une même graine.

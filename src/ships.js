@@ -103,6 +103,82 @@ function mirrored(mesh) {
   return copy;
 }
 
+// --- Propulsion animée : jet en cône additif (enveloppe + cœur) derrière chaque tuyère ---
+
+let jetTex = null;
+let jetGeo = null;
+const jetMats = new Map();
+// Dégradé le long du jet : brillant à la tuyère, losanges de choc, extinction vers la queue.
+function jetTexture() {
+  jetTex ??= canvasTexture(16, 128, (ctx, w, h) => {
+    const img = ctx.createImageData(w, h);
+    for (let y = 0; y < h; y++) {
+      const v = 1 - y / (h - 1); // 0 à la tuyère (bas du canvas), 1 en queue
+      const a = Math.pow(1 - v, 1.7) * (0.82 + 0.18 * Math.cos(v * 34)) * Math.min(1, v * 14 + 0.35);
+      for (let x = 0; x < w; x++) {
+        const i = (y * w + x) * 4;
+        img.data[i] = img.data[i + 1] = img.data[i + 2] = 255;
+        img.data[i + 3] = Math.round(Math.max(0, a) * 255);
+      }
+    }
+    ctx.putImageData(img, 0, 0);
+  });
+  return jetTex;
+}
+function jetGeometry() {
+  if (!jetGeo) {
+    jetGeo = new THREE.CylinderGeometry(0.3, 1, 1, 16, 1, true);
+    jetGeo.rotateX(-Math.PI / 2);
+    jetGeo.translate(0, 0, -0.5); // de z = 0 (tuyère) à z = -1 (queue)
+  }
+  return jetGeo;
+}
+function jetMaterials(color) {
+  const key = new THREE.Color(color).getHexString();
+  if (!jetMats.has(key)) {
+    const c = new THREE.Color(color);
+    const opts = { map: jetTexture(), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide };
+    jetMats.set(key, [
+      new THREE.MeshBasicMaterial({ ...opts, color: c, opacity: 0.45 }),
+      new THREE.MeshBasicMaterial({ ...opts, color: c.clone().lerp(new THREE.Color('#ffffff'), 0.65), opacity: 0.85 }),
+    ]);
+  }
+  return jetMats.get(key);
+}
+// Jet à la sortie d'une tuyère de rayon r (repère du vaisseau, orienté vers -Z).
+function makeJet(parent, x, y, z, r, color, jets) {
+  const [outer, inner] = jetMaterials(color);
+  const group = new THREE.Group();
+  const shell = new THREE.Mesh(jetGeometry(), outer);
+  const core = new THREE.Mesh(jetGeometry(), inner);
+  core.scale.set(0.45, 0.45, 0.6);
+  shell.userData.fx = core.userData.fx = true;
+  shell.renderOrder = core.renderOrder = 4;
+  group.add(shell, core);
+  group.position.set(x, y, z);
+  parent.add(group);
+  jets.push({ group, w: r * 0.85, len: r * 7, p: jets.length * 2.39 + x * 13 + y * 7 }); // phase sans tirage aléatoire : la forme ne change pas
+}
+
+// Anime la propulsion : jets qui pulsent et scintillent, halo des tuyères.
+// thrust : 0 (moteurs au repos) à 1 (pleine poussée) ; le changement de régime est progressif.
+export function animateShip(model, time, thrust = 1) {
+  const u = model.userData;
+  u.thrustNow = u.thrustNow == null ? thrust : u.thrustNow + (thrust - u.thrustNow) * 0.05;
+  const t = u.thrustNow;
+  const seed = u.fxSeed ?? 0;
+  for (let i = 0; i < u.flames.length; i++) {
+    const p = seed + i * 1.7;
+    const flick = 1 + Math.sin(time * 31 + p) * 0.08 + Math.sin(time * 57.3 + p * 2.1) * 0.05;
+    u.flames[i].scale.setScalar((0.3 + 0.6 * t) * flick);
+  }
+  for (const j of u.jets ?? []) {
+    const flick = 1 + Math.sin(time * 37 + j.p) * 0.09 + Math.sin(time * 71 + j.p * 1.3) * 0.06 + Math.sin(time * 4.1 + j.p) * 0.07;
+    const w = j.w * (0.7 + 0.35 * t) * (1 + Math.sin(time * 53 + j.p) * 0.04);
+    j.group.scale.set(w, w, Math.max(0.001, j.len * (0.18 + 0.95 * t) * flick));
+  }
+}
+
 // Taille de chaque type (voir SHIP_KINDS dans game.js) et échelle correspondante.
 export const SHIP_SIZES = {
   arche: 'gigantesque', sonde: 'petit', corvette: 'petit', fregate: 'moyen', colonie: 'moyen',
@@ -252,6 +328,7 @@ export function createShip(seed, accent, registry = '', kind = 'sonde', style = 
     ? rng.pick([2, 3, 4]) + { corvette: 0, fregate: 1, croiseur: 2, cuirasse: 3 }[kind]
     : rng.pick([1, 1, 2, 3]);
   const flames = [];
+  const jets = [];
   for (let i = 0; i < engineCount; i++) {
     const offset = engineCount === 1 ? 0 : radius * (engineCount > 4 ? 0.85 : 0.7);
     const nr = engineCount > 4 ? 0.3 : engineCount > 3 ? 0.36 : 0.45;
@@ -265,6 +342,7 @@ export function createShip(seed, accent, registry = '', kind = 'sonde', style = 
     flame.position.set(nozzle.position.x, nozzle.position.y, -length / 2 - 0.2);
     ship.add(nozzle, flame);
     flames.push(flame);
+    makeJet(ship, nozzle.position.x, nozzle.position.y, -length / 2 - 0.14, radius * nr, accentColor, jets);
   }
   const beacon = new THREE.Mesh(new THREE.SphereGeometry(0.03, 6, 4), new THREE.MeshBasicMaterial({ color: accentColor }));
   beacon.position.set(0, radius * 0.9, -length * 0.25);
@@ -363,7 +441,7 @@ export function createShip(seed, accent, registry = '', kind = 'sonde', style = 
     }
   }
 
-  ship.userData = { flames, beacon, length, rings, turrets, lights, kind, sizeScale: shipScale(kind) };
+  ship.userData = { flames, jets, fxSeed: seed % 1000, beacon, length, rings, turrets, lights, kind, sizeScale: shipScale(kind) };
   // Taille commune pour tous les vaisseaux, quelle que soit leur longueur, multipliée selon la taille du type.
   ship.scale.setScalar((1.6 / length) * shipScale(kind));
   return ship;
@@ -402,7 +480,7 @@ const LOOKS = {
   meduse: { saturate: 0.12, pattern: 'meduse', metalness: 0.1, roughness: 0.35, env: 1, emissive: 1.1, ring: [10, 48], turret: 'organique', warTone: '#1d4450' },
   grappe: { saturate: 0.28, pattern: 'mycelium', metalness: 0.25, roughness: 0.5, env: 0.8, emissive: 1.3, ring: [10, 40], turret: 'organique', warTone: '#3a2f4c' },
   cristal: { pattern: 'facettes', metalness: 0.1, roughness: 0.12, env: 1.4, emissive: 0.9, ring: [6, 30], turret: 'cristal', warTone: '#7c8ea8', warMix: 0.35 },
-  voilier: { pattern: 'glyphes', metalness: 0.85, roughness: 0.3, env: 1.1, emissive: 1.3, ring: [8, 48], warTone: '#5a3e1c', warMix: 0.4 },
+  voilier: { pattern: 'glyphes', metalness: 0.85, roughness: 0.3, env: 1.6, emissive: 1.3, ring: [8, 48], warTone: '#5a3e1c', warMix: 0.4 },
   caravane: { pattern: 'cargo', metalness: 0.6, roughness: 0.45, env: 0.9, emissive: 1, ring: [8, 40], warTone: '#3c3430' },
 };
 
@@ -413,8 +491,8 @@ function spaceEnv() {
   if (spaceEnvTexture) return spaceEnvTexture;
   spaceEnvTexture = canvasTexture(512, 256, (ctx, w, h) => {
     const sky = ctx.createLinearGradient(0, 0, 0, h);
-    sky.addColorStop(0, '#46587a');
-    sky.addColorStop(0.42, '#1a2234');
+    sky.addColorStop(0, '#6a7ea6');
+    sky.addColorStop(0.42, '#2a3550');
     sky.addColorStop(0.5, '#0d111a');
     sky.addColorStop(1, '#040508');
     ctx.fillStyle = sky;
@@ -425,7 +503,7 @@ function spaceEnv() {
     band.addColorStop(1, 'rgba(120,140,200,0)');
     ctx.fillStyle = band;
     ctx.fillRect(0, h * 0.38, w, h * 0.24);
-    const sun = ctx.createRadialGradient(w * 0.32, h * 0.28, 0, w * 0.32, h * 0.28, 70);
+    const sun = ctx.createRadialGradient(w * 0.32, h * 0.28, 0, w * 0.32, h * 0.28, 95);
     sun.addColorStop(0, 'rgba(255,248,232,1)');
     sun.addColorStop(0.25, 'rgba(255,236,200,0.6)');
     sun.addColorStop(1, 'rgba(255,230,190,0)');
@@ -499,368 +577,1157 @@ function glyph(rng, contexts, x, y, s) {
   }
 }
 
-function speciesTextures(rng, pattern, tone, accent, glow, registry, size = 256) {
-  const W = size;
-  const H = size;
-  const base = makeCanvas(W, H);
-  const emit = makeCanvas(W, H);
-  const ctx = base.getContext('2d');
-  const ex = emit.getContext('2d');
-  ctx.fillStyle = css(tone);
-  ctx.fillRect(0, 0, W, H);
-  ex.fillStyle = '#000';
-  ex.fillRect(0, 0, W, H);
-  const mottle = (n, a, max) => {
-    for (let i = 0; i < n; i++) {
-      const s = rng.range(-a, a);
-      ctx.fillStyle = s > 0 ? `rgba(255,255,255,${s})` : `rgba(0,0,0,${-s})`;
-      ctx.fillRect(rng.int(0, W), rng.int(0, H), rng.int(2, max), rng.int(2, max));
-    }
-  };
-  const glowCss = css(glow);
-  const accentCss = css(accent);
+// --- Matériaux réalistes : jeux de textures PBR procédurales (couleur, relief, rugosité/métal, émission) ---
+// Chaque jeu est dessiné une seule fois par espèce (archétype + teinte de référence) et partagé par tous
+// ses vaisseaux : la teinte propre à chaque vaisseau passe par material.color (rapport à la teinte peinte).
+// Les CanvasTexture fonctionnent dans tous les contextes WebGL (amas, vignettes) : chaque renderer les
+// téléverse de son côté.
 
-  if (pattern === 'plaques') {
-    // Lourdes plaques rivetées, coulures de rouille, fentes éclairées.
-    const rows = rng.int(5, 7);
-    const cols = rng.int(3, 5);
-    const ph = H / rows;
-    const pw = W / cols;
-    for (let r = 0; r < rows; r++) {
-      const off = (r % 2) * pw * 0.5;
-      for (let k = -1; k < cols; k++) {
-        const x = k * pw + off;
-        const y = r * ph;
-        ctx.fillStyle = shade(tone, rng.range(-0.09, 0.07));
-        ctx.fillRect(x + 2, y + 2, pw - 4, ph - 4);
-        ctx.fillStyle = 'rgba(255,225,190,0.2)';
-        ctx.fillRect(x + 2, y + 2, pw - 4, 2);
-        ctx.fillRect(x + 2, y + 2, 2, ph - 4);
-        ctx.fillStyle = 'rgba(0,0,0,0.5)';
-        ctx.fillRect(x + 2, y + ph - 4, pw - 4, 3);
-        ctx.fillRect(x + pw - 4, y + 2, 3, ph - 4);
-        for (let i = x + 7; i < x + pw - 5; i += 9) {
-          ctx.fillRect(i, y + 6, 2, 2);
-          ctx.fillRect(i, y + ph - 9, 2, 2);
-        }
+const TILE = 0.5; // taille, en unités du modèle, d'une répétition de texture
+const SETS = new Map();
+const NS = 256;
+let NOISE = null;
+
+function smooth01(t) {
+  t = Math.min(1, Math.max(0, t));
+  return t * t * (3 - 2 * t);
+}
+
+// Bruit fractal raccordable (se répète sans couture), calculé une fois.
+function noiseField() {
+  if (NOISE) return NOISE;
+  const rng = createRng(90210);
+  NOISE = new Float32Array(NS * NS);
+  let amp = 0.5;
+  let total = 0;
+  for (const g of [4, 8, 16, 32, 64, 128]) {
+    const lat = new Float32Array(g * g).map(() => rng.next());
+    for (let y = 0; y < NS; y++) {
+      const fy = (y / NS) * g;
+      const y0 = Math.floor(fy);
+      const ty = smooth01(fy - y0);
+      const y1 = (y0 + 1) % g;
+      for (let x = 0; x < NS; x++) {
+        const fx = (x / NS) * g;
+        const x0 = Math.floor(fx);
+        const tx = smooth01(fx - x0);
+        const x1 = (x0 + 1) % g;
+        const a = lat[y0 * g + x0] + (lat[y0 * g + x1] - lat[y0 * g + x0]) * tx;
+        const b = lat[y1 * g + x0] + (lat[y1 * g + x1] - lat[y1 * g + x0]) * tx;
+        NOISE[y * NS + x] += amp * (a + (b - a) * ty);
       }
     }
-    for (let i = 0; i < 18; i++) {
-      const x = rng.int(0, W);
-      const y = rng.int(0, H);
-      const h = rng.int(20, 90);
-      const g = ctx.createLinearGradient(0, y, 0, y + h);
-      g.addColorStop(0, 'rgba(140,55,18,0.55)');
-      g.addColorStop(1, 'rgba(140,55,18,0)');
-      ctx.fillStyle = g;
-      ctx.fillRect(x, y, rng.int(2, 7), h);
+    total += amp;
+    amp *= 0.55;
+  }
+  for (let i = 0; i < NOISE.length; i++) NOISE[i] /= total;
+  return NOISE;
+}
+
+const gray = (v, a = 1) => {
+  const k = Math.round(Math.min(1, Math.max(0, v)) * 255);
+  return `rgba(${k},${k},${k},${a})`;
+};
+
+// Peintre : cinq calques de même taille. c = couleur, h = relief (gris moyen = 0), r = rugosité,
+// m = métal, e = émission (blanc, teinté par material.emissive).
+function painter(size, seed, base, rough, metal) {
+  const P = { S: size, rng: createRng(seed), cv: {} };
+  for (const k of ['c', 'h', 'r', 'm', 'e']) {
+    P.cv[k] = makeCanvas(size, size);
+    P[k] = P.cv[k].getContext('2d', { willReadFrequently: true }); // canvas en mémoire : lecture des pixels rapide
+  }
+  P.c.fillStyle = css(base);
+  P.h.fillStyle = gray(0.5);
+  P.r.fillStyle = gray(rough);
+  P.m.fillStyle = gray(metal);
+  P.e.fillStyle = '#000';
+  for (const k of ['c', 'h', 'r', 'm', 'e']) P[k].fillRect(0, 0, size, size);
+  return P;
+}
+
+// Dessine un motif et ses copies décalées quand il déborde, pour que la texture se raccorde.
+function wrap(P, x, y, w, h, fn) {
+  const S = P.S;
+  const xs = [0];
+  const ys = [0];
+  if (x < 0) xs.push(S);
+  if (x + w > S) xs.push(-S);
+  if (y < 0) ys.push(S);
+  if (y + h > S) ys.push(-S);
+  for (const dx of xs) for (const dy of ys) fn(x + dx, y + dy);
+}
+
+function rivet(P, x, y, r) {
+  wrap(P, x - r * 2, y - r * 2, r * 4, r * 4, (X, Y) => {
+    X += r * 2;
+    Y += r * 2;
+    const hg = P.h.createRadialGradient(X - r * 0.2, Y - r * 0.2, 0, X, Y, r * 1.3);
+    hg.addColorStop(0, gray(0.85));
+    hg.addColorStop(0.7, gray(0.62));
+    hg.addColorStop(1, gray(0.5, 0));
+    P.h.fillStyle = hg;
+    P.h.fillRect(X - r * 1.5, Y - r * 1.5, r * 3, r * 3);
+    P.c.fillStyle = 'rgba(0,0,0,0.35)';
+    P.c.beginPath();
+    P.c.arc(X + r * 0.25, Y + r * 0.3, r * 1.1, 0, Math.PI * 2);
+    P.c.fill();
+    P.c.fillStyle = 'rgba(255,240,220,0.22)';
+    P.c.beginPath();
+    P.c.arc(X - r * 0.15, Y - r * 0.2, r * 0.75, 0, Math.PI * 2);
+    P.c.fill();
+    P.r.fillStyle = gray(0, 0.25);
+    P.r.beginPath();
+    P.r.arc(X, Y, r, 0, Math.PI * 2);
+    P.r.fill();
+  });
+}
+
+// Grille de plaques : joints creusés, arêtes, nuances et rivets.
+function panels(P, o) {
+  const { rows, cols, stagger = 0, seam = 2, lift = 0.06, shade: sv = 0.06, roughVar = 0.08, rivetR = 0, rivetStep = 12, jitter = 0 } = o;
+  const S = P.S;
+  const ph = S / rows;
+  const pw = S / cols;
+  for (let r = 0; r < rows; r++) {
+    const off = (r % 2) * pw * stagger;
+    let x = off;
+    const widths = [];
+    // Plaques de largeurs inégales si `jitter` : la somme reste S pour garder le raccord.
+    let left = S;
+    for (let k = 0; k < cols; k++) {
+      const w = k === cols - 1 ? left : Math.max(pw * 0.4, pw * (1 + P.rng.range(-jitter, jitter)));
+      widths.push(Math.min(w, left));
+      left -= widths[k];
     }
-    mottle(160, 0.1, 5);
-    ex.fillStyle = glowCss;
-    ctx.fillStyle = shade(glow, 0.1);
-    for (let i = 0; i < 7; i++) {
-      const x = rng.int(0, W - 20);
-      const y = rng.int(0, H - 4);
-      const w = rng.int(6, 16);
-      ex.fillRect(x, y, w, 3);
-      ctx.fillRect(x, y, w, 3);
-    }
-  } else if (pattern === 'gravures') {
-    // Coque anthracite taillée en éclats, marques de victoires gravées en rouge.
-    mottle(220, 0.07, 6);
-    ctx.lineWidth = 1.5;
-    for (let i = 0; i < 18; i++) {
-      const x = rng.int(0, W);
-      const y = rng.int(0, H);
-      const a = rng.pick([-0.5, 0.5, 0]) + rng.range(-0.1, 0.1);
-      const len = rng.int(40, 140);
-      ctx.strokeStyle = 'rgba(0,0,0,0.6)';
-      ctx.beginPath();
-      ctx.moveTo(x, y);
-      ctx.lineTo(x + Math.cos(a) * len, y + Math.sin(a) * len);
-      ctx.stroke();
-      ctx.strokeStyle = 'rgba(255,255,255,0.07)';
-      ctx.beginPath();
-      ctx.moveTo(x, y + 2);
-      ctx.lineTo(x + Math.cos(a) * len, y + 2 + Math.sin(a) * len);
-      ctx.stroke();
-    }
-    ctx.strokeStyle = accentCss;
-    ex.strokeStyle = glowCss;
-    ctx.lineWidth = ex.lineWidth = 2;
-    for (let g = 0; g < 7; g++) {
-      const x = rng.int(4, W - 30);
-      const y = rng.int(4, H - 20);
-      const marks = rng.int(2, 5);
-      for (const c of [ctx, ex]) {
-        c.beginPath();
-        for (let i = 0; i < marks; i++) {
-          c.moveTo(x + i * 5, y);
-          c.lineTo(x + i * 5, y + 14);
+    for (const w of widths) {
+      const y = r * ph;
+      const s = P.rng.range(-sv, sv);
+      const rv = P.rng.range(-roughVar, roughVar);
+      const hl = lift * P.rng.range(0.6, 1.2);
+      wrap(P, x, y, w, ph, (X, Y) => {
+        P.c.fillStyle = s > 0 ? `rgba(255,255,255,${s})` : `rgba(0,0,0,${-s})`;
+        P.c.fillRect(X, Y, w, ph);
+        P.r.fillStyle = rv > 0 ? gray(1, rv) : gray(0, -rv);
+        P.r.fillRect(X, Y, w, ph);
+        P.h.fillStyle = gray(0.5 + hl);
+        P.h.fillRect(X + seam, Y + seam, w - seam * 2, ph - seam * 2);
+        // Joint : creux sombre, lèvre claire en haut à gauche.
+        P.h.fillStyle = gray(0.3);
+        P.h.fillRect(X, Y, w, seam * 0.7);
+        P.h.fillRect(X, Y, seam * 0.7, ph);
+        P.c.fillStyle = 'rgba(0,0,0,0.45)';
+        P.c.fillRect(X, Y, w, Math.max(1, seam * 0.6));
+        P.c.fillRect(X, Y, Math.max(1, seam * 0.6), ph);
+        P.c.fillStyle = 'rgba(255,255,255,0.08)';
+        P.c.fillRect(X, Y + seam * 0.6, w, 1);
+        P.c.fillRect(X + seam * 0.6, Y, 1, ph);
+        P.r.fillStyle = gray(1, 0.3);
+        P.r.fillRect(X, Y, w, seam);
+      });
+      if (rivetR) {
+        const n = Math.max(1, Math.floor((w - rivetStep) / rivetStep));
+        for (let i = 0; i <= n; i++) {
+          const rx = x + rivetStep * 0.5 + (i * (w - rivetStep)) / n;
+          rivet(P, rx, y + rivetStep * 0.45, rivetR);
+          rivet(P, rx, y + ph - rivetStep * 0.45, rivetR);
         }
-        if (marks >= 4) {
-          c.moveTo(x - 2, y + 12);
-          c.lineTo(x + marks * 5, y + 2);
-        }
-        c.stroke();
       }
+      x += w;
     }
-    // Chevrons rouges.
-    const cy = rng.int(40, 200);
-    ctx.fillStyle = accentCss;
-    ex.fillStyle = rgba(glow, 0.55);
-    for (const c of [ctx, ex]) {
-      for (let x = 0; x < W; x += 32) {
-        c.beginPath();
-        c.moveTo(x, cy);
-        c.lineTo(x + 16, cy + 10);
-        c.lineTo(x + 32, cy);
-        c.lineTo(x + 32, cy + 5);
-        c.lineTo(x + 16, cy + 15);
-        c.lineTo(x, cy + 5);
-        c.closePath();
-        c.fill();
+  }
+}
+
+function blobs(P, n, color, alpha, rmin, rmax, roughAdd = 0, metalAdd = 0) {
+  for (let i = 0; i < n; i++) {
+    const r = P.rng.range(rmin, rmax);
+    const x0 = P.rng.range(0, P.S);
+    const y0 = P.rng.range(0, P.S);
+    const sy = P.rng.range(0.5, 1.6);
+    const a = alpha * P.rng.range(0.4, 1);
+    wrap(P, x0 - r, y0 - r * sy, r * 2, r * 2 * sy, (X, Y) => {
+      const cx = X + r;
+      const cy = Y + r * sy;
+      for (const [ctx, col, k] of [[P.c, color, a], [P.r, roughAdd > 0 ? '255,255,255' : '0,0,0', Math.abs(roughAdd) * a], [P.m, metalAdd > 0 ? '255,255,255' : '0,0,0', Math.abs(metalAdd) * a]]) {
+        if (!k) continue;
+        const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+        g.addColorStop(0, `rgba(${col},${k})`);
+        g.addColorStop(1, `rgba(${col},0)`);
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.scale(1, sy);
+        ctx.translate(-cx, -cy);
+        ctx.fillStyle = g;
+        ctx.fillRect(cx - r, cy - r, r * 2, r * 2);
+        ctx.restore();
       }
-    }
-  } else if (pattern === 'liseres') {
-    // Coque claire et nette, fins liserés jaunes et flèches.
-    mottle(80, 0.04, 8);
-    ctx.strokeStyle = 'rgba(0,0,0,0.12)';
-    ctx.lineWidth = 1;
-    for (let i = 1; i < 6; i++) {
-      ctx.beginPath();
-      ctx.moveTo((i * W) / 6, 0);
-      ctx.lineTo((i * W) / 6, H);
-      ctx.stroke();
-    }
-    for (let j = 1; j < 8; j++) {
-      ctx.beginPath();
-      ctx.moveTo(0, (j * H) / 8);
-      ctx.lineTo(W, (j * H) / 8);
-      ctx.stroke();
-    }
-    const stripes = rng.int(1, 2);
-    for (let s = 0; s < stripes; s++) {
-      const y = rng.int(50, 190);
-      ctx.fillStyle = accentCss;
-      ctx.fillRect(0, y, W, 5);
-      ctx.fillRect(0, y + 9, W, 2);
-      ex.fillStyle = rgba(glow, 0.5);
-      ex.fillRect(0, y + 1, W, 3);
-      ctx.fillStyle = shade(accent, -0.2);
-      for (let x = rng.int(0, 30); x < W; x += 48) {
+    });
+  }
+}
+
+// Coulures verticales (rouille, suie).
+function streaks(P, n, color, alpha, len, width = [1, 5]) {
+  for (let i = 0; i < n; i++) {
+    const x = P.rng.range(0, P.S);
+    const y = P.rng.range(0, P.S);
+    const h = P.rng.range(len[0], len[1]);
+    const w = P.rng.range(width[0], width[1]);
+    wrap(P, x, y, w, h, (X, Y) => {
+      const g = P.c.createLinearGradient(0, Y, 0, Y + h);
+      g.addColorStop(0, `rgba(${color},${alpha})`);
+      g.addColorStop(1, `rgba(${color},0)`);
+      P.c.fillStyle = g;
+      P.c.fillRect(X, Y, w, h);
+      P.r.fillStyle = gray(1, 0.15);
+      P.r.fillRect(X, Y, w, h * 0.6);
+    });
+  }
+}
+
+// Rayures : métal mis à nu (plus brillant, plus métallique).
+function scratches(P, n, len, alpha = 0.3) {
+  for (let i = 0; i < n; i++) {
+    const x = P.rng.range(0, P.S);
+    const y = P.rng.range(0, P.S);
+    const a = P.rng.range(0, Math.PI * 2);
+    const l = P.rng.range(len * 0.3, len);
+    const dx = Math.cos(a) * l;
+    const dy = Math.sin(a) * l;
+    wrap(P, Math.min(x, x + dx), Math.min(y, y + dy), Math.abs(dx), Math.abs(dy), (X, Y) => {
+      const sx = X + (dx < 0 ? -dx : 0);
+      const sy = Y + (dy < 0 ? -dy : 0);
+      for (const [ctx, style, w] of [[P.c, `rgba(255,250,240,${alpha})`, 1], [P.r, gray(0, 0.5), 1.4], [P.m, gray(1, 0.6), 1.4], [P.h, gray(0.38, 0.6), 1]]) {
+        ctx.strokeStyle = style;
+        ctx.lineWidth = w;
         ctx.beginPath();
-        ctx.moveTo(x, y + 14);
-        ctx.lineTo(x + 8, y + 19);
-        ctx.lineTo(x, y + 24);
-        ctx.fill();
+        ctx.moveTo(sx, sy);
+        ctx.lineTo(sx + dx, sy + dy);
+        ctx.stroke();
+      }
+    });
+  }
+}
+
+// Hublots : verre sombre en retrait, la plupart allumés.
+function windows(P, x, y, count, w, h, gap, lit = 0.75) {
+  for (let i = 0; i < count; i++) {
+    const X = x + i * (w + gap);
+    P.h.fillStyle = gray(0.28);
+    P.h.fillRect(X - 1, y - 1, w + 2, h + 2);
+    P.c.fillStyle = 'rgba(30,30,34,1)';
+    P.c.fillRect(X - 1.5, y - 1.5, w + 3, h + 3);
+    P.c.fillStyle = '#0b0f16';
+    P.c.fillRect(X, y, w, h);
+    P.r.fillStyle = gray(0.08);
+    P.r.fillRect(X, y, w, h);
+    P.m.fillStyle = gray(0);
+    P.m.fillRect(X, y, w, h);
+    if (P.rng.chance(lit)) {
+      P.e.fillStyle = gray(P.rng.range(0.65, 1));
+      P.e.fillRect(X, y, w, h);
+      P.c.fillStyle = 'rgba(255,240,200,0.5)';
+      P.c.fillRect(X, y, w, h);
+    }
+  }
+}
+
+function stencil(P, text, x, y, px, color, alpha = 0.7, font = 'monospace') {
+  P.c.font = `bold ${px}px ${font}`;
+  P.c.fillStyle = `rgba(${color},${alpha})`;
+  P.c.fillText(text, x, y);
+  P.r.font = P.c.font;
+  P.r.fillStyle = gray(0, 0.15);
+  P.r.fillText(text, x, y);
+}
+
+// Glyphe gravé : creux dans le relief, trait sombre, lueur dans l'émission.
+function engraved(P, x, y, s, glowAlpha = 1) {
+  P.h.strokeStyle = gray(0.25);
+  P.h.lineWidth = 2.2;
+  P.c.strokeStyle = 'rgba(40,24,6,0.7)';
+  P.c.lineWidth = 1.8;
+  P.e.strokeStyle = gray(1, glowAlpha);
+  P.e.lineWidth = 1.4;
+  glyph(P.rng, [P.h, P.c, P.e], x, y, s);
+}
+
+// Réseau de veines qui se ramifient (sur les calques donnés).
+function veins(P, layers, x, y, a, steps, width, step = 6) {
+  const pts = [[x, y]];
+  for (let s = 0; s < steps; s++) {
+    x += Math.cos(a) * step;
+    y += Math.sin(a) * step;
+    a += P.rng.range(-0.5, 0.5);
+    pts.push([x, y]);
+    if (width > 0.8 && P.rng.chance(0.07)) veins(P, layers, x, y, a + P.rng.pick([-1, 1]) * 0.9, Math.floor(steps * 0.5), width * 0.6, step);
+  }
+  for (const [ctx, style, wk] of layers) {
+    ctx.strokeStyle = style;
+    ctx.lineWidth = width * wk;
+    ctx.lineCap = 'round';
+    for (const [dx, dy] of [[0, 0], [P.S, 0], [-P.S, 0], [0, P.S], [0, -P.S]]) {
+      ctx.beginPath();
+      pts.forEach(([px, py], i) => (i ? ctx.lineTo(px + dx, py + dy) : ctx.moveTo(px + dx, py + dy)));
+      ctx.stroke();
+    }
+  }
+}
+
+// Termine un jeu : grain de bruit, carte normale tirée du relief, rugosité (G) + métal (B) réunis.
+function finish(P, o = {}) {
+  const { grain = 0.1, speck = 0.04, roughGrain = 0.12, heightGrain = 0.06, normal = 1.5, patina = null, blur = 0.8, noEmit = false } = o;
+  const S = P.S;
+  const N = noiseField();
+  const get = (k) => P[k].getImageData(0, 0, S, S);
+  const C = get('c');
+  const R = get('r');
+  const M = get('m');
+  // Relief adouci avant le calcul des normales (la carte doit rester raccordable : on recopie autour).
+  const hb = makeCanvas(S, S);
+  const hx = hb.getContext('2d', { willReadFrequently: true });
+  hx.filter = `blur(${blur}px)`;
+  for (const dx of [-S, 0, S]) for (const dy of [-S, 0, S]) hx.drawImage(P.cv.h, dx, dy);
+  const H = hx.getImageData(0, 0, S, S);
+  const c = C.data;
+  const r = R.data;
+  const m = M.data;
+  const h = H.data;
+  const pat = patina ? [patina.color.r * 255, patina.color.g * 255, patina.color.b * 255] : null;
+  for (let y = 0; y < S; y++) {
+    const iy1 = Math.floor((y * NS) / S / 2) % NS;
+    const iy2 = (Math.floor((y * NS * 2) / S) + 97) % NS;
+    for (let x = 0; x < S; x++) {
+      const i = (y * S + x) * 4;
+      const n1 = N[iy1 * NS + (Math.floor((x * NS) / S / 2) % NS)];
+      const n2 = N[iy2 * NS + ((Math.floor((x * NS * 2) / S) + 41) % NS)];
+      const hash = (((x * 73856093) ^ (y * 19349663)) >>> 0) % 1000 / 1000;
+      let k = 1 + (n1 * 0.6 + n2 * 0.4 - 0.5) * grain * 2 + (hash - 0.5) * speck;
+      if (pat) {
+        // Patine (vert-de-gris) dans les creux du bruit : mate et non métallique.
+        const p = smooth01((n1 * 0.7 + n2 * 0.3 - patina.threshold) / patina.soft) * patina.amount;
+        if (p > 0) {
+          for (let ch = 0; ch < 3; ch++) c[i + ch] = c[i + ch] * (1 - p) + pat[ch] * (0.75 + n2 * 0.5) * p;
+          r[i] = r[i] * (1 - p) + 225 * p;
+          m[i] = m[i] * (1 - p) + 20 * p;
+        }
+      }
+      c[i] = Math.min(255, c[i] * k);
+      c[i + 1] = Math.min(255, c[i + 1] * k);
+      c[i + 2] = Math.min(255, c[i + 2] * k);
+      r[i] = Math.min(255, Math.max(0, r[i] + (n2 - 0.5) * roughGrain * 255 + (hash - 0.5) * 12));
+      h[i] = Math.min(255, Math.max(0, h[i] + (n2 - 0.5) * heightGrain * 255 + (hash - 0.5) * heightGrain * 40));
+    }
+  }
+  P.c.putImageData(C, 0, 0);
+  // Normale : (gauche - droite, bas - haut, 1) — l'axe V de la texture monte (canvas inversé).
+  const nc = makeCanvas(S, S);
+  const nx = nc.getContext('2d');
+  const NI = nx.createImageData(S, S);
+  const orm = makeCanvas(S, S);
+  const ox = orm.getContext('2d');
+  const OI = ox.createImageData(S, S);
+  const hv = (x, y) => h[(((y + S) % S) * S + ((x + S) % S)) * 4];
+  for (let y = 0; y < S; y++) {
+    for (let x = 0; x < S; x++) {
+      const i = (y * S + x) * 4;
+      const dx = ((hv(x - 1, y) - hv(x + 1, y)) / 255) * normal;
+      const dy = ((hv(x, y + 1) - hv(x, y - 1)) / 255) * normal;
+      const l = Math.hypot(dx, dy, 1);
+      NI.data[i] = (dx / l) * 127.5 + 127.5;
+      NI.data[i + 1] = (dy / l) * 127.5 + 127.5;
+      NI.data[i + 2] = (1 / l) * 127.5 + 127.5;
+      NI.data[i + 3] = 255;
+      OI.data[i] = 255;
+      OI.data[i + 1] = Math.max(10, r[i]);
+      OI.data[i + 2] = m[i];
+      OI.data[i + 3] = 255;
+    }
+  }
+  nx.putImageData(NI, 0, 0);
+  ox.putImageData(OI, 0, 0);
+  const linear = (canvas) => {
+    const t = toTexture(canvas);
+    t.colorSpace = THREE.NoColorSpace;
+    return t;
+  };
+  return {
+    map: toTexture(P.cv.c),
+    normalMap: linear(nc),
+    orm: linear(orm),
+    emissiveMap: noEmit ? null : toTexture(P.cv.e),
+    normal: o.normalScale ?? 1,
+  };
+}
+
+function cachedSet(key, make) {
+  if (!SETS.has(key)) SETS.set(key, make());
+  return SETS.get(key);
+}
+
+// --- Motifs propres à chaque espèce ---
+
+// Vaskhar : blindage lourd riveté, grain de roche, coulures de rouille, fentes éclairées.
+function paintForteresse(P) {
+  const S = P.S;
+  blobs(P, 30, '20,12,6', 0.25, 20, 70, 0.15);
+  panels(P, { rows: 4, cols: 2, stagger: 0.5, seam: 5, lift: 0.1, shade: 0.09, roughVar: 0.1, rivetR: 2.6, rivetStep: 14, jitter: 0.25 });
+  // Plaques de renfort boulonnées par-dessus.
+  for (let i = 0; i < 5; i++) {
+    const w = P.rng.range(50, 110);
+    const h = P.rng.range(30, 60);
+    const x = P.rng.range(0, S);
+    const y = P.rng.range(0, S);
+    wrap(P, x, y, w, h, (X, Y) => {
+      P.h.fillStyle = gray(0.72);
+      P.h.fillRect(X, Y, w, h);
+      P.c.fillStyle = 'rgba(0,0,0,0.12)';
+      P.c.fillRect(X, Y, w, h);
+      P.c.fillStyle = 'rgba(0,0,0,0.5)';
+      P.c.fillRect(X, Y + h, w, 2);
+      P.c.fillRect(X + w, Y, 2, h + 2);
+    });
+    for (const [rx, ry] of [[6, 6], [w - 6, 6], [6, h - 6], [w - 6, h - 6]]) rivet(P, x + rx, y + ry, 3);
+  }
+  streaks(P, 26, '125,52,18', 0.5, [30, 130], [2, 6]);
+  streaks(P, 10, '20,14,10', 0.35, [20, 80], [2, 4]);
+  scratches(P, 40, 40, 0.25);
+  for (let i = 0; i < 5; i++) {
+    const x = P.rng.range(20, S - 80);
+    const y = P.rng.range(20, S - 20);
+    windows(P, x, y, P.rng.int(2, 4), 12, 4, 6, 0.8);
+  }
+  stencil(P, `VK-${P.rng.int(10, 99)}`, P.rng.range(30, 300), P.rng.range(60, 460), 16, '25,15,8', 0.55);
+  stencil(P, `${P.rng.int(100, 999)}`, P.rng.range(30, 300), P.rng.range(60, 460), 11, '25,15,8', 0.45);
+}
+
+// Thrennes : acier sombre poli, lames superposées, gravures rouges.
+function paintPredateur(P) {
+  const S = P.S;
+  for (let i = 0; i < 500; i++) {
+    const y = P.rng.range(0, S);
+    P.c.fillStyle = P.rng.chance(0.5) ? 'rgba(255,255,255,0.035)' : 'rgba(0,0,0,0.05)';
+    P.c.fillRect(0, y, S, 1);
+    P.r.fillStyle = P.rng.chance(0.5) ? gray(1, 0.06) : gray(0, 0.06);
+    P.r.fillRect(0, y, S, 1);
+  }
+  // Rangées de lames en écailles obliques : chaque lame recouvre la suivante.
+  const rows = 4;
+  const rh = S / rows;
+  for (let r = 0; r < rows; r++) {
+    const n = 5;
+    const w = S / n;
+    const skew = rh * 0.35;
+    for (let k = n; k >= 0; k--) {
+      const x0 = k * w + (r % 2) * w * 0.5;
+      const y0 = r * rh;
+      wrap(P, x0, y0 - skew, w * 1.25, rh + skew * 2, (X, Y) => {
+        Y += skew;
+        const poly = (ctx) => {
+          ctx.beginPath();
+          ctx.moveTo(X, Y + skew);
+          ctx.lineTo(X + w * 1.15, Y);
+          ctx.lineTo(X + w * 1.15, Y + rh - 3);
+          ctx.lineTo(X, Y + rh + skew - 3);
+          ctx.closePath();
+        };
+        const hg = P.h.createLinearGradient(X, 0, X + w * 1.15, 0);
+        hg.addColorStop(0, gray(0.38));
+        hg.addColorStop(1, gray(0.68));
+        P.h.fillStyle = hg;
+        poly(P.h);
+        P.h.fill();
+        const s = P.rng.range(-0.05, 0.05);
+        P.c.fillStyle = s > 0 ? `rgba(255,255,255,${s})` : `rgba(0,0,0,${-s})`;
+        poly(P.c);
+        P.c.fill();
+        // Fil de la lame : arête claire, ombre portée sur la suivante.
+        P.c.strokeStyle = 'rgba(255,235,235,0.22)';
+        P.c.lineWidth = 1.2;
+        P.c.beginPath();
+        P.c.moveTo(X + w * 1.15, Y);
+        P.c.lineTo(X + w * 1.15, Y + rh - 3);
+        P.c.stroke();
+        P.c.strokeStyle = 'rgba(0,0,0,0.55)';
+        P.c.lineWidth = 3;
+        P.c.beginPath();
+        P.c.moveTo(X, Y + rh + skew - 2);
+        P.c.lineTo(X + w * 1.15, Y + rh - 2);
+        P.c.stroke();
+        P.r.fillStyle = gray(P.rng.range(0.18, 0.34));
+        poly(P.r);
+        P.r.fill();
+      });
+    }
+  }
+  scratches(P, 30, 50, 0.18);
+  // Marques de victoires gravées, qui rougeoient.
+  for (let g = 0; g < 3; g++) {
+    const x = P.rng.range(10, S - 40);
+    const y = P.rng.range(10, S - 30);
+    const marks = P.rng.int(3, 6);
+    for (const [ctx, style, lw] of [[P.h, gray(0.2), 2.5], [P.c, 'rgba(90,10,10,0.9)', 2], [P.e, gray(1, 0.9), 1.5]]) {
+      ctx.strokeStyle = style;
+      ctx.lineWidth = lw;
+      ctx.beginPath();
+      for (let i = 0; i < marks; i++) {
+        ctx.moveTo(x + i * 5, y);
+        ctx.lineTo(x + i * 5 - 2, y + 16);
+      }
+      if (marks >= 5) {
+        ctx.moveTo(x - 3, y + 13);
+        ctx.lineTo(x + marks * 5, y + 3);
+      }
+      ctx.stroke();
+    }
+  }
+  stencil(P, `Ʌ${P.rng.int(10, 99)}`, P.rng.range(40, 380), P.rng.range(60, 470), 14, '120,20,20', 0.6);
+  for (let i = 0; i < 3; i++) windows(P, P.rng.range(20, S - 60), P.rng.range(20, S - 20), 3, 8, 3, 5, 0.6);
+}
+
+// Kel-Tirr : tuiles de céramique lisse, joints fins, liserés et inscriptions.
+function paintAiguille(P, stripe) {
+  const S = P.S;
+  const n = 16;
+  const t = S / n;
+  for (let j = 0; j < n; j++) {
+    for (let i = 0; i < n; i++) {
+      const x = i * t + (j % 2) * t * 0.5;
+      const y = j * t;
+      const s = P.rng.range(-0.035, 0.035) - (P.rng.chance(0.05) ? 0.08 : 0);
+      wrap(P, x, y, t, t, (X, Y) => {
+        P.c.fillStyle = s > 0 ? `rgba(255,255,255,${s})` : `rgba(40,35,30,${-s})`;
+        P.c.fillRect(X, Y, t, t);
+        const hg = P.h.createRadialGradient(X + t / 2, Y + t / 2, 0, X + t / 2, Y + t / 2, t * 0.7);
+        hg.addColorStop(0, gray(0.56));
+        hg.addColorStop(1, gray(0.5));
+        P.h.fillStyle = hg;
+        P.h.fillRect(X, Y, t, t);
+        P.h.fillStyle = gray(0.36);
+        P.h.fillRect(X, Y, t, 1.2);
+        P.h.fillRect(X, Y, 1.2, t);
+        P.c.fillStyle = 'rgba(60,55,45,0.28)';
+        P.c.fillRect(X, Y, t, 1);
+        P.c.fillRect(X, Y, 1, t);
+        P.r.fillStyle = gray(P.rng.range(0.4, 0.55));
+        P.r.fillRect(X + 1, Y + 1, t - 1, t - 1);
+      });
+    }
+  }
+  // Grandes trappes de service.
+  for (let i = 0; i < 3; i++) {
+    const x = Math.round(P.rng.range(0, S) / t) * t;
+    const y = Math.round(P.rng.range(0, S) / t) * t;
+    const w = t * P.rng.int(2, 4);
+    const h = t * P.rng.int(2, 3);
+    wrap(P, x, y, w, h, (X, Y) => {
+      P.h.strokeStyle = gray(0.3);
+      P.h.lineWidth = 2;
+      P.h.strokeRect(X + 1, Y + 1, w - 2, h - 2);
+      P.c.strokeStyle = 'rgba(50,45,40,0.5)';
+      P.c.lineWidth = 1.2;
+      P.c.strokeRect(X + 1, Y + 1, w - 2, h - 2);
+    });
+  }
+  // Liserés peints et flèches.
+  const sc = `${Math.round(stripe.r * 255)},${Math.round(stripe.g * 255)},${Math.round(stripe.b * 255)}`;
+  const y0 = Math.round(P.rng.range(0.25, 0.7) * S);
+  P.c.fillStyle = `rgba(${sc},0.95)`;
+  P.c.fillRect(0, y0, S, 6);
+  P.c.fillRect(0, y0 + 10, S, 2);
+  P.r.fillStyle = gray(0.3);
+  P.r.fillRect(0, y0, S, 12);
+  P.e.fillStyle = gray(1, 0.18);
+  P.e.fillRect(0, y0 + 1, S, 4);
+  for (let x = 16; x < S; x += 64) {
+    P.c.beginPath();
+    P.c.moveTo(x, y0 + 18);
+    P.c.lineTo(x + 10, y0 + 24);
+    P.c.lineTo(x, y0 + 30);
+    P.c.fill();
+  }
+  stencil(P, `KT ${P.rng.int(100, 999)}`, P.rng.range(20, 300), y0 - 12, 15, '40,40,48', 0.7);
+  stencil(P, 'NE PAS MARCHER', P.rng.range(20, 300), P.rng.range(40, 480), 9, '60,58,60', 0.5, 'sans-serif');
+  windows(P, P.rng.range(30, 200), P.rng.range(60, 200), 6, 9, 6, 7, 0.85);
+  blobs(P, 12, '70,60,50', 0.08, 30, 90, 0.08);
+  streaks(P, 8, '80,70,60', 0.12, [40, 120], [3, 8]);
+}
+
+// Ondésiens : membrane nervurée, cellules et veines luminescentes.
+function paintMeduse(P) {
+  const S = P.S;
+  const ribs = 12;
+  for (let i = 0; i < ribs; i++) {
+    const x = (i / ribs) * S;
+    const amp = P.rng.range(4, 10);
+    const ph = P.rng.range(0, Math.PI * 2);
+    for (const [ctx, style, w] of [[P.h, gray(0.62, 0.6), 12], [P.h, gray(0.78), 4], [P.c, 'rgba(255,255,255,0.12)', 6], [P.c, 'rgba(0,30,40,0.25)', 1], [P.r, gray(0, 0.15), 6]]) {
+      ctx.strokeStyle = style;
+      ctx.lineWidth = w;
+      for (const dx of [-S, 0, S]) {
+        ctx.beginPath();
+        for (let y = 0; y <= S; y += 8) {
+          const X = x + dx + Math.sin((y / S) * Math.PI * 4 + ph) * amp;
+          y ? ctx.lineTo(X, y) : ctx.moveTo(X, y);
+        }
+        ctx.stroke();
       }
     }
-    ctx.fillStyle = 'rgba(40,40,46,0.75)';
-    ctx.font = 'bold 18px monospace';
-    ctx.fillText(registry, rng.int(8, 120), rng.int(30, 45));
-  } else if (pattern === 'meduse') {
-    // Chair translucide : cellules douces et veines luminescentes.
-    const g = ctx.createLinearGradient(0, 0, 0, H);
-    g.addColorStop(0, shade(tone, -0.08));
-    g.addColorStop(0.5, shade(tone, 0.12));
-    g.addColorStop(1, shade(tone, -0.08));
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, W, H);
-    for (let i = 0; i < 46; i++) {
-      const x = rng.int(0, W);
-      const y = rng.int(0, H);
-      const r = rng.int(8, 28);
-      const c = ctx.createRadialGradient(x, y, 0, x, y, r);
-      c.addColorStop(0, 'rgba(255,255,255,0.22)');
-      c.addColorStop(0.7, 'rgba(255,255,255,0.04)');
-      c.addColorStop(1, 'rgba(0,30,40,0.22)');
-      ctx.fillStyle = c;
+  }
+  for (let i = 0; i < 160; i++) {
+    const x = P.rng.range(0, S);
+    const y = P.rng.range(0, S);
+    const r = P.rng.range(6, 20);
+    wrap(P, x - r, y - r, r * 2, r * 2, (X, Y) => {
+      X += r;
+      Y += r;
+      const g = P.h.createRadialGradient(X, Y, 0, X, Y, r);
+      g.addColorStop(0, gray(0.58, 0.8));
+      g.addColorStop(0.8, gray(0.5, 0.3));
+      g.addColorStop(1, gray(0.42, 0.6));
+      P.h.fillStyle = g;
+      P.h.beginPath();
+      P.h.arc(X, Y, r, 0, Math.PI * 2);
+      P.h.fill();
+      const c = P.c.createRadialGradient(X, Y, 0, X, Y, r);
+      c.addColorStop(0, 'rgba(255,255,255,0.14)');
+      c.addColorStop(1, 'rgba(0,25,35,0.16)');
+      P.c.fillStyle = c;
+      P.c.beginPath();
+      P.c.arc(X, Y, r, 0, Math.PI * 2);
+      P.c.fill();
+    });
+  }
+  for (let i = 0; i < 7; i++) {
+    veins(P, [[P.e, gray(1, 0.85), 1], [P.c, 'rgba(220,255,255,0.35)', 1.5], [P.h, gray(0.66), 2]], P.rng.range(0, S), P.rng.range(0, S), P.rng.range(0, Math.PI * 2), 40, 1.8);
+  }
+  for (let i = 0; i < 60; i++) {
+    const x = P.rng.range(0, S);
+    const y = P.rng.range(0, S);
+    P.e.fillStyle = gray(1, P.rng.range(0.4, 1));
+    P.e.beginPath();
+    P.e.arc(x, y, P.rng.range(0.8, 2), 0, Math.PI * 2);
+    P.e.fill();
+  }
+}
+
+// Synodes : chitine organique — plaques bombées irrégulières qui se chevauchent, pores, filaments lumineux.
+function paintGrappe(P) {
+  const S = P.S;
+  const plates = [];
+  for (let i = 0; i < 260; i++) plates.push([P.rng.range(0, S), P.rng.range(0, S), P.rng.range(10, 30), P.rng.range(0.6, 1), P.rng.range(-0.6, 0.6)]);
+  plates.sort((a, b) => a[1] - b[1]);
+  for (const [x, y, r, sy, rot] of plates) {
+    const s = P.rng.range(-0.07, 0.07);
+    const rough = P.rng.range(0.16, 0.34);
+    wrap(P, x - r, y - r, r * 2, r * 2, (X, Y) => {
+      const cx = X + r;
+      const cy = Y + r;
+      const shape = (ctx) => {
+        ctx.beginPath();
+        ctx.ellipse(cx, cy, r, r * sy, rot, 0, Math.PI * 2);
+      };
+      const hg = P.h.createRadialGradient(cx, cy - r * 0.2, 0, cx, cy, r);
+      hg.addColorStop(0, gray(0.72));
+      hg.addColorStop(0.75, gray(0.6));
+      hg.addColorStop(1, gray(0.42));
+      P.h.fillStyle = hg;
+      shape(P.h);
+      P.h.fill();
+      const cg = P.c.createRadialGradient(cx, cy - r * 0.25, 0, cx, cy, r);
+      cg.addColorStop(0, s > 0 ? `rgba(255,240,255,${0.1 + s})` : 'rgba(255,240,255,0.06)');
+      cg.addColorStop(0.8, s < 0 ? `rgba(0,0,0,${-s})` : 'rgba(0,0,0,0)');
+      cg.addColorStop(1, 'rgba(25,5,35,0.35)');
+      P.c.fillStyle = cg;
+      shape(P.c);
+      P.c.fill();
+      P.r.fillStyle = gray(rough);
+      shape(P.r);
+      P.r.fill();
+    });
+  }
+  blobs(P, 40, '25,5,35', 0.3, 4, 14, 0.2);
+  for (let i = 0; i < 400; i++) {
+    const x = P.rng.range(0, S);
+    const y = P.rng.range(0, S);
+    const r = P.rng.range(0.6, 1.6);
+    P.h.fillStyle = gray(0.28);
+    P.c.fillStyle = 'rgba(20,5,25,0.55)';
+    for (const ctx of [P.h, P.c]) {
       ctx.beginPath();
       ctx.arc(x, y, r, 0, Math.PI * 2);
       ctx.fill();
     }
-    ex.strokeStyle = rgba(glow, 0.8);
-    ctx.strokeStyle = rgba(glow.clone().lerp(WHITE, 0.4), 0.5);
-    ex.lineWidth = ctx.lineWidth = 1.5;
-    for (let i = 0; i < 12; i++) {
-      const x = rng.int(0, W);
-      const pts = [rng.int(0, W), rng.int(0, W), rng.int(0, W)];
-      for (const c of [ctx, ex]) {
-        c.beginPath();
-        c.moveTo(x, 0);
-        c.bezierCurveTo(pts[0], H * 0.33, pts[1], H * 0.66, pts[2], H);
-        c.stroke();
-      }
-    }
-    ex.fillStyle = glowCss;
-    for (let i = 0; i < 50; i++) ex.fillRect(rng.int(0, W), rng.int(0, H), 2, 2);
-  } else if (pattern === 'mycelium') {
-    // Peau fongique tachetée et réseau de veines lumineuses qui se ramifient.
-    for (let i = 0; i < 60; i++) {
-      const x = rng.int(0, W);
-      const y = rng.int(0, H);
-      ctx.fillStyle = rng.chance(0.5) ? 'rgba(0,0,0,0.16)' : 'rgba(255,240,255,0.1)';
-      ctx.beginPath();
-      ctx.arc(x, y, rng.int(3, 14), 0, Math.PI * 2);
-      ctx.fill();
-    }
-    ctx.strokeStyle = 'rgba(235,215,255,0.4)';
-    ex.strokeStyle = rgba(glow, 0.95);
-    const walk = (x, y, a, steps, width) => {
-      ctx.lineWidth = width + 1;
-      ex.lineWidth = width;
-      for (const c of [ctx, ex]) c.beginPath(), c.moveTo(x, y);
-      for (let s = 0; s < steps; s++) {
-        x += Math.cos(a) * 6;
-        y += Math.sin(a) * 6;
-        a += rng.range(-0.55, 0.55);
-        ctx.lineTo(x, y);
-        ex.lineTo(x, y);
-        if (width > 0.8 && rng.chance(0.08)) {
-          ctx.stroke();
-          ex.stroke();
-          walk(x, y, a + rng.pick([-1, 1]) * 0.9, Math.floor(steps * 0.5), width * 0.6);
-          ctx.lineWidth = width + 1;
-          ex.lineWidth = width;
-          for (const c of [ctx, ex]) c.beginPath(), c.moveTo(x, y);
-        }
-      }
-      ctx.stroke();
-      ex.stroke();
-    };
-    for (let i = 0; i < 9; i++) walk(rng.int(0, W), rng.int(0, H), rng.range(0, Math.PI * 2), 28, 2);
-    ex.fillStyle = glowCss;
-    for (let i = 0; i < 30; i++) {
-      ex.beginPath();
-      ex.arc(rng.int(0, W), rng.int(0, H), rng.range(1, 2.5), 0, Math.PI * 2);
-      ex.fill();
-    }
-  } else if (pattern === 'facettes') {
-    // Cristal : facettes qui accrochent la lumière, fêlures lumineuses.
-    for (let i = 0; i < 70; i++) {
-      const x = rng.int(0, W);
-      const y = rng.int(0, H);
-      const s = rng.int(20, 60);
-      ctx.fillStyle = rng.chance(0.5) ? `rgba(255,255,255,${rng.range(0.05, 0.22)})` : `rgba(60,90,140,${rng.range(0.04, 0.14)})`;
-      ctx.beginPath();
-      ctx.moveTo(x, y);
-      ctx.lineTo(x + rng.range(-s, s), y + rng.range(0, s));
-      ctx.lineTo(x + rng.range(-s, s), y + rng.range(-s, 0));
-      ctx.fill();
-    }
-    ctx.strokeStyle = 'rgba(255,255,255,0.6)';
-    ex.strokeStyle = glowCss;
-    ctx.lineWidth = ex.lineWidth = 1.2;
-    for (let i = 0; i < 14; i++) {
-      let x = rng.int(0, W);
-      let y = rng.int(0, H);
-      for (const c of [ctx, ex]) c.beginPath();
-      ctx.moveTo(x, y);
-      ex.moveTo(x, y);
-      for (let k = 0; k < 4; k++) {
-        x += rng.range(-30, 30);
-        y += rng.range(-30, 30);
-        ctx.lineTo(x, y);
-        ex.lineTo(x, y);
-      }
-      ctx.stroke();
-      ex.stroke();
-    }
-  } else if (pattern === 'glyphes') {
-    // Or brossé, bandeaux de glyphes gravés qui luisent.
-    for (let i = 0; i < 260; i++) {
-      ctx.fillStyle = rng.chance(0.5) ? 'rgba(255,245,210,0.07)' : 'rgba(60,40,10,0.08)';
-      ctx.fillRect(0, rng.int(0, H), W, 1);
-    }
-    mottle(60, 0.05, 10);
-    const bands = rng.int(2, 3);
-    ctx.lineWidth = 1.6;
-    ex.lineWidth = 1.6;
-    for (let b = 0; b < bands; b++) {
-      const y = 22 + b * (H / bands) + rng.int(0, 20);
-      ctx.fillStyle = 'rgba(70,45,10,0.45)';
-      ctx.fillRect(0, y - 4, W, 2);
-      ctx.fillRect(0, y + 22, W, 2);
-      ctx.strokeStyle = 'rgba(80,50,10,0.75)';
-      ex.strokeStyle = glowCss;
-      for (let x = 4; x < W - 16; x += 20) glyph(rng, [ctx, ex], x, y, 15);
-    }
-  } else {
-    // 'cargo' : cuivre ondulé, cadre, bandes de danger et numéro au pochoir.
-    for (let x = 0; x < W; x += 8) {
-      ctx.fillStyle = 'rgba(255,230,200,0.14)';
-      ctx.fillRect(x, 0, 2, H);
-      ctx.fillStyle = 'rgba(40,15,0,0.25)';
-      ctx.fillRect(x + 4, 0, 3, H);
-    }
-    mottle(140, 0.08, 6);
-    ctx.strokeStyle = 'rgba(30,15,5,0.7)';
-    ctx.lineWidth = 6;
-    ctx.strokeRect(3, 3, W - 6, H - 6);
-    const hy = rng.int(150, 210);
-    ctx.save();
-    ctx.beginPath();
-    ctx.rect(0, hy, W, 22);
-    ctx.clip();
-    for (let x = -30; x < W; x += 22) {
-      ctx.fillStyle = accentCss;
-      ctx.beginPath();
-      ctx.moveTo(x, hy + 22);
-      ctx.lineTo(x + 11, hy + 22);
-      ctx.lineTo(x + 33, hy);
-      ctx.lineTo(x + 22, hy);
-      ctx.fill();
-    }
-    ctx.restore();
-    ctx.fillStyle = 'rgba(25,12,4,0.65)';
-    ctx.font = 'bold 54px monospace';
-    ctx.fillText(String(rng.int(10, 99)), rng.int(20, 120), rng.int(80, 130));
-    ctx.font = 'bold 16px monospace';
-    ctx.fillText(registry, 18, 36);
-    ex.fillStyle = glowCss;
-    ex.fillRect(W - 24, 12, 8, 4);
   }
-  return { map: toTexture(base), emissiveMap: toTexture(emit) };
+  for (let i = 0; i < 6; i++) {
+    veins(P, [[P.e, gray(1, 0.9), 1], [P.c, 'rgba(230,200,255,0.4)', 1.4], [P.h, gray(0.62), 1.6]], P.rng.range(0, S), P.rng.range(0, S), P.rng.range(0, Math.PI * 2), 30, 1.6);
+  }
 }
 
-// Voile des Liseurs : membrane dorée, nervures et colonnes de glyphes.
-function sailTextures(rng, tone, glow) {
-  const W = 256;
-  const H = 256;
-  const base = makeCanvas(W, H);
-  const emit = makeCanvas(W, H);
-  const ctx = base.getContext('2d');
-  const ex = emit.getContext('2d');
-  const g = ctx.createLinearGradient(0, 0, W, 0);
-  g.addColorStop(0, shade(tone, 0.05));
-  g.addColorStop(1, shade(tone, 0.2));
-  ctx.fillStyle = g;
-  ctx.fillRect(0, 0, W, H);
-  ex.fillStyle = '#000';
-  ex.fillRect(0, 0, W, H);
-  ctx.strokeStyle = 'rgba(90,60,15,0.7)';
-  ex.strokeStyle = rgba(glow, 0.35);
-  ctx.lineWidth = ex.lineWidth = 2;
-  const ribs = rng.int(5, 8);
-  for (let i = 0; i <= ribs; i++) {
-    const y = (i / ribs) * H;
-    for (const c of [ctx, ex]) {
-      c.beginPath();
-      c.moveTo(0, y);
-      c.quadraticCurveTo(W * 0.5, y + 10, W, y - 30);
-      c.stroke();
+// Orrhaïdes : facettes de cristal inclinées, fêlures lumineuses.
+function paintCristal(P) {
+  const S = P.S;
+  const n = 7;
+  const cell = S / n;
+  const jit = [];
+  for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) jit.push([P.rng.range(-0.35, 0.35), P.rng.range(-0.35, 0.35)]);
+  const pt = (i, j) => {
+    const [jx, jy] = jit[(((j % n) + n) % n) * n + (((i % n) + n) % n)];
+    return [(i + jx) * cell, (j + jy) * cell];
+  };
+  for (let j = 0; j < n; j++) {
+    for (let i = 0; i < n; i++) {
+      const a = pt(i, j);
+      const b = pt(i + 1, j);
+      const c = pt(i + 1, j + 1);
+      const d = pt(i, j + 1);
+      const tris = (i + j) % 2 ? [[a, b, c], [a, c, d]] : [[a, b, d], [b, c, d]];
+      for (const tri of tris) {
+        const ang = P.rng.range(0, Math.PI * 2);
+        const tilt = P.rng.range(0.05, 0.22);
+        const s = P.rng.range(-0.12, 0.16);
+        const rough = P.rng.range(0.02, 0.14);
+        for (const [dx, dy] of [[0, 0], [-S, 0], [0, -S], [-S, -S]]) {
+          const path = (ctx) => {
+            ctx.beginPath();
+            tri.forEach(([x, y], k) => (k ? ctx.lineTo(x + dx, y + dy) : ctx.moveTo(x + dx, y + dy)));
+            ctx.closePath();
+          };
+          const cx = (tri[0][0] + tri[1][0] + tri[2][0]) / 3 + dx;
+          const cy = (tri[0][1] + tri[1][1] + tri[2][1]) / 3 + dy;
+          const g = P.h.createLinearGradient(cx - Math.cos(ang) * cell, cy - Math.sin(ang) * cell, cx + Math.cos(ang) * cell, cy + Math.sin(ang) * cell);
+          g.addColorStop(0, gray(0.5 - tilt));
+          g.addColorStop(1, gray(0.5 + tilt));
+          P.h.fillStyle = g;
+          path(P.h);
+          P.h.fill();
+          P.c.fillStyle = s > 0 ? `rgba(255,255,255,${s})` : `rgba(40,70,120,${-s})`;
+          path(P.c);
+          P.c.fill();
+          P.c.strokeStyle = 'rgba(255,255,255,0.35)';
+          P.c.lineWidth = 1;
+          P.c.stroke();
+          P.r.fillStyle = gray(rough);
+          path(P.r);
+          P.r.fill();
+        }
+      }
     }
   }
-  ctx.strokeStyle = 'rgba(110,70,10,0.8)';
-  ex.strokeStyle = css(glow);
-  ctx.lineWidth = ex.lineWidth = 1.8;
-  const cols = rng.int(2, 3);
-  for (let k = 0; k < cols; k++) {
-    const x = 30 + k * 60 + rng.int(0, 20);
-    for (let y = 16; y < H - 20; y += 22) glyph(rng, [ctx, ex], x, y, 14);
+  for (let i = 0; i < 10; i++) {
+    let x = P.rng.range(0, S);
+    let y = P.rng.range(0, S);
+    const pts = [[x, y]];
+    for (let k = 0; k < 6; k++) {
+      x += P.rng.range(-30, 30);
+      y += P.rng.range(-30, 30);
+      pts.push([x, y]);
+    }
+    for (const [ctx, style, w] of [[P.c, 'rgba(255,255,255,0.7)', 1], [P.e, gray(1, 0.9), 1.2], [P.h, gray(0.3), 1.5]]) {
+      ctx.strokeStyle = style;
+      ctx.lineWidth = w;
+      ctx.beginPath();
+      pts.forEach(([px, py], k) => (k ? ctx.lineTo(px, py) : ctx.moveTo(px, py)));
+      ctx.stroke();
+    }
   }
-  return { map: toTexture(base), emissiveMap: toTexture(emit) };
+  blobs(P, 14, '200,230,255', 0.18, 10, 40);
+}
+
+// Liseurs : or brossé, plaques fines, bandeaux de glyphes gravés qui luisent.
+function paintVoilier(P) {
+  const S = P.S;
+  for (let i = 0; i < 700; i++) {
+    const y = P.rng.range(0, S);
+    const a = P.rng.range(0.02, 0.07);
+    P.c.fillStyle = P.rng.chance(0.5) ? `rgba(255,245,210,${a})` : `rgba(60,40,10,${a})`;
+    P.c.fillRect(0, y, S, 1);
+    P.r.fillStyle = P.rng.chance(0.5) ? gray(1, 0.08) : gray(0, 0.08);
+    P.r.fillRect(0, y, S, 1);
+  }
+  panels(P, { rows: 2, cols: 3, stagger: 0.5, seam: 2, lift: 0.03, shade: 0.04, roughVar: 0.05 });
+  const bands = 2;
+  for (let b = 0; b < bands; b++) {
+    const y = b * (S / bands) + P.rng.range(30, 120);
+    P.h.fillStyle = gray(0.42);
+    P.h.fillRect(0, y - 8, S, 36);
+    P.c.fillStyle = 'rgba(60,35,5,0.3)';
+    P.c.fillRect(0, y - 8, S, 36);
+    P.c.fillStyle = 'rgba(255,230,160,0.25)';
+    P.c.fillRect(0, y + 28, S, 1.5);
+    P.r.fillStyle = gray(0.45, 0.6);
+    P.r.fillRect(0, y - 8, S, 36);
+    for (let x = 6; x < S - 20; x += 24) engraved(P, x, y, 18, 0.95);
+  }
+  blobs(P, 14, '40,25,5', 0.18, 20, 60, 0.12);
+  scratches(P, 18, 30, 0.2);
+  windows(P, P.rng.range(40, 300), P.rng.range(20, 60), 5, 6, 10, 8, 0.8);
+}
+
+// Ashkari : cuivre ondulé, patine vert-de-gris, joints rivetés, pochoirs et bandes de danger.
+function paintCaravane(P) {
+  const S = P.S;
+  const period = 16;
+  for (let x = 0; x < S; x++) {
+    const s = Math.sin((x / period) * Math.PI * 2);
+    P.h.fillStyle = gray(0.5 + s * 0.16);
+    P.h.fillRect(x, 0, 1, S);
+    P.c.fillStyle = s > 0 ? `rgba(255,220,180,${s * 0.1})` : `rgba(30,10,0,${-s * 0.14})`;
+    P.c.fillRect(x, 0, 1, S);
+  }
+  for (let y = 0; y < S; y += 128) {
+    P.h.fillStyle = gray(0.62);
+    P.h.fillRect(0, y, S, 14);
+    P.c.fillStyle = 'rgba(40,20,5,0.35)';
+    P.c.fillRect(0, y, S, 14);
+    P.c.fillStyle = 'rgba(0,0,0,0.5)';
+    P.c.fillRect(0, y + 14, S, 2);
+    for (let x = 8; x < S; x += 16) rivet(P, x, y + 7, 2.4);
+  }
+  streaks(P, 30, '30,60,50', 0.35, [30, 110], [2, 6]);
+  blobs(P, 30, '20,10,0', 0.3, 15, 50, 0.2);
+  scratches(P, 30, 35, 0.3);
+  // Bande de danger.
+  const hy = Math.round(P.rng.range(0.55, 0.8) * S);
+  P.c.save();
+  P.c.beginPath();
+  P.c.rect(0, hy, S, 20);
+  P.c.clip();
+  for (let x = -40; x < S + 40; x += 32) {
+    P.c.fillStyle = 'rgba(214,160,40,0.9)';
+    P.c.beginPath();
+    P.c.moveTo(x, hy + 20);
+    P.c.lineTo(x + 16, hy + 20);
+    P.c.lineTo(x + 36, hy);
+    P.c.lineTo(x + 20, hy);
+    P.c.fill();
+  }
+  P.c.restore();
+  P.m.fillStyle = gray(0.2);
+  P.m.fillRect(0, hy, S, 20);
+  P.r.fillStyle = gray(0.55);
+  P.r.fillRect(0, hy, S, 20);
+  stencil(P, `${P.rng.int(10, 99)}`, P.rng.range(40, 300), P.rng.range(200, 300), 54, '25,12,4', 0.55);
+  stencil(P, `ASK-${P.rng.int(100, 999)}`, P.rng.range(30, 300), P.rng.range(40, 100), 15, '25,12,4', 0.6);
+  for (let i = 0; i < 3; i++) windows(P, P.rng.range(20, S - 80), P.rng.range(330, 480), 4, 8, 6, 6, 0.75);
+}
+
+// Voile tissée des Liseurs : trame, nervures, colonnes de glyphes (UV 0..1 sur toute la voile).
+function paintSail(P) {
+  const S = P.S;
+  const g = P.c.createLinearGradient(0, 0, S, 0);
+  g.addColorStop(0, 'rgba(0,0,0,0.12)');
+  g.addColorStop(1, 'rgba(255,255,255,0.12)');
+  P.c.fillStyle = g;
+  P.c.fillRect(0, 0, S, S);
+  const t = 4;
+  for (let y = 0; y < S; y += t) {
+    for (let x = 0; x < S; x += t) {
+      const over = ((x + y) / t) % 2;
+      P.h.fillStyle = gray(over ? 0.6 : 0.42);
+      if (over) P.h.fillRect(x, y + 0.5, t, t - 1);
+      else P.h.fillRect(x + 0.5, y, t - 1, t);
+      P.c.fillStyle = over ? 'rgba(255,240,200,0.06)' : 'rgba(60,40,10,0.08)';
+      P.c.fillRect(x, y, t, t);
+    }
+  }
+  const ribs = P.rng.int(5, 7);
+  for (let i = 0; i <= ribs; i++) {
+    const y = (i / ribs) * S;
+    for (const [ctx, style, w] of [[P.h, gray(0.75), 6], [P.c, 'rgba(90,60,15,0.6)', 3], [P.e, gray(1, 0.25), 2], [P.m, gray(0.8), 4], [P.r, gray(0.35), 4]]) {
+      ctx.strokeStyle = style;
+      ctx.lineWidth = w;
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.quadraticCurveTo(S * 0.5, y + 12, S, y - 36);
+      ctx.stroke();
+    }
+  }
+  const cols = 3;
+  for (let k = 0; k < cols; k++) {
+    const x = 50 + k * 70 + P.rng.range(0, 30);
+    for (let y = 20; y < S - 30; y += 28) {
+      P.c.strokeStyle = 'rgba(110,70,10,0.85)';
+      P.c.lineWidth = 2.2;
+      P.e.strokeStyle = gray(1);
+      P.e.lineWidth = 2;
+      glyph(P.rng, [P.c, P.e], x, y, 18);
+    }
+  }
+  blobs(P, 10, '50,30,5', 0.15, 30, 80, 0.1);
+}
+
+// Coque sombre commune : mécanique, grilles d'aération, tuyaux, boulons (neutre, teintée par la couleur).
+function paintDark(P) {
+  const S = P.S;
+  panels(P, { rows: 4, cols: 4, stagger: 0.25, seam: 2, lift: 0.04, shade: 0.07, roughVar: 0.1, rivetR: 1.4, rivetStep: 8, jitter: 0.3 });
+  for (let v = 0; v < 4; v++) {
+    const x = P.rng.range(0, S - 50);
+    const y = P.rng.range(0, S - 30);
+    const w = P.rng.range(24, 50);
+    for (let k = 0; k < 6; k++) {
+      P.h.fillStyle = gray(0.28);
+      P.h.fillRect(x, y + k * 5, w, 2.5);
+      P.c.fillStyle = 'rgba(0,0,0,0.6)';
+      P.c.fillRect(x, y + k * 5, w, 2.5);
+    }
+  }
+  for (let p = 0; p < 3; p++) {
+    const y = P.rng.range(0, S);
+    const g = P.h.createLinearGradient(0, y, 0, y + 8);
+    g.addColorStop(0, gray(0.5));
+    g.addColorStop(0.5, gray(0.8));
+    g.addColorStop(1, gray(0.5));
+    P.h.fillStyle = g;
+    P.h.fillRect(0, y, S, 8);
+    P.c.fillStyle = 'rgba(255,255,255,0.08)';
+    P.c.fillRect(0, y + 2, S, 2);
+  }
+  blobs(P, 16, '0,0,0', 0.3, 10, 40, 0.15);
+  scratches(P, 20, 20, 0.2);
+}
+
+// Peinture écaillée (pièces de couleur vive) : métal nu dans les éclats.
+function paintChipped(P) {
+  panels(P, { rows: 2, cols: 2, seam: 2, lift: 0.03, shade: 0.04 });
+  for (let i = 0; i < 70; i++) {
+    const x = P.rng.range(0, P.S);
+    const y = P.rng.range(0, P.S);
+    const r = P.rng.range(1, 4);
+    P.c.fillStyle = 'rgba(120,120,125,0.9)';
+    P.c.beginPath();
+    P.c.ellipse(x, y, r * 1.6, r, P.rng.range(0, 3), 0, Math.PI * 2);
+    P.c.fill();
+    P.m.fillStyle = gray(0.9);
+    P.m.fill();
+    P.h.fillStyle = gray(0.4);
+    P.h.fill();
+  }
+  blobs(P, 10, '0,0,0', 0.25, 10, 30, 0.1);
+}
+
+// Conteneur (UV ajustées à chaque face) : cadre, tôle ondulée, pochoir.
+function paintContainer(P) {
+  const S = P.S;
+  for (let x = 0; x < S; x++) {
+    const s = Math.sin((x / 10) * Math.PI * 2);
+    P.h.fillStyle = gray(0.5 + s * 0.12);
+    P.h.fillRect(x, 0, 1, S);
+    P.c.fillStyle = s > 0 ? `rgba(255,230,200,${s * 0.08})` : `rgba(20,8,0,${-s * 0.12})`;
+    P.c.fillRect(x, 0, 1, S);
+  }
+  const f = 14;
+  P.h.fillStyle = gray(0.75);
+  for (const [x, y, w, h] of [[0, 0, S, f], [0, S - f, S, f], [0, 0, f, S], [S - f, 0, f, S]]) P.h.fillRect(x, y, w, h);
+  P.c.fillStyle = 'rgba(30,18,8,0.55)';
+  for (const [x, y, w, h] of [[0, 0, S, f], [0, S - f, S, f], [0, 0, f, S], [S - f, 0, f, S]]) P.c.fillRect(x, y, w, h);
+  P.c.strokeStyle = 'rgba(0,0,0,0.6)';
+  P.c.lineWidth = 2;
+  P.c.strokeRect(f, f, S - f * 2, S - f * 2);
+  for (const [x, y] of [[f / 2, f / 2], [S - f / 2, f / 2], [f / 2, S - f / 2], [S - f / 2, S - f / 2]]) rivet(P, x, y, 3);
+  stencil(P, `${P.rng.int(10, 99)}`, 40, 150, 70, '20,10,4', 0.5);
+  stencil(P, `ASK ${P.rng.int(1000, 9999)}`, 30, 60, 18, '20,10,4', 0.6);
+  streaks(P, 12, '35,70,60', 0.3, [20, 80], [2, 5]);
+  blobs(P, 14, '20,10,0', 0.3, 10, 40, 0.2);
+  scratches(P, 14, 25, 0.25);
+}
+
+// Radiateur : ailettes de cuivre.
+function paintRadiator(P) {
+  const S = P.S;
+  for (let y = 0; y < S; y += 8) {
+    const g = P.h.createLinearGradient(0, y, 0, y + 8);
+    g.addColorStop(0, gray(0.3));
+    g.addColorStop(0.4, gray(0.8));
+    g.addColorStop(1, gray(0.3));
+    P.h.fillStyle = g;
+    P.h.fillRect(0, y, S, 8);
+    P.c.fillStyle = 'rgba(255,200,150,0.18)';
+    P.c.fillRect(0, y + 2, S, 2);
+    P.c.fillStyle = 'rgba(0,0,0,0.45)';
+    P.c.fillRect(0, y + 6, S, 2);
+  }
+  blobs(P, 10, '10,5,0', 0.3, 10, 40, 0.15);
+}
+
+// Réglages par archétype : teinte de base peinte, rugosité, métal, finition.
+const SURFACES = {
+  forteresse: { paint: paintForteresse, rough: 0.74, metal: 0.4, finish: { grain: 0.2, speck: 0.08, roughGrain: 0.2, heightGrain: 0.12, normal: 3 }, normalScale: 1.1 },
+  predateur: { paint: paintPredateur, rough: 0.3, metal: 0.9, finish: { grain: 0.07, roughGrain: 0.1, heightGrain: 0.03, normal: 3 }, normalScale: 1 },
+  aiguille: { paint: paintAiguille, rough: 0.5, metal: 0.03, finish: { grain: 0.05, speck: 0.03, roughGrain: 0.08, heightGrain: 0.02, normal: 2.5 }, normalScale: 0.8 },
+  meduse: { paint: paintMeduse, rough: 0.22, metal: 0, finish: { grain: 0.1, roughGrain: 0.1, heightGrain: 0.04, normal: 2.5, blur: 1.2 }, normalScale: 1 },
+  grappe: { paint: paintGrappe, rough: 0.28, metal: 0.12, finish: { grain: 0.12, roughGrain: 0.1, heightGrain: 0.04, normal: 3 }, normalScale: 1 },
+  cristal: { paint: paintCristal, rough: 0.06, metal: 0.1, finish: { grain: 0.06, speck: 0.02, roughGrain: 0.04, heightGrain: 0.01, normal: 4, blur: 0.4 }, normalScale: 1 },
+  voilier: { paint: paintVoilier, rough: 0.32, metal: 0.8, finish: { grain: 0.08, roughGrain: 0.1, heightGrain: 0.02, normal: 3 }, normalScale: 1 },
+  caravane: { paint: paintCaravane, rough: 0.38, metal: 0.85, finish: { grain: 0.12, roughGrain: 0.14, heightGrain: 0.05, normal: 3, patina: { color: new THREE.Color('#4f9a86'), threshold: 0.6, soft: 0.08, amount: 0.7 } }, normalScale: 1 },
+};
+
+function hullSet(archetype, base, stripe) {
+  return cachedSet(`coque|${archetype}|${base.getHexString()}`, () => {
+    const s = SURFACES[archetype];
+    const P = painter(512, 1000 + Object.keys(SURFACES).indexOf(archetype) * 77, base, s.rough, s.metal);
+    s.paint(P, stripe);
+    const set = finish(P, { ...s.finish, normalScale: s.normalScale });
+    set.base = base.clone();
+    return set;
+  });
+}
+
+const DARK_BASE = new THREE.Color('#6a6e76');
+const PAINT_BASE = new THREE.Color('#d0d0d0');
+const CONTAINER_BASE = new THREE.Color('#b07850');
+const SAIL_BASE = new THREE.Color('#d9b870');
+const RADIATOR_BASE = new THREE.Color('#8a5a38');
+function darkSet() {
+  return cachedSet('sombre', () => Object.assign(finish(paintThen(painter(256, 31, DARK_BASE, 0.45, 0.85), paintDark), { grain: 0.1, roughGrain: 0.12, heightGrain: 0.03, normal: 2.5, noEmit: true }), { base: DARK_BASE }));
+}
+function paintSet() {
+  return cachedSet('peinture', () => Object.assign(finish(paintThen(painter(256, 32, PAINT_BASE, 0.42, 0.2), paintChipped), { grain: 0.06, roughGrain: 0.1, normal: 2, noEmit: true }), { base: PAINT_BASE }));
+}
+function containerSet() {
+  return cachedSet('conteneur', () => Object.assign(finish(paintThen(painter(256, 33, CONTAINER_BASE, 0.4, 0.8), paintContainer), { grain: 0.12, roughGrain: 0.14, normal: 2.5, noEmit: true, patina: { color: new THREE.Color('#4f9a86'), threshold: 0.6, soft: 0.08, amount: 0.6 } }), { base: CONTAINER_BASE }));
+}
+function sailSet() {
+  return cachedSet('voile', () => Object.assign(finish(paintThen(painter(512, 34, SAIL_BASE, 0.7, 0.25), paintSail), { grain: 0.06, roughGrain: 0.08, normal: 2, blur: 0.4 }), { base: SAIL_BASE }));
+}
+function radiatorSet() {
+  return cachedSet('radiateur', () => Object.assign(finish(paintThen(painter(128, 35, RADIATOR_BASE, 0.4, 0.8), paintRadiator), { grain: 0.1, normal: 2.5, noEmit: true }), { base: RADIATOR_BASE }));
+}
+function paintThen(P, fn) {
+  fn(P);
+  return P;
+}
+
+// Couleur à donner au matériau pour que la texture (peinte en `base`) prenne la teinte `target`.
+function tintFor(target, base) {
+  const c = new THREE.Color(target);
+  c.r = Math.min(3, c.r / Math.max(0.02, base.r));
+  c.g = Math.min(3, c.g / Math.max(0.02, base.g));
+  c.b = Math.min(3, c.b / Math.max(0.02, base.b));
+  return c;
+}
+
+// Matériau PBR texturé. uv : 'tile' (répétition à l'échelle du modèle) ou 'fit' (une texture par face).
+function pbr(set, o = {}) {
+  const mat = new THREE.MeshStandardMaterial({
+    map: set.map, normalMap: set.normalMap, normalScale: new THREE.Vector2(set.normal, set.normal),
+    roughnessMap: set.orm, metalnessMap: set.orm, roughness: o.roughness ?? 1, metalness: o.metalness ?? 1,
+    emissiveMap: set.emissiveMap, emissive: o.emissive ?? 0x000000, emissiveIntensity: o.emissiveIntensity ?? 1,
+    color: o.color ?? 0xffffff, envMap: spaceEnv(), envMapIntensity: o.env ?? 1, vertexColors: true, side: THREE.DoubleSide,
+  });
+  mat.userData = { uv: o.uv ?? 'tile', weather: true };
+  return mat;
+}
+
+// Variante d'un matériau texturé : même textures, autre teinte ou réglages.
+function variant(mat, multiply, o = {}) {
+  const v = mat.clone();
+  if (multiply) v.color.multiply(new THREE.Color(multiply));
+  Object.assign(v, o);
+  return v;
+}
+
+// --- Coordonnées de texture à l'échelle (une répétition = TILE unités), selon la forme ---
+
+function scaleUV(geometry, su, sv) {
+  const uv = geometry.attributes.uv;
+  for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * su, uv.getY(i) * sv);
+  uv.needsUpdate = true;
+}
+
+// Projection sur la face dominante (formes à facettes : blocs, ailes, polyèdres).
+function boxProjectUV(geometry, fit) {
+  const pos = geometry.attributes.position;
+  if (!geometry.attributes.normal) geometry.computeVertexNormals();
+  const nor = geometry.attributes.normal;
+  geometry.computeBoundingBox();
+  const { min, max } = geometry.boundingBox;
+  const size = new THREE.Vector3().subVectors(max, min);
+  const uv = new Float32Array(pos.count * 2);
+  for (let i = 0; i < pos.count; i++) {
+    const ax = Math.abs(nor.getX(i));
+    const ay = Math.abs(nor.getY(i));
+    const az = Math.abs(nor.getZ(i));
+    let a;
+    let b;
+    let flip;
+    if (ax >= ay && ax >= az) (a = 2), (b = 1), (flip = nor.getX(i) > 0);
+    else if (ay >= az) (a = 0), (b = 2), (flip = nor.getY(i) < 0);
+    else (a = 0), (b = 1), (flip = nor.getZ(i) < 0);
+    const p = [pos.getX(i), pos.getY(i), pos.getZ(i)];
+    const mn = [min.x, min.y, min.z];
+    const sz = [size.x || 1, size.y || 1, size.z || 1];
+    // Face opposée : U inversé, pour que les inscriptions ne soient pas en miroir.
+    const u = fit ? (p[a] - mn[a]) / sz[a] : p[a] / TILE;
+    uv[i * 2] = flip ? (fit ? 1 - u : -u) : u;
+    uv[i * 2 + 1] = fit ? (p[b] - mn[b]) / sz[b] : p[b] / TILE;
+  }
+  geometry.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+}
+
+const UV_DONE = new WeakSet();
+function prepareUV(geometry, mode) {
+  if (UV_DONE.has(geometry) || !geometry.attributes.uv) return;
+  UV_DONE.add(geometry);
+  const p = geometry.parameters ?? {};
+  const around = (r) => Math.max(1, Math.round((2 * Math.PI * r) / TILE));
+  if (mode === 'fit') return boxProjectUV(geometry, true);
+  switch (geometry.type) {
+    case 'LatheGeometry': {
+      // Abscisse curviligne du profil : la texture ne s'étire plus sur les coques longues.
+      const pts = p.points;
+      const n = pts.length;
+      const acc = [0];
+      for (let j = 1; j < n; j++) acc.push(acc[j - 1] + pts[j].distanceTo(pts[j - 1]));
+      const rmax = Math.max(...pts.map((q) => q.x));
+      const uv = geometry.attributes.uv;
+      const su = around(rmax);
+      for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * su, acc[i % n] / TILE);
+      uv.needsUpdate = true;
+      return;
+    }
+    case 'CapsuleGeometry':
+      return scaleUV(geometry, around(p.radius), (p.length + p.radius * 2) / TILE);
+    case 'SphereGeometry':
+      return scaleUV(geometry, around((p.radius * p.phiLength) / (2 * Math.PI)), Math.max(0.25, (p.radius * p.thetaLength) / TILE));
+    case 'TorusGeometry':
+      return scaleUV(geometry, around(p.radius), Math.max(0.2, (2 * Math.PI * p.tube) / TILE));
+    case 'CylinderGeometry':
+    case 'ConeGeometry':
+      return scaleUV(geometry, around(Math.max(p.radiusTop ?? 0, p.radiusBottom ?? p.radius ?? 0)), p.height / TILE);
+    case 'TubeGeometry':
+      return;
+    default:
+      return boxProjectUV(geometry, false);
+  }
+}
+
+// Couleurs de sommet : suie près des réacteurs, ventre un peu plus sombre (occlusion grossière).
+function weatherShip(ship, rearZ, L, R) {
+  ship.updateMatrixWorld(true);
+  const inv = new THREE.Matrix4().copy(ship.matrixWorld).invert();
+  const local = new THREE.Matrix4();
+  const v = new THREE.Vector3();
+  const seen = new Set();
+  const span = L * 0.3;
+  ship.traverse((o) => {
+    if (!o.isMesh || !o.material.userData?.weather) return;
+    prepareUV(o.geometry, o.material.userData.uv);
+    if (seen.has(o.geometry)) o.geometry = o.geometry.clone();
+    seen.add(o.geometry);
+    local.multiplyMatrices(inv, o.matrixWorld);
+    const pos = o.geometry.attributes.position;
+    const col = new Float32Array(pos.count * 3);
+    for (let i = 0; i < pos.count; i++) {
+      v.fromBufferAttribute(pos, i).applyMatrix4(local);
+      const soot = 0.32 + 0.68 * smooth01((v.z - rearZ) / span);
+      const belly = 1 - 0.12 * smooth01(-v.y / (R * 1.5));
+      const k = soot * belly;
+      col[i * 3] = k;
+      col[i * 3 + 1] = k * (0.97 + 0.03 * soot);
+      col[i * 3 + 2] = k * (0.92 + 0.08 * soot);
+    }
+    o.geometry.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  });
 }
 
 // --- Géométries ---
@@ -1014,6 +1881,7 @@ function addEngine(c, x, y, z, r, type = 'tuyere') {
   holder.add(flame);
   ship.add(holder);
   c.flames.push(flame);
+  makeJet(ship, x, y, z - (type === 'organique' ? r * 0.6 : 0.01), r, type === 'cristal' ? c.glow.clone().lerp(WHITE, 0.3) : c.glow, c.jets);
 }
 
 function styledTurret(c, size, barrels) {
@@ -1098,6 +1966,26 @@ function habitatRing(c, r, tube, z, spokes = 4) {
   return ring;
 }
 
+// Module d'habitat allongé (capsule) avec deux bandes de hublots éclairés, sur son pylône.
+function habitatPod(c, x, y, z, r, len, material = c.m.hull) {
+  const { ship, m } = c;
+  const pod = new THREE.Mesh(new THREE.CapsuleGeometry(r, len, 4, 14), material);
+  pod.rotation.x = Math.PI / 2;
+  pod.position.set(x, y, z);
+  ship.add(pod);
+  const a = Math.atan2(y, x);
+  for (const side of [-1, 1]) {
+    const b = a + (side * Math.PI) / 2;
+    const band = new THREE.Mesh(new THREE.BoxGeometry(r * 0.08, r * 0.14, len * 0.8), m.windows);
+    band.position.set(x + Math.cos(b) * r * 0.99, y + Math.sin(b) * r * 0.99, z);
+    band.rotation.z = b;
+    ship.add(band);
+  }
+  const d = Math.hypot(x, y);
+  if (d > r) ship.add(beam(v3(0, 0, z), v3(x * (1 - r / d), y * (1 - r / d), z), r * 0.18, m.dark, 6));
+  return pod;
+}
+
 // Soutes génériques des transports : deux rangées de conteneurs autour de la coque.
 function cargoRows(c, rows = 2, z0 = -0.38, radiusK = 1.35) {
   const { ship, m, L, R } = c;
@@ -1116,7 +2004,7 @@ function cargoRows(c, rows = 2, z0 = -0.38, radiusK = 1.35) {
 
 // Vaskhar : coque massive et anguleuse, plaques de blindage ocre, trois gros réacteurs, ailerons trapus.
 function buildForteresse(c) {
-  const { rng, ship, m, tier, style, warship } = c;
+  const { rng, ship, m, tier, style, warship, kind } = c;
   const L = (c.L = rng.range(1.45, 1.8));
   const R = (c.R = rng.range(0.25, 0.3));
   const seg = rng.pick(style.segments ?? [5, 6]);
@@ -1126,7 +2014,7 @@ function buildForteresse(c) {
   ship.add(body);
 
   // Plaques de blindage qui se chevauchent sur les flancs et le dos.
-  const rust = std({ map: m.hull.map, color: '#e0905a', metalness: 0.5, roughness: 0.65 });
+  const rust = variant(m.hull, '#c88a6a');
   const n = Math.round(2 + (style.armor ?? 0.8) * 3 + tier * 0.7);
   for (let i = 0; i < n; i++) {
     const z = L * (-0.36 + ((i + 0.5) / n) * 0.74);
@@ -1180,6 +2068,29 @@ function buildForteresse(c) {
   }
   c.beaconPos = v3(0, R * 1.22, -L * 0.2);
   c.turretAt = (angle, row) => ({ z: L * (-0.3 + row * 0.55), dist: R * (angle === 0 ? 0.92 : angle === Math.PI ? 0.82 : 1.15) });
+  // Colonie, transport, Arche : casemates blindées sur le dos ; l'Arche ajoute deux coques latérales.
+  c.habitat = () => {
+    const zs = kind === 'arche' ? [0.26, 0.06] : kind === 'transport' ? [0.16] : [0.24, 0.05];
+    for (const t of zs) {
+      const z = L * t;
+      const b = new THREE.Mesh(slab(R * 1.15, R * 0.55, L * 0.17, 0.2), m.hull);
+      b.position.set(0, R * 1.08, z);
+      ship.add(b);
+      for (const sx of [-1, 1]) {
+        const w = new THREE.Mesh(new THREE.BoxGeometry(0.008, R * 0.07, L * 0.12), m.windows);
+        w.position.set(sx * R * 0.58, R * 1.1, z);
+        ship.add(w);
+      }
+    }
+    if (kind === 'arche') {
+      const side = new THREE.Mesh(latheZ([[0, 0.001], [0.001, 0.8], [0.1, 1], [0.75, 0.95], [0.92, 0.6], [1, 0.001]], L * 0.72, R * 0.55, seg), m.hull);
+      side.scale.y = 0.8;
+      side.position.set(R * 1.85, -R * 0.2, -L * 0.04);
+      ship.add(side, mirrorX(side));
+      for (const t of [-0.2, 0.15]) ship.add(beam(v3(-R * 1.85, -R * 0.2, L * t), v3(R * 1.85, -R * 0.2, L * t), R * 0.12, m.dark, 6));
+      c.engines.push([R * 1.85, -R * 0.2, -L * 0.4, R * 0.3], [-R * 1.85, -R * 0.2, -L * 0.4, R * 0.3]);
+    }
+  };
 }
 
 // Thrennes : coque en losange sombre, double éperon, pointes, lames d'ailes à liseré rouge, tourelles.
@@ -1192,7 +2103,7 @@ function buildPredateur(c) {
   body.scale.y = 0.72;
   ship.add(body);
   const red = basic(c.glow);
-  const blade = std({ color: c.tone.clone().multiplyScalar(0.7), metalness: 0.85, roughness: 0.25 });
+  const blade = variant(m.hull, '#a8a8a8', { envMapIntensity: 1.4 });
   // Double éperon à l'avant.
   const prong = new THREE.Mesh(spikeGeometry(L * rng.range(0.32, 0.45), R * 0.17, 4), blade);
   prong.position.set(R * 0.42, -R * 0.12, L * 0.18);
@@ -1250,6 +2161,24 @@ function buildPredateur(c) {
   c.lightSpots = [[R * 0.8, 0, -L * 0.3], [-R * 0.8, 0, -L * 0.3], [0, -R * 0.62, L * 0.1]];
   c.beaconPos = v3(0, R * 0.75, -L * 0.36);
   c.turretAt = (angle, row) => ({ z: L * (-0.25 + row * 0.5), dist: R * (angle === 0 ? 0.74 : 0.7) });
+  // Colonie, transport, Arche : quille ventrale en losange (deux quilles latérales en plus pour l'Arche).
+  c.habitat = () => {
+    const keels = [[0, -R * 0.72, 1]];
+    if (c.kind === 'arche') keels.push([R * 1.25, -R * 0.45, 0.75], [-R * 1.25, -R * 0.45, 0.75]);
+    for (const [x, y, k] of keels) {
+      const keel = new THREE.Mesh(latheZ([[0, 0.001], [0.15, 0.75], [0.5, 1], [0.85, 0.7], [1, 0.001]], L * 0.62 * k, R * 0.6 * k, 4), m.hull);
+      keel.scale.x = 0.75;
+      keel.position.set(x, y, -L * 0.04);
+      ship.add(keel);
+      for (let i = 0; i < 3; i++) {
+        for (const sx of [-1, 1]) {
+          const slit = new THREE.Mesh(new THREE.BoxGeometry(0.01, R * 0.05 * k, L * 0.07 * k), red);
+          slit.position.set(x + sx * R * 0.34 * k, y, L * (0.08 - i * 0.12) * k);
+          ship.add(slit);
+        }
+      }
+    }
+  };
 }
 
 // Kel-Tirr : aiguille fine, grandes ailes en flèche liserées de jaune, verrière, sonde avant.
@@ -1319,9 +2248,10 @@ function buildAiguille(c) {
   c.lightSpots = [[span + R * 0.4, -R * 0.15, -L * 0.04 - sweep], [-(span + R * 0.4), -R * 0.15, -L * 0.04 - sweep], [0, -R * 0.9, L * 0.25]];
   c.turretScale = 1.5;
   c.turretAt = (angle, row) => ({ z: L * (-0.15 + row * 0.4), dist: R * 0.85 });
+  // Colonie, transport, Arche : capsules d'habitat (dorsale ; plus deux sur les ailes pour l'Arche).
   c.habitat = () => {
-    const rings = kind === 'arche' ? 2 : 1;
-    for (let i = 0; i < rings; i++) habitatRing(c, R * (2.7 - i * 0.4), R * 0.32, L * (0.34 - i * 0.12), 3);
+    habitatPod(c, 0, R * 1.45, L * 0.02, R * 0.55, L * 0.36);
+    if (kind === 'arche') for (const sx of [-1, 1]) habitatPod(c, sx * R * 2.8, -R * 0.15, -L * 0.06, R * 0.5, L * 0.3);
   };
 }
 
@@ -1332,8 +2262,8 @@ function buildMeduse(c) {
   const R = (c.R = rng.range(0.3, 0.36));
   const seg = Math.max(24, rng.pick(style.segments ?? [12, 16]) * 2);
   const membrane = new THREE.MeshPhysicalMaterial({
-    map: m.hull.map, emissiveMap: m.hull.emissiveMap, emissive: c.glow, emissiveIntensity: 0.9,
-    color: c.tone.clone().lerp(WHITE, 0.2), metalness: 0, roughness: 0.12, clearcoat: 1, clearcoatRoughness: 0.08,
+    map: m.hull.map, emissiveMap: m.hull.emissiveMap, normalMap: m.hull.normalMap, roughnessMap: m.hull.roughnessMap, emissive: c.glow, emissiveIntensity: 0.9,
+    color: m.hull.color.clone().lerp(WHITE, 0.2), metalness: 0, roughness: 0.12, clearcoat: 1, clearcoatRoughness: 0.08,
     sheen: 1, sheenColor: c.glow, transparent: true, opacity: 0.5, depthWrite: false, side: THREE.DoubleSide,
     envMap: spaceEnv(), envMapIntensity: 1.3,
   });
@@ -1525,7 +2455,7 @@ function buildGrappe(c) {
   }
   // Lamelles de spores (panneaux) : disques translucides empilés.
   if (rng.chance(0.65) || tier >= 4) {
-    const gill = std({ map: m.hull.map, emissiveMap: m.hull.emissiveMap, emissive: c.glow, emissiveIntensity: 1, color: c.tone.clone().lerp(WHITE, 0.3), transparent: true, opacity: 0.7, roughness: 0.6, metalness: 0, depthWrite: false });
+    const gill = std({ map: m.hull.map, emissiveMap: m.hull.emissiveMap, normalMap: m.hull.normalMap, emissive: c.glow, emissiveIntensity: 1, color: m.hull.color.clone().lerp(WHITE, 0.3), transparent: true, opacity: 0.7, roughness: 0.6, metalness: 0, depthWrite: false });
     const gz = spheres[mid].z;
     const gx = spheres[mid].r + R * 0.9;
     for (let k = 0; k < 3; k++) {
@@ -1553,23 +2483,31 @@ function buildGrappe(c) {
       ship.add(pod, beam(v3(0, 0, z), p, R * 0.05, m.dark, 5));
     }
   };
-  // Anneau de spores (colonie, Arche), ou petit anneau tiré au hasard.
-  const ringed = kind === 'colonie' || kind === 'arche' || kind === 'transport';
+  // Colonie, transport, Arche : grappes de sphères d'habitat accrochées au tronc.
   c.habitat = () => {
-    const count = kind === 'arche' ? 2 : 1;
-    for (let i = 0; i < count; i++) {
-      const s = spheres[Math.max(0, mid - i)];
-      const g = habitatRing(c, s.r + R * (1.3 + i * 0.4), R * 0.12, s.z, 3);
-      const pods = 8;
-      for (let k = 0; k < pods; k++) {
-        const a = (k / pods) * Math.PI * 2 + 0.2;
-        const pod = new THREE.Mesh(new THREE.SphereGeometry(R * 0.2, 12, 10), k % 2 ? dome : m.hull);
-        pod.position.set(Math.cos(a) * (s.r + R * (1.3 + i * 0.4)), Math.sin(a) * (s.r + R * (1.3 + i * 0.4)), 0);
-        g.add(pod);
+    const bunches = kind === 'arche' ? 3 : kind === 'transport' ? 1 : 2;
+    for (let b = 0; b < bunches; b++) {
+      const s = spheres[Math.max(0, Math.min(n - 1, mid + (b % 2 ? -1 : 0)))];
+      const a = Math.PI / 2 + (b / bunches) * Math.PI * 2 + 0.3;
+      const d = s.r + R * 1.1;
+      const center = v3(Math.cos(a) * d, Math.sin(a) * d, s.z);
+      ship.add(beam(v3(0, 0, s.z), center, R * 0.07, m.dark, 6));
+      const count = rng.int(4, 6);
+      for (let k = 0; k < count; k++) {
+        const r = R * rng.range(0.32, 0.55) * (k === 0 ? 1.3 : 1);
+        const p = k === 0 ? center.clone() : center.clone().add(v3(rng.range(-1, 1), rng.range(-1, 1), rng.range(-1.6, 1.6)).multiplyScalar(R * 0.55));
+        const ball = new THREE.Mesh(new THREE.SphereGeometry(r, 18, 14), k % 3 === 1 ? dome : m.hull);
+        ball.position.copy(p);
+        if (k % 3 === 1) {
+          ball.renderOrder = 2;
+          const heart = new THREE.Mesh(new THREE.SphereGeometry(r * 0.4, 10, 8), m.glow);
+          heart.position.copy(p);
+          ship.add(heart);
+        }
+        ship.add(ball);
       }
     }
   };
-  if (!ringed && rng.chance(0.3)) habitatRing(c, spheres[mid].r + R * 0.7, R * 0.06, spheres[mid].z, 3);
 }
 
 // Orrhaïdes : bipyramide de cristal à facettes, cœur lumineux, éclats qui rayonnent.
@@ -1579,13 +2517,13 @@ function buildCristal(c) {
   const R = (c.R = rng.range(0.21, 0.26));
   const seg = rng.pick(style.segments ?? [5, 6]);
   const crystal = new THREE.MeshPhysicalMaterial({
-    map: m.hull.map, emissiveMap: m.hull.emissiveMap, emissive: c.glow, emissiveIntensity: 0.9,
-    color: c.tone, metalness: 0.05, roughness: 0.1, clearcoat: 1, clearcoatRoughness: 0.04,
-    iridescence: 0.9, iridescenceIOR: 1.5, transparent: true, opacity: 0.8, flatShading: true,
-    envMap: spaceEnv(), envMapIntensity: 1.8, side: THREE.DoubleSide,
+    map: m.hull.map, emissiveMap: m.hull.emissiveMap, normalMap: m.hull.normalMap, roughnessMap: m.hull.roughnessMap, emissive: c.glow, emissiveIntensity: 0.9,
+    color: m.hull.color.clone().multiply(new THREE.Color('#8aa6d0')), metalness: 0.05, roughness: 0.1, clearcoat: 1, clearcoatRoughness: 0.04,
+    iridescence: 1, iridescenceIOR: 1.6, iridescenceThicknessRange: [250, 900], transparent: true, opacity: 0.6, flatShading: true,
+    envMap: spaceEnv(), envMapIntensity: 1.3, side: THREE.DoubleSide,
   });
   m.crystal = crystal;
-  const shine = std({ color: c.glow.clone().lerp(WHITE, 0.5), emissive: c.glow, emissiveIntensity: 1.6, metalness: 0, roughness: 0.2, flatShading: true });
+  const shine = std({ color: c.glow.clone().lerp(WHITE, 0.2), emissive: c.glow, emissiveIntensity: 0.7, metalness: 0, roughness: 0.2, flatShading: true });
   const midT = rng.range(0.32, 0.45);
   const body = new THREE.Mesh(latheZ([[0, 0.001], [midT, 1], [midT + 0.22, 0.82], [1, 0.001]], L, R, seg), crystal);
   body.scale.y = rng.range(0.75, 0.95);
@@ -1638,24 +2576,21 @@ function buildCristal(c) {
       ship.add(block);
     }
   };
-  // Colonie et Arche : couronnes d'éclats en rotation.
+  // Colonie, transport, Arche : grandes aiguilles de cristal qui longent la coque, chacune avec son cœur.
   c.habitat = () => {
-    const crowns = kind === 'arche' ? 2 : 1;
-    for (let i = 0; i < crowns; i++) {
-      const g = new THREE.Group();
-      const count = kind === 'arche' ? 10 - i * 3 : 7;
-      const rr = R * (2.1 - i * 0.5);
-      g.add(new THREE.Mesh(new THREE.TorusGeometry(rr, R * 0.03, 4, 40), shine));
-      for (let k = 0; k < count; k++) {
-        const a = (k / count) * Math.PI * 2;
-        const s = new THREE.Mesh(shardGeometry(R * 0.9, R * 0.22, 5, 0.5), k % 2 ? crystal : shine);
-        s.position.set(Math.cos(a) * rr, Math.sin(a) * rr, -R * 0.45);
-        s.renderOrder = 2;
-        g.add(s);
-      }
-      g.position.z = L * (midT - 0.5 - i * 0.22);
-      ship.add(g);
-      c.rings.push(g);
+    const count = kind === 'arche' ? 4 : 2;
+    for (let k = 0; k < count; k++) {
+      const a = (k / count) * Math.PI * 2 + (count === 2 ? 0 : Math.PI / 4);
+      const len = L * (kind === 'arche' ? 0.75 : 0.6);
+      const p = v3(Math.cos(a) * R * 1.25, Math.sin(a) * R * 1.0, -L * 0.36);
+      const pillar = new THREE.Mesh(shardGeometry(len, R * 0.36, 6, 0.4), crystal);
+      pillar.position.copy(p);
+      pointAlong(pillar, v3(-Math.cos(a) * 0.08, -Math.sin(a) * 0.08, 1));
+      pillar.renderOrder = 2;
+      const heart = new THREE.Mesh(shardGeometry(len * 0.55, R * 0.12, 6, 0.4), shine);
+      heart.position.copy(p).add(v3(0, 0, len * 0.12));
+      heart.quaternion.copy(pillar.quaternion);
+      ship.add(heart, pillar);
     }
   };
 }
@@ -1679,8 +2614,12 @@ function buildVoilier(c) {
     ship.add(col, line);
   }
   // Grandes voiles en éventail autour de la coque.
-  const sailTex = sailTextures(rng, c.tone.clone().lerp(new THREE.Color('#e8c060'), 0.35), c.glow);
-  const sailMat = std({ map: sailTex.map, emissiveMap: sailTex.emissiveMap, emissive: c.glow, emissiveIntensity: 1.2, metalness: 0.4, roughness: 0.45, transparent: true, opacity: 0.82, depthWrite: false });
+  const sails = sailSet();
+  const sailMat = std({
+    map: sails.map, normalMap: sails.normalMap, roughnessMap: sails.orm, metalnessMap: sails.orm, emissiveMap: sails.emissiveMap,
+    color: tintFor(c.tone.clone().lerp(new THREE.Color('#e8c060'), 0.35), SAIL_BASE), emissive: c.glow, emissiveIntensity: 1.2,
+    metalness: 1, roughness: 1, transparent: true, opacity: 0.9, depthWrite: false,
+  });
   const count = kind === 'arche' ? 6 : tier >= 3 ? 4 : 3;
   const phase = count === 4 ? Math.PI / 4 : Math.PI / 2;
   const scaleK = (warship ? 0.72 : 1) * (1 + tier * 0.05);
@@ -1720,26 +2659,19 @@ function buildVoilier(c) {
     tip.position.copy(end);
     ship.add(tip);
   }
-  // Anneau de glyphes à l'avant (ou habitat pour la colonie et l'Arche).
-  const glyphRing = std({ map: m.hull.map, emissiveMap: m.hull.emissiveMap, emissive: c.glow, emissiveIntensity: 1.6, color: c.tone, metalness: 0.85, roughness: 0.3 });
-  const ringed = kind === 'colonie' || kind === 'arche' || kind === 'transport';
-  if (!ringed && rng.chance(0.6)) {
-    const g = new THREE.Group();
-    g.add(new THREE.Mesh(new THREE.TorusGeometry(R * 2.1, R * 0.12, 6, 48), glyphRing));
-    g.position.z = L * 0.34;
-    ship.add(g);
-    c.rings.push(g);
-  }
+  // Métal à glyphes lumineux (lanternes d'habitat).
+  const glyphRing = variant(m.hull, null, { emissiveIntensity: 1.6 });
   c.engines.push([0, 0, -L * 0.5, R * 0.55]);
   if (tier >= 3) c.engines.push([R * 0.9, 0, -L * 0.42, R * 0.3], [-R * 0.9, 0, -L * 0.42, R * 0.3]);
   c.beaconPos = v3(0, R * 1.0, L * 0.05);
   c.turretScale = 1.4;
   c.turretAt = (angle, row) => ({ z: L * (-0.1 + row * 0.42), dist: R * 0.92 });
+  // Colonie, transport, Arche : lanternes dorées suspendues entre les voiles.
   c.habitat = () => {
-    const rings = kind === 'arche' ? 2 : 1;
-    for (let i = 0; i < rings; i++) {
-      const g = habitatRing(c, R * (2.6 - i * 0.5), R * 0.3, L * (0.36 - i * 0.12), 3);
-      g.children[0].material = glyphRing;
+    const n = kind === 'arche' ? count : Math.min(2, count);
+    for (let i = 0; i < n; i++) {
+      const a = phase + ((Math.floor((i * count) / n) + 0.5) / count) * Math.PI * 2;
+      habitatPod(c, Math.cos(a) * R * 1.9, Math.sin(a) * R * 1.9, -L * 0.02, R * 0.5, L * 0.28, glyphRing);
     }
   };
 }
@@ -1756,8 +2688,11 @@ function buildCaravane(c) {
     ship.add(beam(v3(sx * R * 0.27, sy * R * 0.27, -L * 0.44), v3(sx * R * 0.27, sy * R * 0.27, L * 0.38), R * 0.035, m.hull, 4));
   }
   // Conteneurs : couleurs tirées dans une petite palette, quelques places vides.
-  const cargoTex = [0, 1, 2].map(() => speciesTextures(rng, 'cargo', c.tone.clone().offsetHSL(rng.range(-0.02, 0.03), 0, rng.range(-0.08, 0.08)), c.accent, c.glow, c.registry, 128));
-  const cargo = cargoTex.map((t, i) => std({ map: t.map, metalness: 0.55, roughness: 0.5, color: i === 2 ? (warship ? '#7a7f88' : '#e0e6ee') : '#ffffff' }));
+  const crates = containerSet();
+  const cargo = [0, 1, 2].map((i) => {
+    const t = i === 2 ? new THREE.Color(warship ? '#6a6e76' : '#c8ccd2') : c.tone.clone().offsetHSL(rng.range(-0.02, 0.03), 0, rng.range(-0.08, 0.08));
+    return pbr(crates, { color: tintFor(t, CONTAINER_BASE), uv: 'fit' });
+  });
   if (warship) cargo.push(m.dark);
   const rows = Math.min(2 + tier, 6);
   const layout = rng.pick(['croix', 'carre', 'six']);
@@ -1788,7 +2723,7 @@ function buildCaravane(c) {
   ship.add(cab, band);
   const scoopLen = L * rng.range(0.14, 0.2);
   const mouth = R * rng.range(1.1, 1.45);
-  const scoopMat = std({ map: m.hull.map, color: '#d08850', metalness: 0.8, roughness: 0.3 });
+  const scoopMat = variant(m.hull, '#f0c8a8', { emissiveIntensity: 0 });
   const scoop = new THREE.Mesh(latheZ([[0, 0.45], [0.4, 0.62], [1, 1]], scoopLen, mouth, 16), scoopMat);
   scoop.position.z = L * 0.38 + scoopLen / 2;
   const lip = new THREE.Mesh(new THREE.TorusGeometry(mouth, R * 0.05, 6, 32), m.glow);
@@ -1802,15 +2737,7 @@ function buildCaravane(c) {
   }
   // Radiateurs (panneaux) sur bras.
   if (rng.chance(0.65) || tier >= 3) {
-    const fins = canvasTexture(64, 128, (ctx, w, h) => {
-      ctx.fillStyle = '#2a2420';
-      ctx.fillRect(0, 0, w, h);
-      for (let y = 4; y < h; y += 8) {
-        ctx.fillStyle = '#b07040';
-        ctx.fillRect(2, y, w - 4, 3);
-      }
-    });
-    const rad = std({ map: fins, metalness: 0.6, roughness: 0.4 });
+    const rad = pbr(radiatorSet(), { uv: 'fit' });
     const w = R * rng.range(1.6, 2.4);
     const panel = new THREE.Mesh(new THREE.BoxGeometry(w, 0.012, L * 0.18), rad);
     panel.position.set(R * 0.75 + w / 2, 0, -L * 0.37);
@@ -1828,9 +2755,10 @@ function buildCaravane(c) {
   c.beaconPos = v3(0, R * 0.65, L * 0.32);
   c.turretAt = (angle, row) => ({ z: z0 + (z1 - z0) * row, dist: dist + s * 0.5 });
   c.cargo = () => {}; // les conteneurs sont déjà la silhouette
+  // Colonie, transport, Arche : cylindres d'équipage posés sur les conteneurs.
   c.habitat = () => {
-    const rings = kind === 'arche' ? 2 : 1;
-    for (let i = 0; i < rings; i++) habitatRing(c, R * (3 - i * 0.5), R * 0.32, L * (0.05 - i * 0.24), 4);
+    const ys = kind === 'arche' ? [1, -1] : [1];
+    for (const sy of ys) habitatPod(c, 0, sy * (dist + s * 0.5 + R * 0.42), -L * 0.04, R * 0.4, L * 0.38);
   };
 }
 
@@ -1855,18 +2783,23 @@ function createStyledShip(seed, accent, registry, kind, style) {
   // Version de guerre : la même livrée, assombrie.
   if (warship) tone = tone.lerp(new THREE.Color(look.warTone ?? '#25282e'), look.warMix ?? 0.45);
 
-  const tex = speciesTextures(rng, look.pattern, tone, accentColor, glow, registry);
+  // Textures partagées par toute l'espèce, peintes dans sa teinte de référence ; la teinte du vaisseau
+  // passe par la couleur du matériau.
+  const base = new THREE.Color(tones[0]);
+  if (look.saturate) base.offsetHSL(0, look.saturate, 0);
+  const set = hullSet(archetype, base, glow);
+  const darkTone = tone.clone().lerp(new THREE.Color('#121418'), 0.55);
   const m = {
-    hull: std({ map: tex.map, emissiveMap: tex.emissiveMap, emissive: glow, emissiveIntensity: look.emissive, metalness: Math.min(0.95, look.metalness + (warship ? 0.1 : 0)), roughness: look.roughness, envMapIntensity: look.env }),
-    dark: std({ color: tone.clone().lerp(new THREE.Color('#121418'), 0.72), metalness: 0.8, roughness: 0.38, envMapIntensity: 0.9 }),
+    hull: pbr(set, { color: tintFor(tone, set.base), emissive: glow, emissiveIntensity: look.emissive, env: look.env }),
+    dark: pbr(darkSet(), { color: tintFor(darkTone, DARK_BASE), env: 0.9 }),
     glow: basic(glow),
-    accent: std({ color: accentColor, emissive: accentColor, emissiveIntensity: 0.45, metalness: 0.35, roughness: 0.4 }),
+    accent: pbr(paintSet(), { color: tintFor(accentColor, PAINT_BASE), emissive: accentColor, emissiveIntensity: 0.12 }),
     accentGlow: basic(accentColor),
     windows: basic(glow.clone().lerp(WHITE, 0.45)),
   };
   const c = {
     rng, ship, kind, tier, warship, style, look, glow, accent: accentColor, tone, registry, m,
-    flames: [], rings: [], turrets: [], lights: [], engines: [], lightSpots: null, beaconPos: null, civilTurrets: 0,
+    flames: [], jets: [], rings: [], turrets: [], lights: [], engines: [], lightSpots: null, beaconPos: null, civilTurrets: 0,
   };
   c.turretAt = (angle, row) => ({ z: c.L * (-0.3 + row * 0.55), dist: c.R * (angle === 0 ? 1.0 : 0.88) });
   BUILDERS[archetype](c);
@@ -1907,7 +2840,10 @@ function createStyledShip(seed, accent, registry, kind, style) {
   beacon.position.copy(c.beaconPos ?? v3(0, R * 0.9, -L * 0.25));
   ship.add(beacon);
 
-  ship.userData = { flames: c.flames, beacon, length: L, rings: c.rings, turrets: c.turrets, lights: c.lights, kind, sizeScale: shipScale(kind), archetype };
+  // Coordonnées de texture à l'échelle, suie près des réacteurs.
+  weatherShip(ship, Math.min(-L / 2, ...c.engines.map((e) => e[2])) - 0.03, L, R);
+
+  ship.userData = { flames: c.flames, jets: c.jets, fxSeed: seed % 1000, beacon, length: L, rings: c.rings, turrets: c.turrets, lights: c.lights, kind, sizeScale: shipScale(kind), archetype };
   ship.scale.setScalar((1.6 / L) * shipScale(kind));
   return ship;
 }
@@ -1933,13 +2869,13 @@ export function renderShipThumbnails(specs, width = 120, height = 72, style = nu
     ship.updateMatrixWorld(true);
     const box = new THREE.Box3();
     ship.traverse((o) => {
-      if (o.isMesh) box.expandByObject(o);
+      if (o.isMesh && !o.userData.fx) box.expandByObject(o);
     });
     const dims = box.getSize(new THREE.Vector3());
     const extent = Math.max(dims.z, Math.max(dims.x, dims.y) * 1.25, 0.001);
     ship.scale.setScalar(1.6 / extent);
     ship.position.copy(box.getCenter(new THREE.Vector3())).multiplyScalar(-1.6 / extent);
-    for (const flame of ship.userData.flames) flame.scale.setScalar(0.5);
+    animateShip(ship, seed * 0.37, 0.5);
     scene.add(ship);
     renderer.render(scene, camera);
     return renderer.domElement.toDataURL();

@@ -7,7 +7,7 @@ import { STAR_TYPES, starDistance } from './galaxy.js';
 import { reachableStars, shipProgress, selectedShip } from './game.js';
 import { currentSpecies } from './species.js';
 import { createSky } from './skybox.js';
-import { createShip, shipScale } from './ships.js';
+import { animateShip, createShip, shipScale } from './ships.js';
 import { canvasTexture, glowTexture } from './textures.js';
 
 const PROBE_COLOR = 0x7cff9e; // lignes de portée
@@ -364,9 +364,8 @@ export function createGalaxyView(container, game, callbacks) {
       v.holder.scale.setScalar(scale);
 
       const traveling = v.ship.state === 'travel';
-      for (const flame of v.model.userData.flames) {
-        flame.scale.setScalar((traveling ? 0.9 : 0.35) * (1 + Math.sin(time * 30 + v.ship.id) * 0.12));
-      }
+      // Propulsion : pleine poussée en voyage, ralenti en orbite.
+      animateShip(v.model, time, traveling ? 1 : 0.15);
       for (const ring of v.model.userData.rings) ring.rotation.z += dt * 0.4;
       // Tourelles qui balaient lentement de gauche à droite ; feux rouges des vaisseaux de guerre.
       for (const t of v.model.userData.turrets ?? []) {
