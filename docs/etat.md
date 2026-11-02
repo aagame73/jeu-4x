@@ -10,7 +10,7 @@
 - Outils : hook de fin de réponse qui lance `npm run build` (`.claude/settings.json`), agent `relecteur` (`.claude/agents/relecteur.md`), serveur lancé au démarrage de Windows.
 
 ## En cours
-- Rien.
+- Rien (tout est commité, dernier commit 7293f0c).
 
 ## Prochaine étape
 - Étape 5 du plan des espèces : les rivaux (empires de l'ordinateur) prennent les espèces non choisies.
@@ -20,4 +20,5 @@
 - Portrait des Orrhaïdes : tête presque blanche par moments quand il parle (pulsation à baisser ?).
 - Vaisseaux : Liseurs un peu sombres dans le jeu, marques répétées sur les ailes des Thrennes, pleine poussée pas encore vue en jeu.
 - `src/ships.js` fait environ 2 900 lignes : le découper (matériaux à part) ?
+- `src/ships.js` : la branche des anneaux génériques (`habitatRing`) n'est plus jamais atteinte : la supprimer (signalé par le relecteur, non bloquant).
 - Titre du jeu à choisir.
