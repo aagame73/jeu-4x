@@ -1,2 +1,21 @@
+# Dépendances et build
 node_modules
 dist
+
+# Secrets et réglages locaux
+.env
+.env.*
+.claude/settings.local.json
+
+# Fichiers temporaires et journaux
+*.log
+*.tmp
+*.local
+.vite
+
+# Système et éditeurs
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode
+.idea
