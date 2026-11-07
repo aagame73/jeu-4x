@@ -69,12 +69,47 @@ export function rivalTechs(empire) {
   return [...known];
 }
 
+// --- Traités ----------------------------------------------------------------------------
+// empire.treaties[clé] : jour d'expiration (0 si aucun).
+
+export const treatyActive = (game, empire, key) => empire.treaties[key] > game.time;
+
+const nearPlayer = (game, star, range) => game.colonies.some((c) => starDistance(game.stars[c.starId], star) <= range);
+
+// Cet empire s'est-il engagé à ne pas prendre cette planète ?
+export function treatyForbids(game, empire, star, planet) {
+  if (treatyActive(game, empire, 'frontieres') && nearPlayer(game, star, DIPLOMACY.treaties.frontieres.range)) return true;
+  return planet.ruins && treatyActive(game, empire, 'ruines') && nearPlayer(game, star, DIPLOMACY.treaties.ruines.range);
+}
+
+// Empires avec qui une colonie dans ce système romprait le traité de frontières. Seules comptent
+// leurs colonies que le joueur connaît : on ne rompt pas sans le savoir.
+export function treatyConflicts(game, starId) {
+  const star = game.stars[starId];
+  const range = DIPLOMACY.treaties.frontieres.range;
+  return game.empires.filter(
+    (empire) =>
+      treatyActive(game, empire, 'frontieres') &&
+      empire.colonies.some((c) => game.stars[c.starId].planets[c.planetIndex].inhabitedBy && starDistance(game.stars[c.starId], star) <= range),
+  );
+}
+
+// Rompt les traités de frontières touchés par une nouvelle colonie ; renvoie les empires concernés.
+export function breakTreaties(game, starId) {
+  const broken = treatyConflicts(game, starId);
+  for (const empire of broken) {
+    empire.treaties.frontieres = 0;
+    changeRelation(empire, -DIPLOMACY.treatyBreakPenalty);
+  }
+  return broken;
+}
+
 // --- Échanges ---------------------------------------------------------------------------
 // Une offre : { give: { resources: { minerais: 10 }, techs: [clé], map: false }, get: { ... } }.
 // give : ce que le joueur donne ; get : ce qu'il reçoit.
 
 const resourcesOf = (side) => Object.entries(side.resources ?? {});
-const isEmpty = (side) => !resourcesOf(side).length && !side.techs?.length && !side.map;
+const isEmpty = (side) => !resourcesOf(side).length && !side.techs?.length && !side.map && !side.treaties?.length;
 
 // Rareté chez l'empire : une matière dont il a peu vaut plus cher pour lui.
 function materialValue(empire, res, amount) {
@@ -90,6 +125,7 @@ function sideValue(game, empire, side, playerGives) {
   let total = resourcesOf(side).reduce((sum, [res, amount]) => sum + materialValue(empire, res, amount), 0);
   total += (side.techs ?? []).reduce((sum, key) => sum + techValue(key), 0);
   if (side.map) total += DIPLOMACY.mapValuePerColony * (playerGives ? game.colonies.length : unknownColonies(empire));
+  total += (side.treaties ?? []).reduce((sum, key) => sum + DIPLOMACY.treaties[key].value, 0);
   return total;
 }
 
@@ -118,6 +154,13 @@ function dealProblem(game, empire, offer) {
   if ((given.length || taken.length) && game.time < empire.nextTechTrade) return 'tech-delay';
   if (offer.give.map && (!game.colonies.length || game.time < empire.nextMapTrade)) return 'map-give';
   if (offer.get.map && !unknownColonies(empire)) return 'map-take';
+  if (offer.give.treaties?.length) return 'invalid'; // seul l'empire s'engage contre paiement
+  for (const key of offer.get.treaties ?? []) {
+    const treaty = DIPLOMACY.treaties[key];
+    if (!treaty) return 'invalid';
+    if (Math.round(empire.relation) < treaty.minRelation) return 'treaty-attitude';
+    if (treatyActive(game, empire, key)) return 'treaty-active';
+  }
   return null;
 }
 
@@ -167,6 +210,7 @@ export function applyDeal(game, empire, offer, answer) {
     empire.power += given.length * DIPLOMACY.soldTechPower;
   }
   if (offer.give.map) empire.nextMapTrade = game.time + DIPLOMACY.mapDelay;
+  for (const key of offer.get.treaties ?? []) empire.treaties[key] = game.time + DIPLOMACY.treaties[key].days;
   if (offer.get.map) {
     for (const colony of empire.colonies) {
       colony.known = true;
@@ -185,20 +229,32 @@ export function applyDeal(game, empire, offer, answer) {
 }
 
 // Un jour entier : les stocks montent chez tous ; chez les empires rencontrés, la note revient vers
-// sa valeur de départ et baisse si le joueur est trop près.
+// sa valeur de départ et baisse si le joueur est trop près. Renvoie les traités arrivés à terme.
 function diplomacyDay(game) {
+  const ended = [];
   for (const empire of game.empires) {
     stockDay(game, empire);
+    for (const key of Object.keys(DIPLOMACY.treaties)) {
+      if (!empire.treaties[key]) continue;
+      if (treatyActive(game, empire, key)) changeRelation(empire, DIPLOMACY.treatyRespectPerDay);
+      else {
+        empire.treaties[key] = 0;
+        ended.push({ empire, key });
+      }
+    }
     if (!empire.met) continue;
     const pressure = Math.min(DIPLOMACY.proximityMax, nearColonies(game, empire) * DIPLOMACY.proximityPerColony);
     changeRelation(empire, (startRelation(empire.species) - empire.relation) * DIPLOMACY.returnPerDay - pressure);
   }
+  return ended;
 }
 
 // Calculé par jour entier, pour donner le même résultat quelle que soit la vitesse du jeu.
 export function tickDiplomacy(game, days) {
   const steps = Math.floor(game.time) - Math.floor(game.time - days);
-  for (let i = 0; i < steps; i++) diplomacyDay(game);
+  const ended = [];
+  for (let i = 0; i < steps; i++) ended.push(...diplomacyDay(game));
+  return ended;
 }
 
 // Une fouille de ruines plaît ou déplaît selon l'espèce.

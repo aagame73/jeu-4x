@@ -342,6 +342,117 @@ const deal = (give, get) => ({ give: { resources: {}, ...give }, get: { resource
   check(fixed.extraTechs.length === 0 && fixed.nextTechTrade === 0, 'données d\'échange invalides : nettoyées');
 }
 
+// Étape 4 : traités.
+{
+  const E = await imp('empires.js');
+  // Colonie posée directement à côté d'un empire, pour que la zone protégée soit disputée.
+  const setup = (treaty) => {
+    const game = G.createGame(42, 'vaskhar', 7);
+    const empire = game.empires.find((e) => e.species === 'ondesiens');
+    empire.met = true;
+    empire.relation = 30;
+    const home = game.stars[empire.homeId];
+    const dist = (s) => Math.hypot(s.pos.x - home.pos.x, s.pos.y - home.pos.y, s.pos.z - home.pos.z);
+    const star = game.stars.filter((s) => s.id !== home.id && !s.rival && s.id !== game.homeId && s.planets.some((p) => p.size)).sort((a, b) => dist(a) - dist(b))[0];
+    game.colonies.push({ starId: star.id, planetIndex: star.planets.findIndex((p) => p.size) });
+    if (treaty) empire.treaties[treaty] = 1e9;
+    return { game, empire, star };
+  };
+  const zoneHits = (treaty, key = 'frontieres') => {
+    const { game, empire, star } = setup(treaty);
+    const range = DIPLOMACY.treaties[key].range;
+    // Toutes les planètes du système voisin deviennent des ruines : la zone est forcément disputée.
+    if (key === 'ruines') star.planets.forEach((p, i) => { if (p.size && i !== game.colonies[0].planetIndex) p.ruins = true; });
+    game.colonies.length = 0;
+    const other = game.stars.filter((x) => x.id !== star.id && !x.rival && x.id !== game.homeId && x.planets.some((p) => p.size)).sort((a, b) => Math.hypot(a.pos.x - star.pos.x, a.pos.y - star.pos.y, a.pos.z - star.pos.z) - Math.hypot(b.pos.x - star.pos.x, b.pos.y - star.pos.y, b.pos.z - star.pos.z))[0];
+    game.colonies.push({ starId: other.id, planetIndex: other.planets.findIndex((p) => p.size) });
+    let hits = 0;
+    for (let d = 0; d < 2500; d++) {
+      game.time += 1;
+      for (const { empire: who, colony } of E.tickEmpires(game, 1)) {
+        if (who !== empire) continue;
+        const s = game.stars[colony.starId];
+        const planet = s.planets[colony.planetIndex];
+        const near = game.colonies.some((c) => {
+          const q = game.stars[c.starId].pos;
+          return Math.hypot(s.pos.x - q.x, s.pos.y - q.y, s.pos.z - q.z) <= range;
+        });
+        if (near && (key === 'frontieres' || planet.ruins)) hits++;
+      }
+    }
+    return hits;
+  };
+  const free = zoneHits(null);
+  check(free > 0, `sans traité, l'empire s'installe dans la zone (${free} colonies)`);
+  check(zoneHits('frontieres') === 0, 'traité de frontières : aucune colonie de cet empire dans la zone');
+  const ruinsFree = zoneHits(null, 'ruines');
+  check(ruinsFree > 0, `témoin : sans pacte, l'empire prend des ruines dans la zone (${ruinsFree})`);
+  check(zoneHits('ruines', 'ruines') === 0, 'pacte de ruines : aucune ruine prise par cet empire dans la zone');
+
+  // Signature : prix, attitude, doublon.
+  const { game, empire } = setup(null);
+  game.resources.minerais = 5000;
+  const treatyDeal = (key, n = 1000) => deal({ resources: { minerais: n } }, { treaties: [key] });
+  empire.relation = -30;
+  check(G.signDeal(game, empire, treatyDeal('frontieres')).reason === 'treaty-attitude', 'traité de frontières : il faut au moins Neutre');
+  empire.relation = 5;
+  check(G.signDeal(game, empire, treatyDeal('ruines')).reason === 'treaty-attitude', 'pacte de ruines : il faut au moins Amical');
+  check(G.signDeal(game, empire, deal({}, { treaties: ['frontieres'] })).reason === 'nothing-free', 'un traité ne se donne pas : rien n\'est gratuit');
+  check(G.signDeal(game, empire, treatyDeal('frontieres', 1)).reason === 'unbalanced', 'un traité a un prix');
+  check(G.signDeal(game, empire, treatyDeal('inconnu')).reason === 'invalid', 'traité inconnu : refusé');
+  check(G.signDeal(game, empire, { give: { resources: { minerais: 10 }, treaties: ['frontieres'] }, get: { resources: { biomasse: 1 } } }).reason === 'invalid', 'seul l\'empire s\'engage');
+  const signed = G.signDeal(game, empire, treatyDeal('frontieres'));
+  check(signed.ok && D.treatyActive(game, empire, 'frontieres'), 'traité signé contre paiement');
+  check(G.signDeal(game, empire, treatyDeal('frontieres')).reason === 'treaty-active', 'pas deux fois le même traité');
+
+  // Durée, respect, fin.
+  const end = empire.treaties.frontieres;
+  for (let d = 0; d < 10; d++) {
+    game.time += 1;
+    D.tickDiplomacy(game, 1);
+  }
+  check(empire.treaties.frontieres === end, 'le traité tient pendant sa durée');
+  game.time = end + 1;
+  const ended = D.tickDiplomacy(game, 1);
+  check(ended.some((x) => x.key === 'frontieres') && empire.treaties.frontieres === 0, 'le traité arrive à son terme');
+}
+{
+  // Rupture par une colonie trop proche, et seulement si le joueur connaît la colonie rivale.
+  const game = G.createGame(42, 'vaskhar', 7);
+  const empire = game.empires.find((e) => e.species === 'ondesiens');
+  empire.met = true;
+  empire.relation = 40;
+  empire.treaties.frontieres = 1e9;
+  const home = game.stars[empire.homeId];
+  const dist = (s) => Math.hypot(s.pos.x - home.pos.x, s.pos.y - home.pos.y, s.pos.z - home.pos.z);
+  const star = game.stars.filter((s) => s.id !== home.id && !s.rival && s.id !== game.homeId && s.planets.some((p) => p.size)).sort((a, b) => dist(a) - dist(b)).find((s) => dist(s) <= DIPLOMACY.treaties.frontieres.range);
+  check(!!star, 'un système libre existe près de l\'empire');
+  check(D.treatyConflicts(game, star.id).includes(empire), 'avertissement possible avant de fonder trop près');
+  const far = game.stars[game.homeId];
+  check(!D.treatyConflicts(game, far.id).includes(empire), 'pas d\'avertissement loin de l\'empire');
+  star.level = 3;
+  const index = star.planets.findIndex((p) => p.size);
+  const ship = { id: 96, kind: 'colonie', starId: star.id, state: 'idle', age: 0, name: 'Colonie test' };
+  game.ships.push(ship);
+  const surface = G.getSurface(game, star.id, index);
+  const tile = surface.tiles.findIndex((t) => t.terrain !== 'ocean' && !t.building && !['minerais', 'velarine'].includes(t.deposit?.resource));
+  const before = empire.relation;
+  const founded = G.foundColony(game, ship, star.id, index, tile);
+  check(founded && empire.treaties.frontieres === 0, 'fonder trop près rompt le traité');
+  check(near(before - empire.relation, DIPLOMACY.treatyBreakPenalty), 'la rupture coûte de la note');
+  check(game.log.some((l) => JSON.stringify(l).includes('Traité de frontières rompu')), 'la rupture est annoncée');
+}
+{
+  const game = G.createGame(42, 'vaskhar', 5);
+  game.empires[0].treaties.ruines = 777;
+  check(restore(copy(serialize(game))).empires[0].treaties.ruines === 777, 'traités conservés à la sauvegarde');
+  const bad = copy(serialize(game));
+  bad.empires[0].treaties = 'x';
+  delete bad.empires[1].treaties;
+  const fixed = restore(bad);
+  check(fixed.empires[0].treaties.frontieres === 0 && fixed.empires[1].treaties.ruines === 0, 'traités invalides ou absents : aucun traité');
+}
+
 // Le jeu complet appelle bien les relations.
 {
   const game = G.createGame(42, 'vaskhar', 4);

@@ -10,7 +10,8 @@ import { createRng } from './rng.js';
 import { canvasTexture, glowTexture } from './textures.js';
 import { createSky } from './skybox.js';
 import { icon } from './icons.js';
-import { knownRival } from './species.js';
+import { knownRival, rivalInfo } from './species.js';
+import { treatyConflicts } from './diplomacy.js';
 
 // --- Réglages du décor --------------------------------------------------------------
 const BODY_RADIUS = { petite: 0.7, moyenne: 0.9, grande: 1.1 };
@@ -947,6 +948,9 @@ export function createSystemView(root, game, actions) {
     const buttons = [];
     if (planet.size) {
       buttons.push(`<button class="sv-btn" data-sv="surface" data-index="${index}">${colony ? 'Gérer la colonie' : 'Voir la surface'}</button>`);
+    }
+    if (canFound) {
+      for (const empire of treatyConflicts(game, star.id)) buttons.push(`<span class="sv-badge rival">⚠ Fonder ici romprait le traité avec les ${rivalInfo(empire.species).label}</span>`);
     }
     if (canFound) buttons.push(`<button class="sv-btn primary" data-sv="found" data-index="${index}">Fonder une colonie ici</button>`);
 
