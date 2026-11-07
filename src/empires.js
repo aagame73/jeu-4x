@@ -1,7 +1,7 @@
 // Empires rivaux simulés (voir docs/plan-rivaux-ia.md) : ils s'étendent dans l'amas sans bâtir
 // sur les hexagones. Réglages dans config.js (RIVAL_AI). Pas encore de combat ni de diplomatie.
 import { RIVAL_AI, SPECIES } from './config.js';
-import { startRelation, startStocks } from './diplomacy.js';
+import { startRelation, startStocks, treatyForbids } from './diplomacy.js';
 import { starDistance } from './galaxy.js';
 import { TECHS } from './research.js';
 import { createRng } from './rng.js';
@@ -24,6 +24,7 @@ export function createEmpires(stars) {
         extraTechs: [], // technologies reçues du joueur
         nextTechTrade: 0,
         nextMapTrade: 0,
+        treaties: { frontieres: 0, ruines: 0 },
       };
       empire.stocks = startStocks(empire);
       return empire;
@@ -82,6 +83,7 @@ function chooseTarget(game, empire) {
       if (planet.ruins && ruinsLeft <= RIVAL_AI.keepFreeRuins) return;
       const habitat = habitatFor(SPECIES[empire.species], planet);
       if (habitat === 'hostile' && !hostileAllowed) return;
+      if (treatyForbids(game, empire, star, planet)) return;
       const deposits = Object.entries(style.deposits).reduce((sum, [res, weight]) => sum + weight * (planet.deposits[res] ?? 0), 0);
       const score =
         RIVAL_AI.habitatScore[habitat ?? 'neutral'] + RIVAL_AI.sizeScore[planet.size] + deposits + (planet.ruins ? style.ruins : 0) + frontier -
@@ -121,6 +123,7 @@ export function validEmpires(game, saved) {
     extraTechs: Array.isArray(empire.extraTechs) ? empire.extraTechs.filter((key) => TECHS[key]) : [],
     nextTechTrade: number(empire.nextTechTrade) ? empire.nextTechTrade : 0,
     nextMapTrade: number(empire.nextMapTrade) ? empire.nextMapTrade : 0,
+    treaties: { frontieres: number(empire.treaties?.frontieres) ? empire.treaties.frontieres : 0, ruines: number(empire.treaties?.ruines) ? empire.treaties.ruines : 0 },
   }));
 }
 

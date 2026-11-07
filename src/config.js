@@ -197,6 +197,13 @@ export const DIPLOMACY = {
   rivalPenaltyPerValue: 0.02, // note perdue auprès des rivaux du partenaire
   rivalPenaltyMin: 1,
   rivalPenaltyMax: 15,
+  // Traités : valeur (prix à payer à l'empire), durée, attitude minimale, zone protégée autour des colonies du joueur.
+  treaties: {
+    frontieres: { label: 'Traité de frontières', value: 150, days: 1000, minRelation: -19, range: 25 },
+    ruines: { label: 'Pacte de ruines', value: 250, days: 1000, minRelation: 20, range: 40 },
+  },
+  treatyRespectPerDay: 0.01, // note gagnée chaque jour tant qu'un traité tient
+  treatyBreakPenalty: 25, // note perdue à la rupture
   techBranches: {
     vaskhar: ['industrie', 'structure'],
     ondesiens: ['vie', 'energie'],

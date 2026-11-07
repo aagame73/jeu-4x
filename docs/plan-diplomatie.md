@@ -1,6 +1,6 @@
 # Plan : diplomatie et échanges (première version)
 
-État : **plan validé le 07/11/2026.** Étapes 1 et 2 faites. Étape 3 codée et testée, en attente de validation.
+État : **plan validé le 07/11/2026.** Étapes 1 à 3 faites. Étape 4 codée et testée, en attente de validation.
 
 ## 1. Point de départ
 

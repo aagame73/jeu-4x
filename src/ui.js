@@ -8,6 +8,7 @@ import { ICONS } from './icons.js';
 import { TECHS, techCost } from './research.js';
 import { createAdvisor } from './advisor.js';
 import { currentSpecies, speciesHabitat, rivalInfo } from './species.js';
+import { treatyConflicts } from './diplomacy.js';
 // Accès tolérant aux règles écrites en parallèle (SIZE_LABELS, shipStats peuvent manquer).
 import * as rules from './game.js';
 
@@ -306,6 +307,7 @@ export function createUI(root, game, actions) {
       if (milieu === 'favored') body += `<div class="badge favored" title="Colons adaptés : +1 colon au départ, croissance +25 %, biomasse et eau consommées −50 %">Milieu favorable aux ${sp}</div>`;
       else if (milieu === 'hostile') body += `<div class="badge hostile" title="Colonie possible avec Adaptation xénobiologique (l'Arche peut s'y poser) : croissance −50 %, 1 colon de moins, production −15 %">Milieu hostile aux ${sp}</div>`;
       if (!foundingProblem(game, selectedShip(game), star.id, index)) {
+        for (const empire of treatyConflicts(game, star.id)) body += `<div class="badge hostile">⚠ Fonder ici romprait le traité avec les ${rivalInfo(empire.species).label}</div>`;
         body += `<button class="primary surface-btn" data-action="found" data-star="${star.id}" data-planet="${index}">Fonder une colonie ici</button> `;
       }
       const label = colonyOn(game, star.id, index) ? 'Gérer la colonie' : 'Voir la surface';

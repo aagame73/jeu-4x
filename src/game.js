@@ -14,8 +14,8 @@ import { SHIP_NAMES, SHIP_ACCENTS } from './ships.js';
 import { generateSurface, hexDistance } from './surface.js';
 import { tickColony, colonyReport, SHIPYARD, canAfford } from './economy.js';
 import { TECHS, hasTech, bindResearch, markTech, techCost } from './research.js';
-import { SPECIES, DEFAULT_SPECIES, RIVALS } from './config.js';
-import { applyDeal, evaluateDeal, tickDiplomacy } from './diplomacy.js';
+import { SPECIES, DEFAULT_SPECIES, RIVALS, DIPLOMACY } from './config.js';
+import { applyDeal, breakTreaties, evaluateDeal, tickDiplomacy } from './diplomacy.js';
 import { createEmpires, tickEmpires, revealEmpires, rivalColonyAt, newContacts } from './empires.js';
 import { bindSpecies, speciesBonus, speciesHabitat, hostilePenalty, currentSpecies, normalizeRivals, rivalInfo } from './species.js';
 
@@ -295,6 +295,9 @@ export function foundColony(game, ship, starId, planetIndex, tileIndex) {
   if (!tile || tile.terrain === 'ocean' || tile.building || tile.deposit?.resource === 'minerais' || tile.deposit?.resource === 'velarine') return false;
   const planet = game.stars[starId].planets[planetIndex];
   const first = game.colonies.length === 0;
+  for (const empire of breakTreaties(game, starId)) {
+    addLog(game, `Traité de frontières rompu : les ${rivalInfo(empire.species).label} ne vous le pardonneront pas de sitôt.`, 'alert');
+  }
   const habitat = speciesHabitat(planet);
   tile.terrain = 'plaine';
   tile.building = { type: 'centre', done: true };
@@ -511,7 +514,10 @@ export function tick(game, days) {
     // Un vaisseau du joueur sur place voit la colonie s'installer.
     if (game.ships.some((s) => s.starId === colony.starId && s.state !== 'travel')) changed = discoverRivals(game, colony.starId) || changed;
   }
-  tickDiplomacy(game, days);
+  for (const { empire, key } of tickDiplomacy(game, days)) {
+    addLog(game, `${DIPLOMACY.treaties[key].label} avec les ${rivalInfo(empire.species).label} : arrivé à son terme.`, 'info');
+    changed = true;
+  }
   const logLength = game.log.length;
   tickResearch(game, days);
   if (game.log.length !== logLength) changed = true;
