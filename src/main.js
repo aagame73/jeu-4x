@@ -5,10 +5,12 @@ import './styles/infobulles.css';
 import './styles/recherche.css';
 import './styles/systeme.css';
 import './styles/especes.css';
+import './styles/diplomatie.css';
 import { CONFIG, SPECIES, DEFAULT_SPECIES } from './config.js';
 import { createSpeciesView } from './speciesView.js';
 import { createGame, tick, currentDay, sendShip, startAnalysis, selectedShip, foundColony, startShipyard, startResearch } from './game.js';
 import { createResearchView } from './researchView.js';
+import { createDiplomacyView } from './diplomacyView.js';
 import { createSystemView } from './systemView.js';
 import { createGalaxyView } from './scene.js';
 import { createUI } from './ui.js';
@@ -194,6 +196,7 @@ const actions = {
   },
   onOpenMenu() {
     if (researchView.isOpen) actions.onCloseResearch();
+    if (diplomacyView.isOpen) actions.onCloseDiplomacy();
     menu.open();
   },
   // L'écran de recherche met la partie en pause, comme le menu.
@@ -210,6 +213,21 @@ const actions = {
     game.paused = pausedBeforeResearch;
     ui.renderLive();
   },
+  // Comme la recherche, la diplomatie met la partie en pause.
+  onOpenDiplomacy() {
+    if (diplomacyView.isOpen || researchView.isOpen) return;
+    pausedBeforeDiplomacy = game.paused;
+    game.paused = true;
+    diplomacyView.open();
+    ui.renderLive();
+  },
+  onCloseDiplomacy() {
+    if (!diplomacyView.isOpen) return;
+    diplomacyView.close();
+    game.paused = pausedBeforeDiplomacy;
+    ui.renderLive();
+  },
+  refresh,
   onStartResearch(key) {
     if (startResearch(game, key)) refresh();
   },
@@ -222,9 +240,11 @@ const ui = createUI(document.getElementById('ui'), game, actions);
 const contactView = createContactView(game, () => refresh());
 const planetView = createPlanetView(document.getElementById('planet-view'), game, actions);
 const researchView = createResearchView(document.getElementById('research'), game, actions);
+const diplomacyView = createDiplomacyView(document.getElementById('diplomacy'), game, actions);
 const systemView = createSystemView(document.getElementById('system-view'), game, actions);
 let returnToSystem = null; // système à rouvrir en quittant la vue d'une planète
 let pausedBeforeResearch = true;
+let pausedBeforeDiplomacy = true;
 
 // Le menu met la partie en pause et rétablit l'état d'avant à sa fermeture.
 let pausedBeforeMenu = true;
@@ -269,6 +289,10 @@ window.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && !document.getElementById('menu').classList.contains('start')) menu.close();
     return;
   }
+  if (diplomacyView.isOpen) {
+    if (e.key === 'Escape' || e.code === 'KeyD') actions.onCloseDiplomacy();
+    return;
+  }
   if (researchView.isOpen && (e.key === 'Escape' || e.code === 'KeyR')) {
     actions.onCloseResearch();
   } else if (e.key === 'Escape') {
@@ -277,6 +301,8 @@ window.addEventListener('keydown', (e) => {
     else menu.open();
   } else if (e.code === 'KeyR' && !e.ctrlKey && !e.metaKey && !e.altKey) {
     actions.onOpenResearch();
+  } else if (e.code === 'KeyD' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    actions.onOpenDiplomacy();
   } else if (e.code === 'KeyF' && !e.ctrlKey && !e.metaKey && !e.altKey) {
     actions.onToggleFullscreen();
   } else if (e.code === 'Space') {

@@ -1,0 +1,331 @@
+/* Écran de diplomatie : empires rencontrés et négociation à deux colonnes. */
+#diplomacy {
+  position: fixed;
+  inset: 0;
+  z-index: 45;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14px;
+  background: rgba(2, 4, 10, 0.6);
+}
+#diplomacy[hidden] {
+  display: none;
+}
+.diplomacy.panel {
+  font-family: 'Exo 2', 'Segoe UI', system-ui, sans-serif;
+  box-sizing: border-box;
+  padding: 14px 16px;
+  width: min(1180px, 100%);
+  height: min(860px, 100%);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.dp-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 8px;
+}
+.dp-head h2 {
+  margin: 0;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 17px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #dff6ff;
+  text-shadow: 0 0 10px rgba(95, 227, 255, 0.55);
+}
+.dp-head button,
+.dp-actions button,
+.dp-counter button {
+  width: auto;
+}
+.dp-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  gap: 14px;
+}
+.dp-list {
+  flex: none;
+  width: 250px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;
+}
+.dp-list:empty {
+  display: none;
+}
+.dp-none {
+  margin: auto;
+  max-width: 420px;
+  text-align: center;
+}
+.dp-none[hidden] {
+  display: none;
+}
+.dp-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px;
+  text-align: left;
+  border: 1px solid rgba(160, 180, 220, 0.2);
+}
+.dp-card.selected {
+  border-color: var(--empire);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--empire) 40%, transparent);
+}
+.dp-card span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.dp-card b {
+  color: var(--empire);
+  font-size: 13px;
+}
+.dp-card small {
+  opacity: 0.75;
+}
+.dp-mini {
+  flex: none;
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+}
+.dp-detail {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  padding-right: 6px;
+}
+.dp-detail[hidden] {
+  display: none;
+}
+.dp-top {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+.dp-portrait {
+  flex: none;
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  border: 2px solid var(--empire);
+}
+.dp-info {
+  min-width: 0;
+}
+.dp-info h3 {
+  margin: 0;
+  font-family: 'Orbitron', sans-serif;
+  letter-spacing: 0.03em;
+  color: var(--empire);
+}
+.dp-info p {
+  margin: 4px 0;
+}
+.dp-species {
+  opacity: 0.8;
+}
+.dp-attitude {
+  display: inline-block;
+  align-self: flex-start;
+  padding: 1px 8px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 600;
+}
+.dp-attitude.allie { color: #7cff9e; background: rgba(124, 255, 158, 0.15); }
+.dp-attitude.amical { color: #bff58a; background: rgba(191, 245, 138, 0.14); }
+.dp-attitude.neutre { color: #cfdcff; background: rgba(207, 220, 255, 0.12); }
+.dp-attitude.mefiant { color: #ffc46b; background: rgba(255, 196, 107, 0.14); }
+.dp-attitude.hostile { color: #ff7a8a; background: rgba(255, 122, 138, 0.15); }
+.dp-reasons {
+  margin: 4px 0;
+  padding-left: 18px;
+  font-size: 13px;
+}
+.dp-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-top: 10px;
+}
+.dp-columns section {
+  padding: 8px 10px;
+  border: 1px solid rgba(160, 180, 220, 0.18);
+  border-radius: 6px;
+}
+.dp-columns h4 {
+  margin: 0 0 8px;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--empire);
+}
+.dp-columns h5 {
+  margin: 12px 0 5px;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.dp-row {
+  display: grid;
+  grid-template-columns: 1fr auto 112px;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 0;
+  font-size: 13px;
+}
+.dp-row small {
+  opacity: 0.65;
+}
+.dp-stepper {
+  display: grid;
+  grid-template-columns: 26px 1fr 26px;
+  height: 24px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: rgba(4, 9, 22, 0.75);
+  overflow: hidden;
+}
+.dp-stepper:focus-within {
+  border-color: var(--empire);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--empire) 45%, transparent);
+}
+.dp-stepper button {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  text-align: center;
+  line-height: 1;
+  color: #9fd8ff;
+  background: rgba(120, 170, 255, 0.1);
+}
+.dp-stepper button:hover {
+  color: #fff;
+  background: rgba(120, 170, 255, 0.26);
+}
+.dp-stepper input {
+  width: 100%;
+  min-width: 0;
+  padding: 0 4px;
+  border: 0;
+  outline: none;
+  text-align: center;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 11px;
+  color: var(--text);
+  background: transparent;
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+.dp-stepper input::-webkit-outer-spin-button,
+.dp-stepper input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.dp-check input {
+  appearance: none;
+  -webkit-appearance: none;
+  flex: none;
+  width: 15px;
+  height: 15px;
+  margin: 2px 0 0;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: rgba(4, 9, 22, 0.75);
+  cursor: pointer;
+}
+.dp-check input:hover:not(:disabled) {
+  border-color: var(--empire);
+}
+.dp-check input:checked {
+  border-color: var(--empire);
+  background: radial-gradient(circle, var(--empire) 38%, rgba(4, 9, 22, 0.75) 44%);
+  box-shadow: 0 0 7px color-mix(in srgb, var(--empire) 55%, transparent);
+}
+.dp-check input:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.dp-check input:focus-visible {
+  outline: 1px solid var(--empire);
+  outline-offset: 2px;
+}
+.dp-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 2px 0;
+  font-size: 13px;
+}
+.dp-check small {
+  display: block;
+  opacity: 0.65;
+}
+.dp-opinion {
+  margin-top: 10px;
+  font-size: 13px;
+}
+.dp-opinion.good { color: #7cff9e; }
+.dp-opinion.bad { color: #ffc46b; }
+.dp-opinion.idle { opacity: 0.7; }
+.dp-reply {
+  margin-top: 8px;
+  padding: 8px 10px;
+  border-left: 3px solid var(--empire);
+  background: rgba(255, 255, 255, 0.04);
+  font-style: italic;
+}
+.dp-counter {
+  margin-top: 6px;
+  font-style: normal;
+}
+.dp-actions button {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+}
+.dp-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 10px;
+  padding-bottom: 6px;
+}
+@media (max-width: 760px) {
+  .dp-body {
+    flex-direction: column;
+    overflow-y: auto;
+  }
+  .dp-list {
+    width: 100%;
+    flex-direction: row;
+    overflow-x: auto;
+  }
+  .dp-card {
+    flex: none;
+  }
+  .dp-columns {
+    grid-template-columns: 1fr;
+  }
+  .dp-detail {
+    overflow-y: visible;
+  }
+}
