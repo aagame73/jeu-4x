@@ -480,7 +480,7 @@ const LOOKS = {
   meduse: { saturate: 0.12, pattern: 'meduse', metalness: 0.1, roughness: 0.35, env: 1, emissive: 1.1, ring: [10, 48], turret: 'organique', warTone: '#1d4450' },
   grappe: { saturate: 0.28, pattern: 'mycelium', metalness: 0.25, roughness: 0.5, env: 0.8, emissive: 1.3, ring: [10, 40], turret: 'organique', warTone: '#3a2f4c' },
   cristal: { pattern: 'facettes', metalness: 0.1, roughness: 0.12, env: 1.4, emissive: 0.9, ring: [6, 30], turret: 'cristal', warTone: '#7c8ea8', warMix: 0.35 },
-  voilier: { pattern: 'glyphes', metalness: 0.85, roughness: 0.3, env: 1.6, emissive: 1.3, ring: [8, 48], warTone: '#5a3e1c', warMix: 0.4 },
+  voilier: { pattern: 'glyphes', metalness: 0.5, roughness: 0.36, env: 2, emissive: 1.5, ring: [8, 48], warTone: '#5a3e1c', warMix: 0.4 },
   caravane: { pattern: 'cargo', metalness: 0.6, roughness: 0.45, env: 0.9, emissive: 1, ring: [8, 40], warTone: '#3c3430' },
 };
 
@@ -1557,7 +1557,7 @@ const SURFACES = {
   meduse: { paint: paintMeduse, rough: 0.22, metal: 0, finish: { grain: 0.1, roughGrain: 0.1, heightGrain: 0.04, normal: 2.5, blur: 1.2 }, normalScale: 1 },
   grappe: { paint: paintGrappe, rough: 0.28, metal: 0.12, finish: { grain: 0.12, roughGrain: 0.1, heightGrain: 0.04, normal: 3 }, normalScale: 1 },
   cristal: { paint: paintCristal, rough: 0.06, metal: 0.1, finish: { grain: 0.06, speck: 0.02, roughGrain: 0.04, heightGrain: 0.01, normal: 4, blur: 0.4 }, normalScale: 1 },
-  voilier: { paint: paintVoilier, rough: 0.32, metal: 0.8, finish: { grain: 0.08, roughGrain: 0.1, heightGrain: 0.02, normal: 3 }, normalScale: 1 },
+  voilier: { paint: paintVoilier, rough: 0.38, metal: 0.45, finish: { grain: 0.08, roughGrain: 0.1, heightGrain: 0.02, normal: 3 }, normalScale: 1 },
   caravane: { paint: paintCaravane, rough: 0.38, metal: 0.85, finish: { grain: 0.12, roughGrain: 0.14, heightGrain: 0.05, normal: 3, patina: { color: new THREE.Color('#4f9a86'), threshold: 0.6, soft: 0.08, amount: 0.7 } }, normalScale: 1 },
 };
 
@@ -1945,25 +1945,6 @@ function mountTurrets(c, count) {
     c.ship.add(mount);
     c.turrets.push(t);
   }
-}
-
-// Anneau d'habitat en rotation, avec sa bande de hublots éclairés et ses rayons.
-function habitatRing(c, r, tube, z, spokes = 4) {
-  const { m, look } = c;
-  const [radial, tubular] = look.ring ?? [8, 40];
-  const ring = new THREE.Group();
-  const torus = new THREE.Mesh(new THREE.TorusGeometry(r, tube, radial, tubular), m.hull);
-  if (radial <= 4) torus.rotation.z = Math.PI / tubular;
-  const windows = new THREE.Mesh(new THREE.TorusGeometry(r + tube * 0.9, tube * 0.14, 4, Math.max(tubular, 24)), m.windows);
-  ring.add(torus, windows);
-  for (let k = 0; k < spokes; k++) {
-    const a = (k / spokes) * Math.PI * 2;
-    ring.add(beam(v3(0, 0, 0), v3(Math.cos(a) * r, Math.sin(a) * r, 0), tube * 0.22, m.dark, 5));
-  }
-  ring.position.z = z;
-  c.ship.add(ring);
-  c.rings.push(ring);
-  return ring;
 }
 
 // Module d'habitat allongé (capsule) avec deux bandes de hublots éclairés, sur son pylône.
@@ -2813,13 +2794,9 @@ function createStyledShip(seed, accent, registry, kind, style) {
     mountTurrets(c, c.civilTurrets);
   }
 
-  // Colonie, transport et Arche : habitat de l'espèce (ou anneaux génériques) et soutes.
+  // Colonie, transport et Arche : habitat de l'espèce et soutes.
   if (kind === 'colonie' || kind === 'transport' || kind === 'arche') {
-    if (c.habitat) c.habitat();
-    else {
-      const count = kind === 'colonie' ? 1 : 2;
-      for (let i = 0; i < count; i++) habitatRing(c, R * (kind === 'arche' ? 3.4 - i * 0.7 : 3 - i * 0.5), R * 0.4, L * (i === 0 ? -0.05 : 0.22));
-    }
+    c.habitat();
     if (kind === 'transport') (c.cargo ?? (() => cargoRows(c)))();
     if (kind === 'arche' && !c.cargo) cargoRows(c, 1, -0.32, 1.3);
   }

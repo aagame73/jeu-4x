@@ -18,10 +18,9 @@
 
 ## Questions ouvertes
 - Équilibre à juger en jouant : Liseurs de Vey trop forts en milieu réel (120 %), Thrennes un peu faibles (87 %, bonus militaires non mesurés tant que le combat n'existe pas).
-- Portrait des Orrhaïdes : tête presque blanche par moments quand il parle (pulsation à baisser ?).
-- Vaisseaux : Liseurs un peu sombres dans le jeu, marques répétées sur les ailes des Thrennes, pleine poussée pas encore vue en jeu.
+- Vaisseaux : marques répétées sur les ailes des Thrennes, pleine poussée pas encore vue en jeu.
 - `src/ships.js` fait environ 2 900 lignes : le découper (matériaux à part) ?
-- `src/ships.js` : la branche des anneaux génériques (`habitatRing`) n'est plus jamais atteinte : la supprimer (signalé par le relecteur, non bloquant).
 - Titre du jeu à choisir.
+- Voix des espèces, décidé le 07/11/2026, à faire plus tard : voix alien générée par le jeu (Web Audio, sans fichier, unique par espèce), avec volume et bouton pour couper. Plan à écrire avant de coder.
 - Niveau de difficulté : à traiter plus tard, avec l'IA.
 - Avertissement `WebGL context was lost` vu dans Firefox : sans effet visible pour l'instant, à surveiller.
