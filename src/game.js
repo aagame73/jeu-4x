@@ -15,7 +15,7 @@ import { generateSurface, hexDistance } from './surface.js';
 import { tickColony, colonyReport, SHIPYARD, canAfford } from './economy.js';
 import { TECHS, hasTech, bindResearch, markTech, techCost } from './research.js';
 import { SPECIES, DEFAULT_SPECIES, RIVALS } from './config.js';
-import { createEmpires, tickEmpires, revealEmpires, rivalColonyAt } from './empires.js';
+import { createEmpires, tickEmpires, revealEmpires, rivalColonyAt, newContacts } from './empires.js';
 import { bindSpecies, speciesBonus, speciesHabitat, hostilePenalty, currentSpecies, normalizeRivals, rivalInfo } from './species.js';
 
 export const LEVEL_LABELS = ['Inconnu', 'Lueur repérée', 'Système survolé', 'Système analysé'];
@@ -85,6 +85,7 @@ export function createGame(seed, species = DEFAULT_SPECIES, rivals = RIVALS.defa
     surfaces: new Map(), // surfaces générées à la demande, clé "étoile-planète"
     colonies: [],
     empires: createEmpires(galaxy.stars),
+    contacts: [], // espèces à présenter à l'écran (premier contact), non enregistré
   };
   bindResearch(game.research);
   const home = game.stars[game.homeId];
@@ -536,7 +537,16 @@ function discoverRivals(game, starId) {
   const star = game.stars[starId];
   const found = revealEmpires(game, starId);
   if (found.some(({ colony, empire }) => colony.starId !== empire.homeId)) addLog(game, `Une colonie étrangère est installée dans le système ${star.name}.`, 'alert');
+  announceContacts(game);
   return found.length > 0;
+}
+
+function announceContacts(game) {
+  for (const { species } of newContacts(game)) {
+    const rival = rivalInfo(species);
+    addLog(game, `Premier contact avec les ${rival.label} : ${rival.empire}.`, 'alert');
+    game.contacts.push(species);
+  }
 }
 
 // Au premier passage, on ne repère que les grosses planètes (géantes gazeuses, grandes
@@ -598,6 +608,7 @@ function completeAnalysis(game, ship) {
   if (ship.kind === 'arche' && game.colonies.length === 0) {
     addLog(game, 'Choisissez maintenant une planète dans la fiche du système, puis la case où poser la colonie.');
   }
+  announceContacts(game);
 }
 
 export function stats(game) {

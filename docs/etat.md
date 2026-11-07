@@ -11,10 +11,10 @@
 - Outils : hook de fin de réponse qui lance `npm run build` (`.claude/settings.json`), agent `relecteur` (`.claude/agents/relecteur.md`), serveur lancé au démarrage de Windows.
 
 ## En cours
-- IA des rivaux (`docs/plan-rivaux-ia.md`) : étapes 1 à 3 commitées. Reste l'étape 4 (premier contact).
+- IA des rivaux (`docs/plan-rivaux-ia.md`) : première version terminée.
 
 ## Prochaine étape
-- Première version de l'IA : les rivaux s'étendent, sans combat (plan `docs/plan-rivaux-ia.md`, validé). Ensuite, dans l'ordre : diplomatie, commerce, combat.
+- Plan de la diplomatie à écrire, puis commerce et combat, dans cet ordre.
 
 ## Questions ouvertes
 - Équilibre à juger en jouant : Liseurs de Vey trop forts en milieu réel (120 %), Thrennes un peu faibles (87 %, bonus militaires non mesurés tant que le combat n'existe pas).
@@ -22,6 +22,8 @@
 - Smartphone (simulé le 07/11) : interface à adapter, chantier à part. Tablette plus facile. Écran trop petit, bandeau et panneaux superposés, boutons trop petits.
 - `src/ships.js` fait environ 2 900 lignes : le découper (matériaux à part) ?
 - Titre du jeu à choisir.
+- Publié sur https://aagame73.github.io/jeu-4x/ : chaque `git push` sur `main` republie le site.
+- Premier contact : le conseiller lit son annonce sous la cinématique ; la cinématique continue si l'onglet est masqué, et elle est perdue si la page se ferme pendant qu'elle joue.
 - Victoire (idée, non codée, `docs/plan-rivaux-ia.md` § 6) : 80 % des systèmes occupés, ou plus d'ennemis. Un système partagé compte pour le joueur ; un rival ne gagne pas ainsi pour l'instant.
 - Voix des espèces, décidé le 07/11/2026, à faire plus tard : voix alien générée par le jeu (Web Audio, sans fichier, unique par espèce), avec volume et bouton pour couper. Plan à écrire avant de coder.
 - Niveau de difficulté : à traiter plus tard, avec l'IA.

@@ -1,4 +1,4 @@
-// Tests des empires rivaux (étapes 1 et 2 de docs/plan-rivaux-ia.md).
+// Tests des empires rivaux (docs/plan-rivaux-ia.md).
 // Usage : node docs/outils/test-rivaux.mjs .
 import { pathToFileURL } from 'node:url';
 import { resolve } from 'node:path';
@@ -97,6 +97,51 @@ const coloniesOf = (game) => game.empires.flatMap((e) => e.colonies.map((c) => `
   for (let d = 0; d < 1000; d++) G.tick(parked, 1);
   const later = parked.empires.flatMap((e) => e.colonies.slice(1));
   check(later.length > 0 && later.every((x) => x.known), 'un vaisseau sur place découvre la colonie dès sa fondation');
+}
+
+// Étape 4 : premier contact.
+{
+  const game = G.createGame(42, 'vaskhar', 5);
+  const empire = game.empires[0];
+  const star = game.stars[empire.homeId];
+  check(game.contacts.length === 0 && !empire.met, 'aucun contact au départ');
+  const probe = { id: 94, kind: 'sonde', name: 'Sonde contact', state: 'travel', fromId: game.homeId, toId: star.id, speed: 1, progress: 0, distance: 0.1, age: 0 };
+  game.ships.push(probe);
+  G.tick(game, 0.2);
+  check(!empire.met && game.contacts.length === 0, "arrivée sans analyse : l'empire reste inconnu");
+  G.startAnalysis(game, probe);
+  for (let d = 0; d < 60 && star.level < 3; d++) G.tick(game, 1);
+  check(empire.met && game.contacts.join() === empire.species, 'analyse : premier contact');
+  const { label, empire: name } = S.rivalInfo(empire.species);
+  check(game.log.some((l) => JSON.stringify(l).includes(`Premier contact avec les ${label} : ${name}.`)), 'annonce dans le journal, lue par le conseiller');
+  const count = () => game.log.filter((l) => JSON.stringify(l).includes('Premier contact')).length;
+  game.stars[game.homeId].level = 3;
+  probe.state = 'idle';
+  G.startAnalysis(game, probe);
+  for (let d = 0; d < 20; d++) G.tick(game, 1);
+  check(count() === 1 && game.contacts.length === 1, 'une seule fois par rival');
+  const back = restore(copy(serialize(game)));
+  check(back.empires[0].met === true && back.contacts.length === 0, 'rival déjà rencontré après rechargement : pas de nouvelle animation');
+  const old = copy(serialize(G.createGame(42, 'vaskhar', 5)));
+  delete old.empires[0].met;
+  check(restore(old).empires[0].met === false, 'sauvegarde sans met : rival pas encore rencontré');
+}
+
+// Ancienne sauvegarde : un rival déjà identifié ne redonne pas de premier contact.
+{
+  const game = G.createGame(42, 'vaskhar', 5);
+  game.empires.forEach((e) => (game.stars[e.homeId].level = 3));
+  const noMet = copy(serialize(game));
+  noMet.empires.forEach((e) => delete e.met);
+  const noEmpires = copy(serialize(game));
+  delete noEmpires.empires;
+  for (const [name, data] of [['sans met', noMet], ['sans empires', noEmpires]]) {
+    const back = restore(data);
+    const target = back.stars.find((s) => s.id !== back.homeId && !s.rival);
+    back.ships.push({ id: 95, kind: 'sonde', name: 'Sonde', state: 'travel', fromId: back.homeId, toId: target.id, speed: 1, progress: 0, distance: 0.1, age: 0 });
+    G.tick(back, 0.2);
+    check(back.empires.every((e) => e.met) && back.contacts.length === 0 && !back.log.some((l) => JSON.stringify(l).includes('Premier contact')), `sauvegarde ${name} : pas de faux premier contact`);
+  }
 }
 
 // Étape 2 : règles d'expansion.

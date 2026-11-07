@@ -1,6 +1,6 @@
 # Plan : comportement des rivaux (première version de l'IA)
 
-État : **plan validé le 07/11/2026.** Étapes 1 et 2 faites (résultats au § 5). Étape 3 faite. Étape 4 à venir.
+État : **plan validé le 07/11/2026.** Étapes 1 et 2 faites (résultats au § 5). Étapes 3 et 4 faites : première version terminée. Suite prévue : diplomatie, commerce, puis combat.
 
 ## 1. Point de départ
 
@@ -51,7 +51,7 @@ Objectif : l'amas change pendant que le joueur l'explore. C'est testable seul, e
 
 1. **Simulation** : empire simulé. Un niveau de difficulté viendra plus tard.
 2. **Vaisseaux et colonies rivales** : pas de vaisseaux visibles ; colonies invisibles au départ, découvertes au gré des voyages.
-3. **Premier contact** : petite animation (si ce n'est pas trop compliqué) et annonce du conseiller. Proposition : le portrait animé du rival apparaît quelques secondes en surimpression, à sa couleur, avec son nom d'empire, sans mettre le jeu en pause ni demander de clic. On réutilise `createAlienPortrait`, donc c'est peu de travail.
+3. **Premier contact** : petite animation (si ce n'est pas trop compliqué) et annonce du conseiller. Modifié à la demande de l'utilisateur : cinématique plein écran d'environ 9 secondes, calculée en direct (`contactView.js`, aucun fichier vidéo) : bandes de cinéma, étoiles qui filent à la couleur de l'empire, grand portrait qui parle, nom et présentation. Le jeu est en pause pendant qu'elle couvre l'écran ; un clic ou une touche la passe.
 4. **Ruines** : les rivaux peuvent prendre les planètes à ruines.
 5. **Ordre de la suite** : diplomatie, puis commerce, puis combat.
 

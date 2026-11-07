@@ -16,6 +16,7 @@ export function createEmpires(stars) {
       points: 0,
       power: 0,
       nextTry: 0,
+      met: false,
     }));
 }
 
@@ -94,7 +95,7 @@ export function validEmpires(game, saved) {
     return empire.colonies.every((c) => c && typeof c.known === 'boolean' && game.stars[c.starId]?.planets[c.planetIndex]?.size);
   });
   if (!fine) return null;
-  return saved.map((empire) => ({ ...empire, nextTry: number(empire.nextTry) ? empire.nextTry : 0 }));
+  return saved.map((empire) => ({ ...empire, nextTry: number(empire.nextTry) ? empire.nextTry : 0, met: empire.met === true }));
 }
 
 // Colonies d'un système découvertes par un vaisseau du joueur qui s'y trouve. Renvoie les nouvelles.
@@ -109,6 +110,15 @@ export function revealEmpires(game, starId) {
     }
   }
   return found;
+}
+
+// Empires identifiés pour la première fois : une de leurs planètes connues se trouve dans un système analysé.
+export function newContacts(game) {
+  const met = game.empires.filter(
+    (empire) => !empire.met && empire.colonies.some((c) => game.stars[c.starId].level >= 3 && game.stars[c.starId].planets[c.planetIndex].inhabitedBy),
+  );
+  for (const empire of met) empire.met = true;
+  return met;
 }
 
 // Une colonie déjà découverte reste connue après un rechargement.
