@@ -14,18 +14,19 @@ import { createGalaxyView } from './scene.js';
 import { createUI } from './ui.js';
 import { createPlanetView } from './planetView.js';
 import { startConstruction, demolish, startUpgrade } from './economy.js';
-import { restore, readSlot, writeSlot, takePendingLoad, takeNewGameRequest, newGameAndRestart } from './save.js';
+import { restore, readSlot, writeSlot, takePendingLoad, takeNewGameRequest, takeRivalsRequest, newGameAndRestart } from './save.js';
 import { createMenu } from './menu.js';
 import { installTooltips } from './tooltips.js';
 
 // Au démarrage : une sauvegarde à charger (menu), sinon une nouvelle partie.
 // ?graine=1234 dans l'adresse lance directement un amas précis (sans écran d'accueil),
-// ?espece=vaskhar saute l'écran de choix de l'espèce.
+// ?espece=vaskhar saute l'écran de choix de l'espèce, ?rivaux=6 fixe le nombre d'adversaires.
 const params = new URLSearchParams(location.search);
 const urlSeed = Number(params.get('graine'));
 const pending = takePendingLoad();
 const newGameRequest = takeNewGameRequest(); // null, '' (espèce à choisir) ou la clé de l'espèce
 const wantsNewGame = newGameRequest !== null;
+const chosenRivals = takeRivalsRequest() ?? Number(params.get('rivaux'));
 const chosenSpecies = [newGameRequest, params.get('espece')].find((key) => key && SPECIES[key] && !SPECIES[key].hidden) ?? null;
 let game = null;
 if (pending) {
@@ -35,7 +36,7 @@ if (pending) {
     game = null;
   }
 }
-game ??= createGame(urlSeed || Math.floor(Math.random() * 1e6), chosenSpecies ?? DEFAULT_SPECIES);
+game ??= createGame(urlSeed || Math.floor(Math.random() * 1e6), chosenSpecies ?? DEFAULT_SPECIES, chosenRivals);
 // L'écran d'accueil propose de continuer la partie enregistrée ; tant que le joueur n'a pas
 // choisi, la sauvegarde automatique est suspendue pour ne pas l'écraser.
 const showStart = !pending && !wantsNewGame && !urlSeed && !!readSlot('auto');
@@ -237,9 +238,9 @@ const menu = createMenu(document.getElementById('menu'), game, {
   },
 });
 const speciesView = createSpeciesView(document.getElementById('species'), {
-  onChoose(key) {
-    if (urlSeed) location.search = `?graine=${urlSeed}&espece=${key}`;
-    else newGameAndRestart(key);
+  onChoose(key, rivals) {
+    if (urlSeed) location.search = `?graine=${urlSeed}&espece=${key}&rivaux=${rivals}`;
+    else newGameAndRestart(key, rivals);
   },
   onBack: showStart ? () => menu.open(true) : null,
 });

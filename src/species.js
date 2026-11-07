@@ -1,6 +1,6 @@
 // Espèce de la partie en cours : bonus et milieu de prédilection (une seule partie par page,
 // comme research.js). Les données sont dans config.js (SPECIES).
-import { SPECIES, DEFAULT_SPECIES } from './config.js';
+import { SPECIES, DEFAULT_SPECIES, RIVALS } from './config.js';
 
 let current = SPECIES[DEFAULT_SPECIES];
 
@@ -52,3 +52,15 @@ export function growthFactor(habitat, adapted = false) {
 
 // Espèces proposées à l'écran de choix (sans le profil neutre des anciennes parties).
 export const playableSpecies = () => Object.entries(SPECIES).filter(([, s]) => !s.hidden).map(([key]) => key);
+
+// Nombre de rivaux valide ; toute autre valeur (fichier modifié, adresse) retombe sur le défaut.
+export const normalizeRivals = (n) => (Number.isInteger(n) && n >= RIVALS.min && n <= RIVALS.max ? n : RIVALS.default);
+
+// Identité d'un empire rival, à partir de la clé dans star.rival et planet.inhabitedBy.
+export function rivalInfo(key) {
+  const { label, empire, empireColor } = SPECIES[key];
+  return { label, empire, accent: empireColor };
+}
+
+// L'identité d'un rival reste inconnue jusqu'à l'analyse de son système (« Signaux artificiels » avant).
+export const knownRival = (star, key) => (key && star.level >= 3 ? rivalInfo(key) : null);

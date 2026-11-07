@@ -21,9 +21,12 @@ export const CONFIG = {
 // digArtefacts : artefacts ajoutés à chaque fouille terminée (additif, 0 par défaut).
 // habitat : types de planètes favorables (un type riche + un type rude) / hostiles ('lune' = toute lune habitable) ;
 // favoredTerrains : terrains d'hexagones qui produisent +25 % (environ 15 à 25 % des cases de l'amas) ; shipStyle : paramètres de ships.js.
+// empire, empireColor : nom et couleur de l'empire quand l'espèce est une rivale (couleurs bien distinctes, à côté de celles de l'interface).
 export const SPECIES = {
   vaskhar: {
     label: 'Vaskhar',
+    empire: 'Hégémonie vaskhar',
+    empireColor: '#ffa030',
     lore: 'Grands invertébrés à carapace minérale, ils digèrent la roche et creusent leurs cités dans le basalte.',
     strength: 'Minerais +20 %',
     weakness: 'Croissance de la population −20 %, recherche −15 %',
@@ -36,6 +39,8 @@ export const SPECIES = {
   },
   ondesiens: {
     label: 'Ondésiens',
+    empire: 'Confluence ondésienne',
+    empireColor: '#38d6ff',
     lore: 'Colonies de méduses géantes reliées par des filaments lumineux, nées dans les océans chauds.',
     strength: 'Biomasse +25 %, eau +10 %',
     weakness: 'Alliages −20 %',
@@ -48,6 +53,8 @@ export const SPECIES = {
   },
   keltirr: {
     label: 'Kel-Tirr',
+    empire: 'Ligue des Vents kel-tirr',
+    empireColor: '#c8f04a',
     lore: 'Petits êtres à plumes vivant en essaims, vifs et curieux, toujours en mouvement.',
     strength: 'Vitesse des vaisseaux +25 %, chantier spatial 15 % plus rapide',
     weakness: 'Défense et durée de vie des vaisseaux −20 %',
@@ -60,6 +67,8 @@ export const SPECIES = {
   },
   synodes: {
     label: 'Synodes',
+    empire: 'Grand Synode',
+    empireColor: '#b478ff',
     lore: 'Champignons en réseau qui pensent ensemble ; chaque colonie est un seul esprit aux milliers de corps.',
     strength: 'Recherche +25 %',
     weakness: 'Minerais −20 %',
@@ -72,6 +81,8 @@ export const SPECIES = {
   },
   orrhaides: {
     label: 'Orrhaïdes',
+    empire: 'Concordat orrhaïde',
+    empireColor: '#ff5cc8',
     lore: "Cristaux vivants nourris de lumière et de chaleur ; ils chantent quand une étoile se lève.",
     strength: 'Énergie +25 %',
     weakness: 'Biomasse −25 %',
@@ -84,6 +95,8 @@ export const SPECIES = {
   },
   thrennes: {
     label: 'Thrennes',
+    empire: 'Serment threnne',
+    empireColor: '#e8483c',
     lore: 'Reptiles à six membres, à la culture guerrière ritualisée : chaque victoire se grave sur leurs coques.',
     strength: 'Attaque des vaisseaux et défense des colonies +25 %, alliages +25 %',
     weakness: 'Recherche −15 %',
@@ -96,6 +109,8 @@ export const SPECIES = {
   },
   liseurs: {
     label: 'Liseurs de Vey',
+    empire: 'Archive de Vey',
+    empireColor: '#2fe890',
     lore: 'Êtres longilignes qui vénèrent les Veilleurs ; ils déchiffrent leurs glyphes depuis des siècles.',
     strength: 'Fouilles 2× plus rapides (+1 artefact chacune), technologies des Veilleurs −30 %',
     weakness: 'Énergie −15 %',
@@ -108,6 +123,8 @@ export const SPECIES = {
   },
   ashkari: {
     label: 'Ashkari',
+    empire: 'Caravane ashkari',
+    empireColor: '#4f7dff',
     lore: 'Nomades des géantes gazeuses, marchands et pilotes ; leurs familles vivent à bord depuis toujours.',
     strength: 'Deutérium +25 %, sauts −25 % de carburant',
     weakness: 'Défense des colonies −20 %, biomasse −10 %',
@@ -134,3 +151,8 @@ export const SPECIES = {
   },
 };
 export const DEFAULT_SPECIES = 'sans-espece';
+
+// Nombre d'empires rivaux, choisi sur l'écran de nouvelle partie.
+export const RIVALS = { min: 3, max: 7, default: 4 };
+// Rivaux du profil neutre : les 4 premiers sont ceux des parties d'avant le choix d'espèce.
+export const NEUTRAL_RIVALS = ['vaskhar', 'ondesiens', 'keltirr', 'synodes', 'orrhaides', 'thrennes', 'liseurs'];

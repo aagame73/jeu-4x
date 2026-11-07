@@ -57,7 +57,7 @@ body.system-open .help {
   text-shadow: 0 0 6px rgba(95, 227, 255, 0.8), 0 0 4px #000;
 }
 .sv-label.colony .name { color: #a8ffbe; }
-.sv-label.rival .name { color: #ffb0ba; }
+.sv-label.rival .name { color: var(--empire, #ffb0ba); }
 
 /* Petites étiquettes (liste et 3D) */
 #system-view .tag {
@@ -71,7 +71,7 @@ body.system-open .help {
   line-height: 13px;
 }
 #system-view .tag.colony { color: #7cff9e; background: rgba(124, 255, 158, 0.12); }
-#system-view .tag.rival { color: #ff7a8a; background: rgba(255, 122, 138, 0.12); }
+#system-view .tag.rival { color: var(--empire, #ff7a8a); background: color-mix(in srgb, var(--empire, #ff7a8a) 12%, transparent); }
 #system-view .tag.habitable { color: #8fe9ff; background: rgba(95, 227, 255, 0.1); text-transform: none; letter-spacing: 0; }
 #system-view .tag.ruins { color: #ffd166; border: none; padding: 0; font-size: 12px; text-shadow: 0 0 6px rgba(255, 209, 102, 0.7); }
 
@@ -293,7 +293,7 @@ body.system-open .help {
   clip-path: polygon(5px 0, 100% 0, 100% calc(100% - 5px), calc(100% - 5px) 100%, 0 100%, 0 5px);
 }
 .sv-badge.colony { color: #7cff9e; background: rgba(124, 255, 158, 0.14); }
-.sv-badge.rival { color: #ff9aa6; background: rgba(255, 122, 138, 0.14); }
+.sv-badge.rival { color: var(--empire, #ff9aa6); background: color-mix(in srgb, var(--empire, #ff7a8a) 14%, transparent); }
 .sv-badge.ruins { color: #ffd166; background: rgba(255, 209, 102, 0.14); }
 .sv-badge.habitable { color: #8fe9ff; background: rgba(95, 227, 255, 0.12); }
 

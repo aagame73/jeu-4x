@@ -2,7 +2,7 @@
 // on n'enregistre que ce qui a changé (connaissances, vaisseaux, colonies, surfaces bâties…).
 import { createGame, getSurface, currentDay, STARTING_RESOURCES } from './game.js';
 import { bindResearch, TECHS } from './research.js';
-import { DEFAULT_SPECIES } from './config.js';
+import { DEFAULT_SPECIES, RIVALS } from './config.js';
 
 const VERSION = 1;
 const PREFIX = 'amas-inexplore:';
@@ -15,6 +15,7 @@ export function serialize(game) {
     savedAt: Date.now(),
     seed: game.seed,
     species: game.species,
+    rivals: game.rivals,
     time: game.time,
     speedIndex: game.speedIndex,
     selectedStarId: game.selectedStarId,
@@ -39,7 +40,8 @@ export function serialize(game) {
 export function restore(data) {
   if (!data || data.version !== VERSION || typeof data.seed !== 'number') throw new Error('Sauvegarde illisible ou d\'une autre version.');
   // Une partie d'avant le choix d'espèce reçoit le profil neutre « Colons de l'Arche ».
-  const game = createGame(data.seed, data.species ?? DEFAULT_SPECIES);
+  // Une partie d'avant le choix du nombre d'adversaires en a toujours eu 4.
+  const game = createGame(data.seed, data.species ?? DEFAULT_SPECIES, data.rivals ?? RIVALS.default);
   Object.assign(game, {
     time: data.time,
     speedIndex: data.speedIndex,
@@ -156,13 +158,24 @@ export function takePendingLoad() {
 }
 
 // species : espèce déjà choisie ; sans elle, la page rechargée ouvre l'écran de choix.
-export function newGameAndRestart(species = '') {
+export function newGameAndRestart(species = '', rivals = null) {
   try {
     sessionStorage.setItem(`${PREFIX}nouvelle`, species || '?');
+    if (rivals !== null) sessionStorage.setItem(`${PREFIX}adversaires`, String(rivals));
   } catch {
     /* sans stockage, la page rechargée démarre de toute façon une nouvelle partie */
   }
   location.href = location.pathname;
+}
+
+export function takeRivalsRequest() {
+  try {
+    const asked = sessionStorage.getItem(`${PREFIX}adversaires`);
+    sessionStorage.removeItem(`${PREFIX}adversaires`);
+    return asked === null ? null : Number(asked);
+  } catch {
+    return null;
+  }
 }
 
 // null : pas de nouvelle partie demandée ; '' : nouvelle partie, espèce à choisir ; sinon la clé de l'espèce.

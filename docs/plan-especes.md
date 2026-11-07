@@ -1,6 +1,6 @@
 # Plan : choix de l'espèce en début de partie
 
-État : **plan validé**. Étapes 1 (données) et 2 (écran de choix, avec portraits animés et conseiller qui remplace le journal) faites le 31/10/2026 ; étape 3 (bonus) faite le 31/10/2026, avec la décision du § 11.7 ; étape 4 (vaisseaux au style de l'espèce, textures, propulsion animée) faite le 02/11/2026, voir § 11.8 ; étape 5 à venir. Décisions de design au § 10 ; revue d'avant l'étape 3 au § 11 (**validée**, ajustements d'équilibre reportés dans `config.js`).
+État : **plan validé**. Étapes 1 (données) et 2 (écran de choix, avec portraits animés et conseiller qui remplace le journal) faites le 31/10/2026 ; étape 3 (bonus) faite le 31/10/2026, avec la décision du § 11.7 ; étape 4 (vaisseaux au style de l'espèce, textures, propulsion animée) faite le 02/11/2026, voir § 11.8 ; étape 5 (rivaux, identité seulement, § 12) faite le 07/11/2026. Décisions de design au § 10 ; revue d'avant l'étape 3 au § 11 (**validée**, ajustements d'équilibre reportés dans `config.js`).
 
 ## 1. Le parcours du joueur
 
@@ -125,7 +125,7 @@ Fichiers qui appellent `createShip` : `scene.js` (modèles de l'amas), `ui.js` (
 2. **Écran de choix** — `speciesView.js`, branchement dans `menu.js`, `save.js`, `main.js`. *Test* : navigateur — Accueil → Nouvelle partie → choix → l'Arche arrive avec le bon nom ; `?espece=` saute l'écran ; Retour fonctionne.
 3. **Bonus** — économie, croissance, recherche, vaisseaux, défense, milieu, colonisation des planètes hostiles (§ 11.1). *Test* : Node — (a) même graine, deux espèces : les écarts attendus apparaissent sur les bons axes et rien d'autre ne change ; (b) **comparaison des 8 espèces + profil neutre sur 200 jours simulés**, même graine et même stratégie automatique, tableau au § 11.5 ; (c) une colonie hostile est refusée sans la technologie, acceptée avec, et subit le malus.
 4. **Vaisseaux** (✓ fait le 02/11/2026) — paramètre `style` dans `ships.js`, branché partout. *Test* : navigateur — vignettes des 8 espèces × 3 types côte à côte, chacune reconnaissable ; vaisseaux de l'amas et de la flotte au style de l'espèce jouée.
-5. **(Si oui à la question 2) Rivaux** — les espèces rivales tirées parmi les 7 restantes, noms et couleurs dans la carte et les fiches. *Test* : navigateur et Node.
+5. **Rivaux, identité seulement (pas d'IA, voir § 12)** (✓ fait le 07/11/2026) — choix de 3 à 7 adversaires sur l'écran de nouvelle partie (4 par défaut), espèces rivales tirées parmi les 7 restantes, nom d'empire et couleur sur la carte et dans les fiches. *Test* : `docs/outils/test-etape5.mjs` et navigateur.
 
 ## 10. Décisions (validées le 31/10/2026)
 
@@ -341,3 +341,15 @@ Tests : `docs/outils/test-etape3.mjs`, **28 tests**, tous passent (dont la conso
 ### 11.8 Décision (02/11/2026) : propulsion animée pour tous les vaisseaux
 
 Les vaisseaux d'espèce ont des textures procédurales (plaques, usure, relief, hublots éclairés) et des silhouettes propres ; seuls les Ondésiens gardent des anneaux. Les jets de propulsion animés (pulsation, scintillement, halo ; plus forts en voyage) s'appliquent **à tous les vaisseaux, y compris sans espèce** (option b, choisie par l'utilisateur). Les parties sans espèce et les anciennes sauvegardes gardent donc la même forme de vaisseaux, mais avec les nouveaux jets. Aucun tirage aléatoire n'est ajouté : la forme reste identique pour une même graine.
+
+## 12. Étape 5 : rivaux, identité seulement (07/11/2026)
+
+**Couvert** : nombre d'adversaires de 3 à 7, 4 par défaut (`RIVALS` dans `config.js`), choisi sur l'écran de choix d'espèce ; espèce, nom d'empire (`empire`) et couleur (`accent`) de chaque rival, sur la carte, la vue du système et les fiches.
+
+**Hors champ** : IA, difficulté, vaisseaux rivaux, expansion, diplomatie, combat, portraits rivaux, équilibre selon le nombre d'adversaires. La revue des bonus militaires (§ 11.5) attend le combat.
+
+**Données** : `star.rival` et `planet.inhabitedBy` contiennent la clé de l'espèce. Le tirage utilise son propre générateur et le placement ne change pas : l'amas reste identique quels que soient l'espèce et le nombre, et les premiers rivaux restent les mêmes quand le nombre augmente.
+
+**Sauvegarde** : seul le nombre est enregistré (`rivals`) ; l'identité est recalculée depuis la graine, l'espèce et ce nombre. Une sauvegarde sans `rivals`, ou avec une valeur invalide, en a 4. Profil neutre : les 4 espèces historiques aux mêmes étoiles (vérifié sur 200 graines contre l'ancien code). Sauvegarde avec espèce choisie : mêmes étoiles rivales, mais l'espèce de chacune peut changer ; le journal déjà enregistré garde les anciens noms (limite acceptée).
+
+**Décisions de l'utilisateur après relecture** : l'identité d'un rival reste cachée jusqu'à l'analyse de son système (avant : « Signaux artificiels », en rouge) ; chaque espèce a une couleur d'empire propre (`empireColor`), distincte de son `accent` utilisé par l'écran de choix et le conseiller.
