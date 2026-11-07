@@ -1,7 +1,8 @@
 // Génération procédurale de l'amas : étoiles, planètes, gisements, ruines et courants.
 import { createRng } from './rng.js';
 import { createNameGenerator } from './names.js';
-import { CONFIG } from './config.js';
+import { CONFIG, DEFAULT_SPECIES, NEUTRAL_RIVALS, RIVALS } from './config.js';
+import { playableSpecies } from './species.js';
 
 export const STAR_TYPES = {
   rouge: { label: 'Naine rouge', color: 0xff7a59, size: 0.8 },
@@ -36,7 +37,6 @@ const ORBIT_ZONES = {
 };
 
 const ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII'];
-const RIVAL_SPECIES = ['Vaskhar', 'Ondésiens', 'Kel-Tirr', 'Synodes'];
 
 export const isColonisable = (planet) => PLANET_TYPES[planet.type].colonisable !== false;
 
@@ -48,7 +48,7 @@ export function starDistance(a, b) {
   return dist3(a.pos, b.pos);
 }
 
-export function generateCluster(seed) {
+export function generateCluster(seed, playerSpecies = DEFAULT_SPECIES, rivals = RIVALS.default) {
   const rng = createRng(seed);
   const names = createNameGenerator(rng);
   const stars = placeStars(rng).map((pos, id) => {
@@ -59,7 +59,7 @@ export function generateCluster(seed) {
   const homeId = chooseHome(stars);
   setupHome(rng, stars[homeId]);
   placeRuins(rng, stars, homeId);
-  placeRivals(stars, homeId);
+  placeRivals(stars, homeId, chooseRivals(seed, playerSpecies, rivals));
   const currents = createCurrents(rng, stars, homeId);
   addWaterAndFuel(seed, stars, homeId);
   addMoonsAndRings(seed, stars);
@@ -235,10 +235,18 @@ function placeRuins(rng, stars, homeId) {
   }
 }
 
+// Les espèces que le joueur n'a pas choisies, tirées avec leur propre générateur pour ne changer
+// ni les étoiles ni les planètes. Avec plus de rivaux, les premiers restent les mêmes.
+function chooseRivals(seed, playerSpecies, count) {
+  if (playerSpecies === DEFAULT_SPECIES) return NEUTRAL_RIVALS.slice(0, count);
+  const rng = createRng((seed ^ 0x2f6e2b1d) >>> 0);
+  return rng.shuffle(playableSpecies().filter((key) => key !== playerSpecies)).slice(0, count);
+}
+
 // Les espèces rivales s'installent le plus loin possible du joueur et les unes des autres.
-function placeRivals(stars, homeId) {
+function placeRivals(stars, homeId, rivals) {
   const taken = [stars[homeId]];
-  for (const species of RIVAL_SPECIES) {
+  for (const species of rivals) {
     let best = null;
     let bestDist = -1;
     for (const s of stars) {

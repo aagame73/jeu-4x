@@ -5,7 +5,7 @@ import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer
 import { CONFIG } from './config.js';
 import { STAR_TYPES, starDistance } from './galaxy.js';
 import { reachableStars, shipProgress, selectedShip } from './game.js';
-import { currentSpecies } from './species.js';
+import { currentSpecies, knownRival } from './species.js';
 import { createSky } from './skybox.js';
 import { animateShip, createShip, shipScale } from './ships.js';
 import { canvasTexture, glowTexture } from './textures.js';
@@ -175,6 +175,8 @@ export function createGalaxyView(container, game, callbacks) {
       sprite.material.opacity = known ? 1 : 0.45;
       sprite.scale.setScalar((known ? 3.4 : 2.2) * size * (star.id === game.selectedStarId ? 1.15 : 1));
       v.label.visible = known;
+      const rival = knownRival(star, star.rival);
+      if (rival) el.style.setProperty('--empire', rival.accent);
       el.className = 'star-label' + (star.id === game.homeId ? ' home' : '') + (star.rival ? ' rival' : '') + (star.hasRuins && star.level === 3 ? ' ruins' : '');
     }
 

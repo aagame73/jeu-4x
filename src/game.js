@@ -14,8 +14,8 @@ import { SHIP_NAMES, SHIP_ACCENTS } from './ships.js';
 import { generateSurface, hexDistance } from './surface.js';
 import { tickColony, colonyReport, SHIPYARD, canAfford } from './economy.js';
 import { TECHS, hasTech, bindResearch, markTech, techCost } from './research.js';
-import { SPECIES, DEFAULT_SPECIES } from './config.js';
-import { bindSpecies, speciesBonus, speciesHabitat, hostilePenalty, currentSpecies } from './species.js';
+import { SPECIES, DEFAULT_SPECIES, RIVALS } from './config.js';
+import { bindSpecies, speciesBonus, speciesHabitat, hostilePenalty, currentSpecies, normalizeRivals, rivalInfo } from './species.js';
 
 export const LEVEL_LABELS = ['Inconnu', 'Lueur repérée', 'Système survolé', 'Système analysé'];
 
@@ -57,11 +57,15 @@ export function shipStats(game, ship) {
 }
 
 // species : clé dans SPECIES (config.js) ; une clé inconnue retombe sur le profil neutre.
-export function createGame(seed, species = DEFAULT_SPECIES) {
-  const galaxy = generateCluster(seed);
+// rivals : nombre d'empires rivaux (RIVALS dans config.js).
+export function createGame(seed, species = DEFAULT_SPECIES, rivals = RIVALS.default) {
+  const playerSpecies = SPECIES[species] ? species : DEFAULT_SPECIES;
+  const rivalCount = normalizeRivals(rivals);
+  const galaxy = generateCluster(seed, playerSpecies, rivalCount);
   const game = {
     seed,
-    species: SPECIES[species] ? species : DEFAULT_SPECIES,
+    species: playerSpecies,
+    rivals: rivalCount,
     time: 0, // en jours
     speedIndex: 0,
     paused: true,
@@ -259,7 +263,10 @@ export function foundingProblem(game, ship, starId, planetIndex) {
   if (ship.starId !== starId || ship.state !== 'idle') return `${ship.name} doit être en attente dans ce système.`;
   if (star.level < 3) return "Analysez d'abord le système.";
   if (!planet.size) return 'Cette planète ne se colonise pas.';
-  if (planet.inhabitedBy) return `Planète habitée par les ${planet.inhabitedBy}.`;
+  if (planet.inhabitedBy) {
+    const rival = rivalInfo(planet.inhabitedBy);
+    return `Planète habitée par les ${rival.label} (${rival.empire}).`;
+  }
   if (colonyOn(game, starId, planetIndex)) return 'Une colonie existe déjà ici.';
   // L'Arche peut toujours se poser (ses moteurs sont cassés) ; les autres attendent la recherche.
   if (speciesHabitat(planet) === 'hostile' && ship.kind !== 'arche' && !hasTech('adaptation-xenobiologique')) {
@@ -557,7 +564,10 @@ function completeAnalysis(game, ship) {
   const ruins = star.planets.filter((p) => p.ruins);
   const velarine = star.planets.filter((p) => p.deposits.velarine > 0);
   const rich = star.planets.filter((p) => ['minerais', 'energie', 'biomasse'].some((r) => p.deposits[r] === 3));
-  if (star.rival) parts.push(`C'est le monde natal des ${star.rival}.`);
+  if (star.rival) {
+    const rival = rivalInfo(star.rival);
+    parts.push(`C'est le monde natal des ${rival.label} (${rival.empire}).`);
+  }
   if (ruins.length) parts.push(`Ruines des Veilleurs sur ${ruins.map((p) => p.name).join(', ')} !`);
   if (velarine.length) parts.push(`Vélarine sur ${velarine.map((p) => p.name).join(', ')}.`);
   if (rich.length) parts.push(`Gisement riche sur ${rich.map((p) => p.name).join(', ')}.`);

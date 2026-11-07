@@ -10,6 +10,7 @@ import { createRng } from './rng.js';
 import { canvasTexture, glowTexture } from './textures.js';
 import { createSky } from './skybox.js';
 import { icon } from './icons.js';
+import { knownRival } from './species.js';
 
 // --- Réglages du décor --------------------------------------------------------------
 const BODY_RADIUS = { petite: 0.7, moyenne: 0.9, grande: 1.1 };
@@ -300,6 +301,13 @@ function orbitLine(radius, opacity, segments = 160) {
   );
 }
 
+const rivalBadge = (rival) =>
+  rival
+    ? `<span class="sv-badge rival" style="--empire:${rival.accent}">Habitée par les ${rival.label} · ${rival.empire}</span>`
+    : '<span class="sv-badge rival">Signaux artificiels</span>';
+
+const rivalFlag = (rival) => (rival ? `<em class="tag rival" style="--empire:${rival.accent}">Habitée</em>` : '<em class="tag rival">Signaux</em>');
+
 // Anneau de repère tourné vers la caméra (colonie, espèce rivale, survol, sélection).
 const markerGeometry = new THREE.RingGeometry(1, 1.07, 72);
 const thinGeometry = new THREE.RingGeometry(1, 1.035, 72);
@@ -440,7 +448,9 @@ export function createSystemView(root, game, actions) {
       tags += '<em class="tag colony">Colonie</em>';
     } else if (planet.inhabitedBy) {
       classes.push('rival');
-      tags += `<em class="tag rival">${planet.inhabitedBy}</em>`;
+      const rival = knownRival(state.star, planet.inhabitedBy);
+      if (rival) el.style.setProperty('--empire', rival.accent);
+      tags += `<em class="tag rival">${rival?.label ?? 'Signaux'}</em>`;
     } else if (body.isMoon && planet.size) {
       tags += '<em class="tag habitable">habitable</em>';
     }
@@ -644,7 +654,7 @@ export function createSystemView(root, game, actions) {
       body.anchor.add(body.label);
       const colony = colonyOn(game, star.id, body.index);
       if (!body.belt && (colony || body.planet.inhabitedBy)) {
-        body.marker = markerRing(colony ? '#7cff9e' : '#ff7a8a', 0.75);
+        body.marker = markerRing(colony ? '#7cff9e' : knownRival(star, body.planet.inhabitedBy)?.accent ?? '#ff7a8a', 0.75);
         body.marker.scale.setScalar(body.radius * 1.55 + 0.12);
         body.anchor.add(body.marker);
       }
@@ -771,7 +781,10 @@ export function createSystemView(root, game, actions) {
     const parts = [planet.name, typeLabel(planet), sizeText(planet)];
     if (target.isMoon) parts.push(`Lune de ${star.planets[planet.moonOf].name}`);
     if (colonyOn(game, star.id, target.index)) parts.push('Votre colonie');
-    else if (planet.inhabitedBy) parts.push(`Habitée par les ${planet.inhabitedBy}`);
+    else if (planet.inhabitedBy) {
+      const rival = knownRival(star, planet.inhabitedBy);
+      parts.push(rival ? `Habitée par les ${rival.label} · ${rival.empire}` : 'Signaux artificiels');
+    }
     if (planet.ruins && star.level >= 3) parts.push('◆ Ruines des Veilleurs');
     if (planet.size) parts.push('Double-clic : voir la surface');
     return parts;
@@ -863,7 +876,7 @@ export function createSystemView(root, game, actions) {
       const colony = colonyOn(game, star.id, index);
       const flags = [
         colony ? '<em class="tag colony">Colonie</em>' : '',
-        !colony && p.inhabitedBy ? '<em class="tag rival">Habitée</em>' : '',
+        !colony && p.inhabitedBy ? rivalFlag(knownRival(star, p.inhabitedBy)) : '',
         p.ruins && star.level >= 3 ? '<em class="tag ruins">◆</em>' : '',
         moon && p.size && !colony && !p.inhabitedBy ? '<em class="tag habitable">habitable</em>' : '',
       ].join('');
@@ -909,7 +922,7 @@ export function createSystemView(root, game, actions) {
 
     const badges = [
       colony ? '<span class="sv-badge colony">Votre colonie</span>' : '',
-      planet.inhabitedBy ? `<span class="sv-badge rival">Habitée par les ${planet.inhabitedBy}</span>` : '',
+      planet.inhabitedBy ? rivalBadge(knownRival(star, planet.inhabitedBy)) : '',
       planet.ruins && star.level >= 3 ? '<span class="sv-badge ruins">◆ Ruines des Veilleurs</span>' : '',
       body.isMoon && planet.size && !colony && !planet.inhabitedBy ? '<span class="sv-badge habitable">Lune habitable</span>' : '',
     ].join('');

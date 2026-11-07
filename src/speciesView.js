@@ -1,5 +1,5 @@
 // Écran de choix de l'espèce, entre « Nouvelle partie » et l'arrivée de l'Arche.
-import { SPECIES } from './config.js';
+import { SPECIES, RIVALS } from './config.js';
 import { playableSpecies } from './species.js';
 import { PLANET_TYPES } from './galaxy.js';
 import { TERRAINS } from './surface.js';
@@ -19,10 +19,11 @@ function fleetImages(key) {
 
 const habitatLabel = (type) => (type === 'lune' ? 'Lunes habitables' : PLANET_TYPES[type]?.label ?? type);
 
-// onChoose(clé) lance la partie ; onBack (facultatif) revient à l'écran d'accueil.
+// onChoose(clé, nombre de rivaux) lance la partie ; onBack (facultatif) revient à l'écran d'accueil.
 export function createSpeciesView(root, { onChoose, onBack }) {
   let portraits = [];
   let selected = null;
+  let rivals = RIVALS.default;
 
   function card(key) {
     const s = SPECIES[key];
@@ -51,6 +52,14 @@ export function createSpeciesView(root, { onChoose, onBack }) {
       </div>`;
   }
 
+  function rivalsPicker() {
+    const options = [];
+    for (let n = RIVALS.min; n <= RIVALS.max; n++) {
+      options.push(`<button data-rivals="${n}" aria-pressed="${n === rivals}" class="${n === rivals ? 'selected' : ''}">${n}</button>`);
+    }
+    return `<div class="sp-rivals" role="group" aria-label="Nombre d'adversaires"><span>Adversaires</span>${options.join('')}</div>`;
+  }
+
   function stopPortraits() {
     portraits.forEach((p) => p.destroy());
     portraits = [];
@@ -65,6 +74,7 @@ export function createSpeciesView(root, { onChoose, onBack }) {
         <p class="muted">L'Arche emporte une seule espèce. Chacune a une force et une faiblesse ; aucune n'est meilleure que les autres.</p>
         <div class="sp-grid">${keys.map(card).join('')}</div>
         <div id="sp-detail">${selected ? details(selected) : '<p class="muted sp-hint">Cliquez sur une espèce pour la découvrir.</p>'}</div>
+        ${rivalsPicker()}
         <div class="menu-row sp-actions">
           ${onBack ? '<button data-sp="back">Retour</button>' : ''}
           <button class="primary big" data-sp="start" ${selected ? '' : 'disabled'}>Lancer l'Arche${selected ? `<span class="small">${SPECIES[selected].label}</span>` : ''}</button>
@@ -84,6 +94,17 @@ export function createSpeciesView(root, { onChoose, onBack }) {
   }
 
   root.addEventListener('click', (e) => {
+    const rivalsEl = e.target.closest('[data-rivals]');
+    if (rivalsEl) {
+      rivals = Number(rivalsEl.dataset.rivals);
+      // Sans tout redessiner : les portraits continuent de s'animer.
+      root.querySelectorAll('[data-rivals]').forEach((el) => {
+        const on = el === rivalsEl;
+        el.classList.toggle('selected', on);
+        el.setAttribute('aria-pressed', String(on));
+      });
+      return;
+    }
     const cardEl = e.target.closest('[data-species]');
     if (cardEl) {
       selected = cardEl.dataset.species;
@@ -93,12 +114,13 @@ export function createSpeciesView(root, { onChoose, onBack }) {
     const action = e.target.closest('[data-sp]')?.dataset.sp;
     if (action === 'start' && selected) {
       stopPortraits();
-      onChoose(selected);
+      onChoose(selected, rivals);
     } else if (action === 'back') close();
   });
 
   function open() {
     selected = null;
+    rivals = RIVALS.default;
     root.hidden = false;
     render();
   }

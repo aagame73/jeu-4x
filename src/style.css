@@ -48,7 +48,7 @@ body {
   font-weight: 600;
 }
 .star-label.rival {
-  color: var(--rival);
+  color: var(--empire, var(--rival));
 }
 .star-label.ruins::after {
   content: ' ◆';
@@ -426,7 +426,7 @@ kbd {
 }
 .badge.ruins { background: rgba(255, 209, 102, 0.15); color: var(--gold); }
 .badge.home { background: rgba(124, 255, 158, 0.15); color: var(--accent); }
-.badge.rival { background: rgba(255, 122, 138, 0.15); color: var(--rival); }
+.badge.rival { background: color-mix(in srgb, var(--empire, var(--rival)) 15%, transparent); color: var(--empire, var(--rival)); }
 
 /* Journal */
 .journal {

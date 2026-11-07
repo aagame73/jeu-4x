@@ -7,7 +7,7 @@ import { colonyReport } from './economy.js';
 import { ICONS } from './icons.js';
 import { TECHS, techCost } from './research.js';
 import { createAdvisor } from './advisor.js';
-import { currentSpecies, speciesHabitat } from './species.js';
+import { currentSpecies, speciesHabitat, rivalInfo } from './species.js';
 // Accès tolérant aux règles écrites en parallèle (SIZE_LABELS, shipStats peuvent manquer).
 import * as rules from './game.js';
 
@@ -291,7 +291,10 @@ export function createUI(root, game, actions) {
       body = `<div class="deposits">${deposits || '<span class="muted">Aucun gisement notable</span>'}</div>`;
       if (planet.ruins) body += '<div class="badge ruins">Ruines des Veilleurs</div>';
       if (planet.inhabitedBy === 'vous') body += '<div class="badge home">Votre monde d\'origine</div>';
-      else if (planet.inhabitedBy) body += `<div class="badge rival">Habitée par les ${planet.inhabitedBy}</div>`;
+      else if (planet.inhabitedBy) {
+        const rival = rivalInfo(planet.inhabitedBy);
+        body += `<div class="badge rival" style="--empire:${rival.accent}">Habitée par les ${rival.label} · ${rival.empire}</div>`;
+      }
     } else {
       body = '<div class="muted small">Gisements inconnus : analyse nécessaire</div>';
       if (planet.inhabitedBy && planet.inhabitedBy !== 'vous') body += '<div class="badge rival">Signaux artificiels</div>';
