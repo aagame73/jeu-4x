@@ -1,0 +1,267 @@
+// Écran de diplomatie (touche D) : les empires rencontrés, leur attitude, et la négociation à deux
+// colonnes. Les règles sont dans diplomacy.js ; un échange se signe par signDeal (game.js).
+import { createAlienPortrait } from './aliens.js';
+import { DIPLOMACY, SPECIES } from './config.js';
+import { attitudeOf, buyableTechs, counterOffer, evaluateDeal, relationReasons, rivalsOf, sellableTechs, treatyActive } from './diplomacy.js';
+import { RESOURCE_LABELS } from './economy.js';
+import { signDeal } from './game.js';
+import { TECHS } from './research.js';
+import { rivalInfo } from './species.js';
+
+const MATERIALS = Object.keys(DIPLOMACY.values);
+
+// Réponses provisoires, communes à toutes les espèces (les textes par espèce viennent à l'étape 7).
+const REFUSALS = {
+  'nothing-free': 'Rien n\'est gratuit : chacun doit donner quelque chose.',
+  hostile: 'Nous n\'avons rien à vous dire.',
+  invalid: 'Cette offre n\'a aucun sens.',
+  'player-short': 'Vous n\'avez pas de quoi tenir cette offre.',
+  'empire-short': 'Nous n\'avons pas autant à vous céder.',
+  'tech-closed': 'Ce savoir-là ne s\'échange pas.',
+  'tech-give': 'Cette technologie ne nous est d\'aucune utilité pour l\'instant.',
+  'tech-take': 'Vous n\'êtes pas prêts pour ce savoir.',
+  'tech-delay': 'Laissez passer du temps avant un nouvel échange de savoir.',
+  'map-give': 'Votre carte ne nous apprendrait rien de neuf pour l\'instant.',
+  'map-take': 'Nos cartes ne vous apprendraient rien de plus.',
+  'treaty-attitude': 'Nous ne vous faisons pas assez confiance pour cela.',
+  'treaty-active': 'Cet accord est déjà en vigueur.',
+  unbalanced: 'Votre offre est trop faible.',
+};
+const ACCEPTED = 'Marché conclu.';
+
+const emptyOffer = () => ({ give: { resources: {}, techs: [], map: false }, get: { resources: {}, techs: [], map: false, treaties: [] } });
+const metEmpires = (game) => game.empires.filter((e) => e.met);
+
+export function createDiplomacyView(root, game, actions) {
+  let selected = null;
+  let offer = emptyOffer();
+  let reply = null; // { text, ok, counter }
+  let listPortraits = [];
+  let portrait = null;
+
+  function stopPortraits() {
+    listPortraits.forEach((p) => p.destroy());
+    listPortraits = [];
+    portrait?.destroy();
+    portrait = null;
+  }
+
+  function materialRows(side, empire) {
+    return MATERIALS.map((res) => {
+      const have = side === 'give' ? Math.floor(game.resources[res] ?? 0) : Math.floor(empire.stocks[res]);
+      const value = offer[side].resources[res] ?? 0;
+      return `<label class="dp-row"><span>${RESOURCE_LABELS[res] ?? res}</span><small>${side === 'give' ? 'Stock' : 'Dispo'} ${have}</small>
+        <span class="dp-stepper"><button type="button" data-step="-1" aria-label="Moins" tabindex="-1">−</button><input type="number" min="0" max="${have}" step="1" value="${value}" data-side="${side}" data-res="${res}" aria-label="${RESOURCE_LABELS[res] ?? res}" /><button type="button" data-step="1" aria-label="Plus" tabindex="-1">+</button></span></label>`;
+    }).join('');
+  }
+
+  function techRows(side, empire) {
+    const list = side === 'give' ? sellableTechs(game, empire) : buyableTechs(game, empire);
+    if (!list.length) return '<p class="muted small">Aucune technologie à échanger.</p>';
+    return list
+      .map((key) => `<label class="dp-check"><input type="checkbox" data-side="${side}" data-tech="${key}" ${offer[side].techs.includes(key) ? 'checked' : ''} /><span>${TECHS[key].label}<small>palier ${TECHS[key].tier}</small></span></label>`)
+      .join('');
+  }
+
+  function treatyRows(empire) {
+    return Object.entries(DIPLOMACY.treaties)
+      .map(([key, t]) => {
+        const active = treatyActive(game, empire, key);
+        const need = attitudeOf(t.minRelation).label;
+        return `<label class="dp-check"><input type="checkbox" data-treaty="${key}" ${offer.get.treaties.includes(key) ? 'checked' : ''} ${active ? 'disabled' : ''} /><span>${t.label}<small>${active ? 'en cours' : `${t.days} jours · attitude ${need} minimum`}</small></span></label>`;
+      })
+      .join('');
+  }
+
+  function opinion(empire) {
+    const answer = evaluateDeal(game, empire, offer);
+    if (answer.ok) return { cls: 'good', text: 'Cette offre devrait lui convenir.' };
+    return { cls: answer.reason === 'nothing-free' ? 'idle' : 'bad', text: REFUSALS[answer.reason] };
+  }
+
+  function renderOpinion(empire) {
+    const el = root.querySelector('#dp-opinion');
+    if (!el) return;
+    const { cls, text } = opinion(empire);
+    el.className = `dp-opinion ${cls}`;
+    el.textContent = text;
+  }
+
+  function renderDetail() {
+    const detail = root.querySelector('#dp-detail');
+    const empire = selected;
+    if (!empire) return;
+    const rival = rivalInfo(empire.species);
+    const attitude = attitudeOf(empire.relation);
+    const reasons = relationReasons(game, empire);
+    const enemies = rivalsOf(empire.species).map((k) => SPECIES[k].label);
+    const treaties = Object.keys(DIPLOMACY.treaties).filter((k) => treatyActive(game, empire, k));
+    detail.style.setProperty('--empire', rival.accent);
+    detail.querySelector('.dp-info').innerHTML = `
+      <h3>${rival.empire}</h3>
+      <p class="dp-species">${rival.label}</p>
+      <p><span class="dp-attitude ${attitude.key}">${attitude.label}</span></p>
+      ${reasons.length ? `<ul class="dp-reasons">${reasons.map((r) => `<li>${r}</li>`).join('')}</ul>` : ''}
+      <p class="small"><b>Rivaux :</b> ${enemies.join(', ') || 'aucun'}. Commercer ici fera baisser votre note auprès d'eux.</p>
+      <p class="small"><b>Accords en cours :</b> ${treaties.map((k) => `${DIPLOMACY.treaties[k].label} (encore ${Math.ceil(empire.treaties[k] - game.time)} jours)`).join(', ') || 'aucun'}</p>`;
+    detail.querySelector('.dp-deal').innerHTML = `
+      <div class="dp-columns">
+        <section>
+          <h4>Vous donnez</h4>
+          ${materialRows('give', empire)}
+          <h5>Technologies</h5>${techRows('give', empire)}
+          <h5>Cartes</h5>
+          <label class="dp-check"><input type="checkbox" data-side="give" data-map ${offer.give.map ? 'checked' : ''} /><span>Votre carte de l'amas</span></label>
+        </section>
+        <section>
+          <h4>Vous recevez</h4>
+          ${materialRows('get', empire)}
+          <h5>Technologies</h5>${techRows('get', empire)}
+          <h5>Cartes</h5>
+          <label class="dp-check"><input type="checkbox" data-side="get" data-map ${offer.get.map ? 'checked' : ''} /><span>La carte de ses colonies</span></label>
+          <h5>Accords</h5>${treatyRows(empire)}
+        </section>
+      </div>
+      <div id="dp-opinion" class="dp-opinion"></div>
+      ${reply ? `<div class="dp-reply ${reply.ok ? 'ok' : 'no'}">« ${reply.text} »${reply.counter ? `<div class="dp-counter">Contre-proposition : ${reply.counter.get.resources ? Object.entries(reply.counter.get.resources).map(([res, n]) => `${n} ${(RESOURCE_LABELS[res] ?? res).toLowerCase()}`).join(', ') : ''} <button data-dp="counter">Accepter</button></div>` : ''}</div>` : ''}
+      <div class="dp-actions"><button data-dp="reset">Vider l'offre</button><button class="primary" data-dp="propose">Proposer l'échange</button></div>`;
+    renderOpinion(empire);
+  }
+
+  function renderList() {
+    const list = root.querySelector('#dp-list');
+    const empires = metEmpires(game);
+    stopPortraits();
+    list.innerHTML = empires
+      .map((e, i) => {
+        const r = rivalInfo(e.species);
+        const a = attitudeOf(e.relation);
+        return `<button class="dp-card" data-empire="${i}" style="--empire:${r.accent}"><canvas class="dp-mini"></canvas><span><b>${r.empire}</b><small>${r.label}</small><i class="dp-attitude ${a.key}">${a.label}</i></span></button>`;
+      })
+      .join('');
+    list.querySelectorAll('.dp-card').forEach((el, i) => {
+      el.classList.toggle('selected', empires[i] === selected);
+      listPortraits.push(createAlienPortrait(el.querySelector('canvas'), empires[i].species));
+    });
+  }
+
+  function select(empire) {
+    selected = empire;
+    offer = emptyOffer();
+    reply = null;
+    root.querySelectorAll('.dp-card').forEach((el) => el.classList.toggle('selected', metEmpires(game)[Number(el.dataset.empire)] === empire));
+    portrait?.destroy();
+    portrait = null;
+    const big = root.querySelector('.dp-portrait');
+    if (empire) {
+      portrait = createAlienPortrait(big, empire.species);
+      root.querySelector('#dp-detail').hidden = false;
+    } else root.querySelector('#dp-detail').hidden = true;
+    root.querySelector('#dp-none').hidden = metEmpires(game).length > 0;
+    renderDetail();
+  }
+
+  function say(text, ok, counter = null) {
+    reply = { text, ok, counter };
+    portrait?.setSpeaking(true);
+    setTimeout(() => portrait?.setSpeaking(false), 1800);
+  }
+
+  function propose(deal) {
+    const answer = signDeal(game, selected, deal);
+    if (answer.ok) {
+      offer = emptyOffer();
+      say(ACCEPTED, true);
+      renderList();
+      actions.refresh();
+    } else {
+      say(REFUSALS[answer.reason], false, counterOffer(game, selected, deal));
+    }
+    renderDetail();
+  }
+
+  root.addEventListener('input', (e) => {
+    const { side, res } = e.target.dataset;
+    if (!res) return;
+    const amount = Math.max(0, Math.floor(Number(e.target.value) || 0));
+    if (amount) offer[side].resources[res] = amount;
+    else delete offer[side].resources[res];
+    reply = null;
+    root.querySelector('.dp-reply')?.remove();
+    renderOpinion(selected);
+  });
+
+  root.addEventListener('change', (e) => {
+    const { side, tech, treaty } = e.target.dataset;
+    if (tech) {
+      const list = offer[side].techs;
+      if (e.target.checked) list.push(tech);
+      else list.splice(list.indexOf(tech), 1);
+    } else if (treaty) {
+      const list = offer.get.treaties;
+      if (e.target.checked) list.push(treaty);
+      else list.splice(list.indexOf(treaty), 1);
+    } else if ('map' in e.target.dataset) {
+      offer[side].map = e.target.checked;
+    } else return;
+    reply = null;
+    root.querySelector('.dp-reply')?.remove();
+    renderOpinion(selected);
+  });
+
+  root.addEventListener('click', (e) => {
+    const step = e.target.closest('[data-step]');
+    if (step) {
+      e.preventDefault(); // le bouton est dans un label : ne pas redonner le focus au champ
+      const input = step.parentElement.querySelector('input');
+      const rare = DIPLOMACY.values[input.dataset.res] >= 25; // Vélarine et artefacts : à l'unité
+      const size = rare ? 1 : e.shiftKey ? 100 : 10;
+      input.value = Math.max(0, Math.min(Number(input.max), (Number(input.value) || 0) + Number(step.dataset.step) * size));
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      return;
+    }
+    const card = e.target.closest('[data-empire]');
+    if (card) {
+      select(metEmpires(game)[Number(card.dataset.empire)]);
+      return;
+    }
+    const action = e.target.closest('[data-dp]')?.dataset.dp;
+    if (action === 'close') actions.onCloseDiplomacy();
+    else if (action === 'reset') {
+      offer = emptyOffer();
+      reply = null;
+      renderDetail();
+    } else if (action === 'propose') propose(offer);
+    else if (action === 'counter') propose(reply.counter);
+  });
+
+  root.innerHTML = `
+    <div class="diplomacy panel" role="dialog" aria-label="Diplomatie">
+      <header class="dp-head"><h2>Diplomatie</h2><button data-dp="close" title="Fermer (D)">Fermer</button></header>
+      <div class="dp-body">
+        <aside id="dp-list" class="dp-list"></aside>
+        <p id="dp-none" class="muted dp-none">Aucun empire rencontré. Explorez l'amas : on découvre un rival en analysant un système où il est présent.</p>
+        <div id="dp-detail" class="dp-detail" hidden>
+          <div class="dp-top"><canvas class="dp-portrait"></canvas><div class="dp-info"></div></div>
+          <div class="dp-deal"></div>
+        </div>
+      </div>
+    </div>`;
+
+  return {
+    get isOpen() {
+      return !root.hidden;
+    },
+    open() {
+      root.hidden = false;
+      renderList();
+      const empires = metEmpires(game);
+      select(empires.includes(selected) ? selected : (empires[0] ?? null));
+    },
+    close() {
+      root.hidden = true;
+      stopPortraits();
+      selected = null;
+    },
+  };
+}

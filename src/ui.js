@@ -40,6 +40,7 @@ export function createUI(root, game, actions) {
       <div class="title" title="Amas inexploré : prototype"><span class="game-name">Amas<br>inexploré</span></div>
       <div class="stats" id="stats"></div>
       <button class="menu-btn fs-btn" data-action="fullscreen" title="Plein écran (F)" aria-label="Plein écran">${ICONS.pleinEcran}</button>
+      <button class="menu-btn icon-only" data-action="diplomacy" title="Diplomatie (D)" aria-label="Diplomatie">${ICONS.diplomatie}</button>
       <button class="menu-btn rs-btn" data-action="research" title="Recherche (R)">${ICONS.recherche}<span class="rs-btn-label">Recherche</span><span class="rs-meter"><i></i></span><i class="rs-dot"></i></button>
       <button class="menu-btn icon-only" data-action="menu" title="Menu : sauvegarder, charger (Échap)" aria-label="Menu">${ICONS.menu}</button>
       <div class="clock">
@@ -58,7 +59,7 @@ export function createUI(root, game, actions) {
       </div>
       <div class="advisor-history" id="journal" hidden></div>
     </section>
-    <div class="help">Espace : pause · R : recherche · F : plein écran · + / − : vitesse · Clic : sélectionner · Double-clic : centrer · Glisser : pivoter · Clic droit : déplacer · Molette : zoom · 1 à 9 : choisir un vaisseau · Graine ${game.seed}</div>
+    <div class="help">Espace : pause · R : recherche · D : diplomatie · F : plein écran · + / − : vitesse · Clic : sélectionner · Double-clic : centrer · Glisser : pivoter · Clic droit : déplacer · Molette : zoom · 1 à 9 : choisir un vaisseau · Graine ${game.seed}</div>
   `;
   const $ = (id) => root.querySelector(`#${id}`);
 
@@ -78,6 +79,7 @@ export function createUI(root, game, actions) {
     const { action, id } = el.dataset;
     if (action === 'menu') actions.onOpenMenu();
     else if (action === 'research') actions.onOpenResearch?.();
+    else if (action === 'diplomacy') actions.onOpenDiplomacy?.();
     else if (action === 'fullscreen') actions.onToggleFullscreen();
     else if (action === 'journal') $('journal').hidden = !$('journal').hidden;
     else if (action === 'rename') startRename(Number(id));

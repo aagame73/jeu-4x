@@ -164,6 +164,31 @@ function dealProblem(game, empire, offer) {
   return null;
 }
 
+// Technologies que le joueur peut vendre à cet empire, ou lui acheter.
+export function sellableTechs(game, empire) {
+  const known = new Set(rivalTechs(empire));
+  return game.research.done.filter((key) => tradableTech(key) && !known.has(key) && TECHS[key].requires.every((r) => known.has(r)));
+}
+
+export function buyableTechs(game, empire) {
+  const done = game.research.done;
+  return rivalTechs(empire).filter((key) => tradableTech(key) && !done.includes(key) && TECHS[key].requires.every((r) => done.includes(r)));
+}
+
+// Pourquoi l'empire vous voit ainsi : phrases affichées sur sa fiche.
+export function relationReasons(game, empire) {
+  const reasons = [];
+  const start = startRelation(empire.species);
+  if (start > 0) reasons.push('Peuple ouvert aux échanges.');
+  else if (start < 0) reasons.push('Peuple méfiant par nature.');
+  const near = nearColonies(game, empire);
+  if (near) reasons.push(`${near > 1 ? `${near} de vos colonies sont proches` : 'Une de vos colonies est proche'} de son territoire.`);
+  if (Object.keys(DIPLOMACY.treaties).some((key) => treatyActive(game, empire, key))) reasons.push('Vous respectez vos accords.');
+  const dig = DIPLOMACY.digReaction[empire.species];
+  if (dig && game.lore > 0) reasons.push(dig < 0 ? 'Vos fouilles des ruines le mécontentent.' : 'Vos fouilles des ruines l\'intéressent.');
+  return reasons;
+}
+
 // Réponse de l'empire : { ok, reason, received, given }.
 export function evaluateDeal(game, empire, offer) {
   const problem = dealProblem(game, empire, offer);

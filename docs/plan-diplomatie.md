@@ -1,6 +1,6 @@
 # Plan : diplomatie et échanges (première version)
 
-État : **plan validé le 07/11/2026.** Étapes 1 à 3 faites. Étape 4 codée et testée, en attente de validation.
+État : **plan validé le 07/11/2026.** Étapes 1 à 5 faites. Reste l'étape 6 (convois) et l'étape 7 (initiative et dialogues). Réponses encore génériques (textes par espèce : étape 7) ; matières livrées tout de suite (convois : étape 6).
 
 ## 1. Point de départ
 
@@ -68,7 +68,7 @@
    - seules les **matières** voyagent ; technologies, cartes et traités prennent effet tout de suite ;
    - ce que tu donnes quitte ton stock à la signature ; ce que tu reçois n'arrive qu'à la fin du trajet ;
    - le trajet relie la colonie la plus proche de chaque camp, et sa durée dépend de la distance ;
-   - le convoi est un vaisseau **visible sur la carte**, au style de l'empire ; on ne peut ni l'attaquer ni le perdre tant que le combat n'existe pas ;
+   - le convoi est un vaisseau **visible sur la carte**, au style de l'empire ; on ne peut ni l'attaquer ni le perdre tant que le combat n'existe pas. **Avec le combat : en guerre contre une nation, on pourra piller ses convois** (décision de l'utilisateur, 07/11/2026) ;
    - les convois en route sont enregistrés dans la sauvegarde.
 4. **Propositions des rivaux** : environ une tous les 100 jours par empire rencontré, réglable dans `config.js`.
 

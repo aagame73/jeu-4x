@@ -1,4 +1,4 @@
-# État du projet (07/11/2026)
+# État du projet (07/11/2026, fin de session)
 
 ## Fait
 - Prototype jouable : amas 3D, sondes, Arche, colonies sur hexagones, économie, recherche (46 technologies), sauvegardes, temps réel avec pause.
@@ -11,10 +11,12 @@
 - Outils : hook de fin de réponse qui lance `npm run build` (`.claude/settings.json`), agent `relecteur` (`.claude/agents/relecteur.md`), serveur lancé au démarrage de Windows.
 
 ## En cours
-- IA des rivaux (`docs/plan-rivaux-ia.md`) : première version terminée.
+- Diplomatie et échanges (`docs/plan-diplomatie.md`) : étapes 1 à 5 faites et commitées, **non publiées** sur le site. Écran touche D : empires rencontrés, attitudes, négociation (matières, technologies, cartes, traité de frontières, pacte de ruines).
 
 ## Prochaine étape
-- Diplomatie et échanges, ensemble (`docs/plan-diplomatie.md`, à valider), puis combat.
+- Étape 6 : convois visibles sur la carte (matières livrées à la fin du trajet). Puis étape 7 : propositions des rivaux et dialogues écrits à la main par espèce (environ 80 phrases, à relire ensemble).
+- Passer le relecteur sur toute la diplomatie (pas encore relue) avant de publier.
+- Ensuite : combat, dont le **pillage des convois** d'une nation en guerre.
 
 ## Questions ouvertes
 - Équilibre à juger en jouant : Liseurs de Vey trop forts en milieu réel (120 %), Thrennes un peu faibles (87 %, bonus militaires non mesurés tant que le combat n'existe pas).
@@ -22,6 +24,7 @@
 - Smartphone (simulé le 07/11) : interface à adapter, chantier à part. Tablette plus facile. Écran trop petit, bandeau et panneaux superposés, boutons trop petits.
 - `src/ships.js` fait environ 2 900 lignes : le découper (matériaux à part) ?
 - Titre du jeu à choisir.
+- Prix des échanges (ex. 800 minerais pour un traité) : première estimation, à juger en jouant. Écran de diplomatie pas encore vérifié dans Firefox.
 - Publié sur https://aagame73.github.io/jeu-4x/ : chaque `git push` sur `main` republie le site.
 - Premier contact : le conseiller lit son annonce sous la cinématique ; la cinématique continue si l'onglet est masqué, et elle est perdue si la page se ferme pendant qu'elle joue.
 - Victoire (idée, non codée, `docs/plan-rivaux-ia.md` § 6) : 80 % des systèmes occupés, ou plus d'ennemis. Un système partagé compte pour le joueur ; un rival ne gagne pas ainsi pour l'instant.
