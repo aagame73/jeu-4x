@@ -175,9 +175,11 @@ export function createGalaxyView(container, game, callbacks) {
       sprite.material.opacity = known ? 1 : 0.45;
       sprite.scale.setScalar((known ? 3.4 : 2.2) * size * (star.id === game.selectedStarId ? 1.15 : 1));
       v.label.visible = known;
-      const rival = knownRival(star, star.rival);
+      // Monde natal ou colonie découverte : inhabitedBy n'est posé que sur ce que le joueur connaît.
+      const occupant = star.planets.find((p) => p.inhabitedBy)?.inhabitedBy;
+      const rival = knownRival(star, occupant);
       if (rival) el.style.setProperty('--empire', rival.accent);
-      el.className = 'star-label' + (star.id === game.homeId ? ' home' : '') + (star.rival ? ' rival' : '') + (star.hasRuins && star.level === 3 ? ' ruins' : '');
+      el.className = 'star-label' + (star.id === game.homeId ? ' home' : '') + (occupant ? ' rival' : '') + (star.hasRuins && star.level === 3 ? ' ruins' : '');
     }
 
     for (const v of currentViews) {

@@ -585,6 +585,11 @@ function completeAnalysis(game, ship) {
     const rival = rivalInfo(star.rival);
     parts.push(`C'est le monde natal des ${rival.label} (${rival.empire}).`);
   }
+  const settlers = new Set(star.planets.map((p) => p.inhabitedBy).filter((key) => key && key !== star.rival));
+  for (const key of settlers) {
+    const rival = rivalInfo(key);
+    parts.push(`Colonie des ${rival.label} (${rival.empire}) dans ce système.`);
+  }
   if (ruins.length) parts.push(`Ruines des Veilleurs sur ${ruins.map((p) => p.name).join(', ')} !`);
   if (velarine.length) parts.push(`Vélarine sur ${velarine.map((p) => p.name).join(', ')}.`);
   if (rich.length) parts.push(`Gisement riche sur ${rich.map((p) => p.name).join(', ')}.`);

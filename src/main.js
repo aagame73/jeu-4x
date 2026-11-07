@@ -171,7 +171,10 @@ const actions = {
   },
   onFoundColony(shipId, starId, planetIndex, tileIndex) {
     const ship = game.ships.find((s) => s.id === shipId);
-    if (!foundColony(game, ship, starId, planetIndex, tileIndex)) return;
+    if (!foundColony(game, ship, starId, planetIndex, tileIndex)) {
+      refresh(); // un rival a pu prendre la planète entre-temps
+      return;
+    }
     refresh();
     planetView.open(starId, planetIndex, null);
   },
