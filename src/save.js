@@ -2,7 +2,7 @@
 // on n'enregistre que ce qui a changé (connaissances, vaisseaux, colonies, surfaces bâties…).
 import { createGame, getSurface, currentDay, STARTING_RESOURCES } from './game.js';
 import { bindResearch, TECHS } from './research.js';
-import { applyKnownColonies, validEmpires } from './empires.js';
+import { applyKnownColonies, newContacts, validEmpires } from './empires.js';
 import { DEFAULT_SPECIES, RIVALS } from './config.js';
 
 const VERSION = 1;
@@ -64,6 +64,9 @@ export function restore(data) {
   applyKnownColonies(game);
   data.stars.forEach((level, i) => (game.stars[i].level = level));
   data.currents.forEach((known, i) => (game.currents[i].known = known));
+  // Une partie d'avant les premiers contacts : les rivaux déjà identifiés sont déjà rencontrés.
+  const tracksContacts = Array.isArray(data.empires) && data.empires.every((e) => typeof e?.met === 'boolean');
+  if (!tracksContacts) newContacts(game);
   for (const [key, tiles] of data.surfaces) {
     const [starId, planetIndex] = key.split('-').map(Number);
     const surface = getSurface(game, starId, planetIndex);

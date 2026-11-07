@@ -12,6 +12,7 @@ import { createResearchView } from './researchView.js';
 import { createSystemView } from './systemView.js';
 import { createGalaxyView } from './scene.js';
 import { createUI } from './ui.js';
+import { createContactView } from './contactView.js';
 import { createPlanetView } from './planetView.js';
 import { startConstruction, demolish, startUpgrade } from './economy.js';
 import { restore, readSlot, writeSlot, takePendingLoad, takeNewGameRequest, takeRivalsRequest, newGameAndRestart } from './save.js';
@@ -60,6 +61,7 @@ function selectNextIdleShip() {
 function refresh() {
   view.update();
   ui.render();
+  contactView.update();
   planetView.update();
   systemView.update();
   if (researchView.isOpen) researchView.render();
@@ -217,6 +219,7 @@ const actions = {
   },
 };
 const ui = createUI(document.getElementById('ui'), game, actions);
+const contactView = createContactView(game, () => refresh());
 const planetView = createPlanetView(document.getElementById('planet-view'), game, actions);
 const researchView = createResearchView(document.getElementById('research'), game, actions);
 const systemView = createSystemView(document.getElementById('system-view'), game, actions);

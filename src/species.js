@@ -60,8 +60,8 @@ export const normalizeRivals = (n) => (Number.isInteger(n) && n >= RIVALS.min &&
 
 // Identité d'un empire rival, à partir de la clé dans star.rival et planet.inhabitedBy.
 export function rivalInfo(key) {
-  const { label, empire, empireColor } = SPECIES[key];
-  return { label, empire, accent: empireColor };
+  const { label, empire, empireColor, lore } = SPECIES[key];
+  return { label, empire, accent: empireColor, lore };
 }
 
 // L'identité d'un rival reste inconnue jusqu'à l'analyse de son système (« Signaux artificiels » avant).

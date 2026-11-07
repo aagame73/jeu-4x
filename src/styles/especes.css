@@ -261,3 +261,144 @@ body.system-open .advisor-portrait {
 .sp-fleet figure { margin: 0; text-align: center; }
 .sp-fleet img { width: 96px; height: 58px; display: block; border: 1px solid color-mix(in srgb, var(--sp) 35%, transparent); border-radius: 4px; background: rgba(0, 0, 0, 0.25); }
 .sp-fleet figcaption { font-size: 11px; opacity: 0.75; }
+
+/* Premier contact : cinématique plein écran */
+.contact {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  overflow: hidden;
+  background: #02030a;
+  color: #eef3ff;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.7s ease;
+}
+.contact.visible {
+  opacity: 1;
+}
+.contact-warp {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.contact-band {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 11vh;
+  background: #000;
+  transition: transform 1s ease;
+}
+.contact-band.top {
+  top: 0;
+  transform: translateY(-100%);
+}
+.contact-band.bottom {
+  bottom: 0;
+  transform: translateY(100%);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0 3vw;
+  font-size: 13px;
+  color: #8f9bb8;
+}
+.contact.visible .contact-band {
+  transform: none;
+}
+.contact-stage {
+  position: absolute;
+  inset: 11vh 6vw;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5vw;
+}
+.contact-portrait {
+  flex: none;
+  width: min(62vh, 44vw);
+  height: min(62vh, 44vw);
+  border-radius: 50%;
+  border: 2px solid var(--empire);
+  box-shadow: 0 0 70px color-mix(in srgb, var(--empire) 60%, transparent);
+  opacity: 0;
+  transform: scale(0.55);
+}
+.contact.visible .contact-portrait {
+  animation: contact-arrive 2s 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+.contact-text {
+  max-width: 34vw;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  opacity: 0;
+}
+.contact.visible .contact-text {
+  animation: contact-text 1.2s 2s ease forwards;
+}
+.contact-kicker {
+  font-size: 14px;
+  letter-spacing: 0.35em;
+  text-transform: uppercase;
+  color: #b9c4dd;
+}
+.contact-text strong {
+  font-family: Orbitron, sans-serif;
+  font-size: clamp(26px, 4vw, 54px);
+  line-height: 1.1;
+  color: var(--empire);
+  text-shadow: 0 0 24px color-mix(in srgb, var(--empire) 70%, transparent);
+}
+.contact-species {
+  font-size: clamp(16px, 1.7vw, 22px);
+}
+.contact-text p {
+  margin: 8px 0 0;
+  font-size: clamp(14px, 1.3vw, 18px);
+  line-height: 1.5;
+  color: #c8d1e6;
+}
+@keyframes contact-arrive {
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@keyframes contact-text {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (max-width: 760px) {
+  .contact-stage {
+    flex-direction: column;
+    gap: 3vh;
+    text-align: center;
+  }
+  .contact-portrait {
+    width: min(38vh, 78vw);
+    height: min(38vh, 78vw);
+  }
+  .contact-text {
+    max-width: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .contact,
+  .contact-band {
+    transition: none;
+  }
+  .contact.visible .contact-portrait,
+  .contact.visible .contact-text {
+    animation-duration: 0.01s;
+    animation-delay: 0s;
+  }
+}
