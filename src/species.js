@@ -14,12 +14,14 @@ export const currentSpecies = () => current;
 export const speciesBonus = (key) => current.bonuses[key] ?? 1;
 
 // 'favored', 'hostile' ou null pour une planète (une lune habitable compte aussi comme 'lune').
-export function speciesHabitat(planet) {
+export function habitatFor(species, planet) {
   const types = [planet.type, ...(planet.moonOf !== undefined ? ['lune'] : [])];
-  if (types.some((t) => current.habitat.favored.includes(t))) return 'favored';
-  if (types.some((t) => current.habitat.hostile.includes(t))) return 'hostile';
+  if (types.some((t) => species.habitat.favored.includes(t))) return 'favored';
+  if (types.some((t) => species.habitat.hostile.includes(t))) return 'hostile';
   return null;
 }
+
+export const speciesHabitat = (planet) => habitatFor(current, planet);
 
 // Les cases de ces terrains produisent +25 % pour l'espèce.
 export const isFavoredTerrain = (terrain) => current.favoredTerrains.includes(terrain);
