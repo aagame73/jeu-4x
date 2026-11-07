@@ -3,6 +3,7 @@
 import { RIVAL_AI, SPECIES } from './config.js';
 import { startRelation, startStocks } from './diplomacy.js';
 import { starDistance } from './galaxy.js';
+import { TECHS } from './research.js';
 import { createRng } from './rng.js';
 import { habitatFor } from './species.js';
 
@@ -20,6 +21,9 @@ export function createEmpires(stars) {
         nextTry: 0,
         met: false,
         relation: startRelation(star.rival),
+        extraTechs: [], // technologies reçues du joueur
+        nextTechTrade: 0,
+        nextMapTrade: 0,
       };
       empire.stocks = startStocks(empire);
       return empire;
@@ -110,7 +114,14 @@ export function validEmpires(game, saved) {
     return empire.colonies.every((c) => c && typeof c.known === 'boolean' && game.stars[c.starId]?.planets[c.planetIndex]?.size);
   });
   if (!fine) return null;
-  return saved.map((empire) => ({ ...empire, nextTry: number(empire.nextTry) ? empire.nextTry : 0, met: empire.met === true, relation: validRelation(empire), stocks: validStocks(empire) }));
+  return saved.map((empire) => ({
+    ...empire,
+    nextTry: number(empire.nextTry) ? empire.nextTry : 0, met: empire.met === true, relation: validRelation(empire),
+    stocks: validStocks(empire),
+    extraTechs: Array.isArray(empire.extraTechs) ? empire.extraTechs.filter((key) => TECHS[key]) : [],
+    nextTechTrade: number(empire.nextTechTrade) ? empire.nextTechTrade : 0,
+    nextMapTrade: number(empire.nextMapTrade) ? empire.nextMapTrade : 0,
+  }));
 }
 
 // Colonies d'un système découvertes par un vaisseau du joueur qui s'y trouve. Renvoie les nouvelles.

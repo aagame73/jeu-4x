@@ -1,6 +1,6 @@
 # Plan : diplomatie et échanges (première version)
 
-État : **plan validé le 07/11/2026.** Étape 1 faite. Étape 2 codée et testée, en attente de validation.
+État : **plan validé le 07/11/2026.** Étapes 1 et 2 faites. Étape 3 codée et testée, en attente de validation.
 
 ## 1. Point de départ
 
@@ -99,4 +99,4 @@ Simulation `docs/outils/sim-diplomatie.mjs` : 7 rivaux, 4 graines, sans joueur, 
 | Thrennes | 2000 | 17 | 2550 | 1020 | 85 | 12 |
 | Ashkari | 2000 | 17 | 2550 | 1020 | 85 | 20 |
 
-**À revoir à l'étape 3** : les stocks atteignent vite leur plafond, et la Vélarine est trop abondante pour une ressource « rare et disputée » (le joueur démarre à 0). Le plafond sera réglé avec les prix.
+**Réglé à l'étape 3** : le plafond de Vélarine passe de 5 à 1 par colonie et son gain de 0,01 à 0,002 par jour. Ce tableau montre les valeurs d'avant ce réglage.

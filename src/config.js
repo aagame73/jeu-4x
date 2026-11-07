@@ -175,12 +175,28 @@ export const DIPLOMACY = {
   digReaction: { ondesiens: -6, orrhaides: -6, synodes: 4, liseurs: 4 }, // par artefact fouillé
   // Stocks simulés des rivaux, par colonie : gain par jour (× bonus de l'espèce) et plafond.
   // Les artefacts ne viennent que des colonies sur des ruines. L'énergie ne se transporte pas.
-  stockPerDay: { minerais: 0.5, alliages: 0.2, biomasse: 0.4, eau: 0.4, deuterium: 0.3, velarine: 0.01, artefacts: 0.005 },
-  stockCap: { minerais: 150, alliages: 60, biomasse: 120, eau: 120, deuterium: 80, velarine: 5, artefacts: 2 },
+  stockPerDay: { minerais: 0.5, alliages: 0.2, biomasse: 0.4, eau: 0.4, deuterium: 0.3, velarine: 0.002, artefacts: 0.005 },
+  stockCap: { minerais: 150, alliages: 60, biomasse: 120, eau: 120, deuterium: 80, velarine: 1, artefacts: 2 },
   stockStart: 0.25, // part du plafond possédée au départ
   // Technologies simulées : nombre connu = puissance × techPerPower, palier ouvert selon la puissance.
   techPerPower: 0.5,
   techTierPower: [0, 10, 30, 60], // puissance requise pour les paliers 1 à 4
+  // Échanges. Valeur d'une unité de matière, modulée par la rareté chez l'empire (× 0,5 à × 1,5).
+  values: { minerais: 1, alliages: 3, biomasse: 1, eau: 1, deuterium: 2, velarine: 25, artefacts: 40 },
+  techValue: 2, // valeur d'une technologie = coût × techValue
+  mapValuePerColony: 15, // valeur d'une carte, par colonie révélée
+  // L'empire accepte si ce qu'il reçoit vaut au moins ce qu'il donne × ce facteur ; hostile : il refuse tout.
+  margin: { allie: 0.9, amical: 1, neutre: 1.2, mefiant: 1.6 },
+  tradeFactor: { ondesiens: 0.9, ashkari: 0.9, thrennes: 1.1, keltirr: 1.1 }, // ouverture au commerce selon l'espèce
+  techDelay: 200, // jours entre deux échanges de technologies avec un même empire
+  mapDelay: 500, // jours entre deux ventes de carte à un même empire
+  soldTechPower: 1, // puissance gagnée par un empire qui reçoit une technologie
+  closedTier: 4, // ce palier ne s'échange pas
+  tradeGainPerValue: 0.01, // note gagnée auprès du partenaire
+  tradeGainMax: 8,
+  rivalPenaltyPerValue: 0.02, // note perdue auprès des rivaux du partenaire
+  rivalPenaltyMin: 1,
+  rivalPenaltyMax: 15,
   techBranches: {
     vaskhar: ['industrie', 'structure'],
     ondesiens: ['vie', 'energie'],
