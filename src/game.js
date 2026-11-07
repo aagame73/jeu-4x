@@ -15,7 +15,7 @@ import { generateSurface, hexDistance } from './surface.js';
 import { tickColony, colonyReport, SHIPYARD, canAfford } from './economy.js';
 import { TECHS, hasTech, bindResearch, markTech, techCost } from './research.js';
 import { SPECIES, DEFAULT_SPECIES, RIVALS } from './config.js';
-import { tickDiplomacy } from './diplomacy.js';
+import { applyDeal, evaluateDeal, tickDiplomacy } from './diplomacy.js';
 import { createEmpires, tickEmpires, revealEmpires, rivalColonyAt, newContacts } from './empires.js';
 import { bindSpecies, speciesBonus, speciesHabitat, hostilePenalty, currentSpecies, normalizeRivals, rivalInfo } from './species.js';
 
@@ -529,6 +529,27 @@ export function tick(game, days) {
     }
   }
   return changed;
+}
+
+// --- Échanges ---------------------------------------------------------------------------
+
+// Propose un échange à un empire ; s'il accepte, il prend effet. Renvoie la réponse de l'empire.
+export function signDeal(game, empire, offer) {
+  const answer = evaluateDeal(game, empire, offer);
+  if (!answer.ok) return answer;
+  for (const key of applyDeal(game, empire, offer, answer)) {
+    const r = game.research;
+    if (r.current === key) {
+      r.bank = (r.bank ?? 0) + r.progress; // l'effort déjà fourni n'est pas perdu
+      r.current = null;
+      r.progress = 0;
+    }
+    markTech(r, key);
+    applyTech(game, key);
+    addLog(game, `Technologie obtenue par échange : ${TECHS[key].label}. ${TECHS[key].unlocks}`, 'discovery');
+  }
+  addLog(game, `Échange conclu avec les ${rivalInfo(empire.species).label}.`, 'info');
+  return answer;
 }
 
 // --- Exploration -----------------------------------------------------------------------

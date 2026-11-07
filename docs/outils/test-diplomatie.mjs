@@ -169,7 +169,7 @@ function run(step, days = 2000, withColony = true) {
 
 // Étape 2 : technologies des rivaux.
 {
-  const empire = (species, power) => ({ species, power });
+  const empire = (species, power) => ({ species, power, extraTechs: [] });
   check(D.rivalTechs(empire('vaskhar', 0)).length === 0, 'puissance nulle : aucune technologie');
   let badReq = 0;
   let badTier = 0;
@@ -196,6 +196,150 @@ function run(step, days = 2000, withColony = true) {
   check(artefacts === 0, "pas de technologie à artefacts");
   const has = (species, power, branch) => D.rivalTechs(empire(species, power)).filter((k) => TECHS[k].branch === branch).length;
   check(has('thrennes', 25, 'armement') >= has('ondesiens', 25, 'armement'), 'le style oriente les technologies (armement : Thrennes au moins autant qu\'Ondésiens)');
+}
+
+// Étape 3 : échanges.
+function trader(species = 'vaskhar', partner = 'ondesiens') {
+  const game = G.createGame(42, species, 7);
+  const empire = game.empires.find((e) => e.species === partner);
+  empire.met = true;
+  empire.relation = 30; // amical
+  empire.stocks.biomasse = 100;
+  game.resources.minerais = 1000;
+  return { game, empire };
+}
+const deal = (give, get) => ({ give: { resources: {}, ...give }, get: { resources: {}, ...get } });
+{
+  const { game, empire } = trader();
+  const stockBefore = empire.stocks.biomasse;
+  const mineBefore = game.resources.minerais;
+  const bioBefore = game.resources.biomasse;
+  const good = deal({ resources: { minerais: 200 } }, { resources: { biomasse: 10 } });
+  const answer = G.signDeal(game, empire, good);
+  check(answer.ok, 'offre rentable : acceptée');
+  check(game.resources.minerais === mineBefore - 200 && game.resources.biomasse === bioBefore + 10, 'les matières changent de main');
+  check(empire.stocks.biomasse === stockBefore - 10, "le stock de l'empire baisse d'autant");
+
+  const before = JSON.stringify(game.resources);
+  check(G.signDeal(game, empire, deal({}, { resources: { biomasse: 1 } })).reason === 'nothing-free', 'demander sans rien donner : toujours refusé');
+  check(G.signDeal(game, empire, deal({ resources: { minerais: 1 } }, {})).reason === 'nothing-free', 'donner sans rien recevoir : refusé aussi');
+  check(G.signDeal(game, empire, deal({ resources: { minerais: 1 } }, { resources: { biomasse: 90 } })).reason === 'unbalanced', 'offre trop faible : refusée');
+  check(G.signDeal(game, empire, deal({ resources: { minerais: 2000 } }, { resources: { biomasse: 1 } })).reason === 'player-short', 'le joueur ne peut pas donner ce qu\'il n\'a pas');
+  check(G.signDeal(game, empire, deal({ resources: { minerais: 800 } }, { resources: { biomasse: 5000 } })).reason === 'empire-short', "l'empire ne peut pas donner ce qu'il n'a pas");
+  for (const bad of [{ minerais: -5 }, { minerais: 1.5 }, { energie: 5 }]) {
+    check(G.signDeal(game, empire, deal({ resources: bad }, { resources: { biomasse: 1 } })).reason === 'invalid', `quantité ou matière invalide refusée : ${JSON.stringify(bad)}`);
+  }
+  check(JSON.stringify(game.resources) === before, 'une offre refusée ne change rien');
+}
+{
+  const { game, empire } = trader();
+  const offer = deal({ resources: { minerais: 100 } }, { resources: { biomasse: 10 } });
+  empire.met = false;
+  check(G.signDeal(game, empire, offer).reason === 'unknown', 'empire non rencontré : pas de négociation');
+  empire.met = true;
+  empire.relation = -80;
+  check(G.signDeal(game, empire, offer).reason === 'hostile', 'empire hostile : refuse tout');
+  const small = deal({ resources: { minerais: 10 } }, { resources: { biomasse: 17 } });
+  empire.relation = 70;
+  const friendly = D.evaluateDeal(game, empire, small).ok;
+  empire.relation = -40;
+  const wary = D.evaluateDeal(game, empire, small).ok;
+  check(friendly && !wary, 'la même offre passe auprès d\'un allié, pas d\'un empire méfiant');
+}
+{
+  const { game, empire } = trader();
+  empire.stocks.minerais = 0;
+  const poor = D.evaluateDeal(game, empire, deal({ resources: { minerais: 10 } }, { resources: { biomasse: 1 } })).received;
+  empire.stocks.minerais = 1e9;
+  const rich = D.evaluateDeal(game, empire, deal({ resources: { minerais: 10 } }, { resources: { biomasse: 1 } })).received;
+  check(poor > rich, 'une matière rare chez l\'empire vaut plus pour lui');
+}
+{
+  const { game, empire } = trader();
+  const offer = deal({ resources: { minerais: 20 } }, { resources: { biomasse: 60 } });
+  check(D.evaluateDeal(game, empire, offer).reason === 'unbalanced', 'contre-offre : offre de départ trop faible');
+  const counter = D.counterOffer(game, empire, offer);
+  check(counter && counter.get.resources.biomasse < 60 && D.evaluateDeal(game, empire, counter).ok, `contre-offre acceptable (${counter?.get.resources.biomasse} au lieu de 60)`);
+  check(counter.give === offer.give, 'la contre-offre ne demande pas plus au joueur');
+  check(D.counterOffer(game, empire, deal({ resources: { minerais: 1 } }, { resources: { biomasse: 500 } })) === null || D.evaluateDeal(game, empire, D.counterOffer(game, empire, deal({ resources: { minerais: 1 } }, { resources: { biomasse: 500 } }))).reason !== 'unbalanced', 'contre-offre impossible : aucune, ou valable');
+}
+// Note auprès des rivaux du partenaire.
+{
+  const { game, empire } = trader('thrennes', 'ondesiens');
+  const rival = game.empires.find((e) => e.species === 'vaskhar');
+  const neutral = game.empires.find((e) => e.species !== 'vaskhar' && e.species !== 'ondesiens' && !D.rivalsOf('ondesiens').includes(e.species));
+  rival.met = false;
+  const b = { partner: empire.relation, rival: rival.relation, neutral: neutral.relation };
+  const answer = G.signDeal(game, empire, deal({ resources: { minerais: 300 } }, { resources: { biomasse: 10 } }));
+  check(answer.ok && empire.relation > b.partner, 'échange : note du partenaire en hausse');
+  check(rival.relation < b.rival, 'échange : note des rivaux du partenaire en baisse, même non rencontrés');
+  check(neutral.relation === b.neutral, 'échange : les autres ne bougent pas');
+  check(b.rival - rival.relation >= DIPLOMACY.rivalPenaltyMin && b.rival - rival.relation <= DIPLOMACY.rivalPenaltyMax, 'la baisse reste dans ses bornes');
+}
+// Technologies.
+{
+  const { game, empire } = trader();
+  empire.power = 100;
+  const known = D.rivalTechs(empire);
+  const free = known.find((k) => TECHS[k].tier < DIPLOMACY.closedTier && TECHS[k].requires.every((r) => game.research.done.includes(r)));
+  game.resources.minerais = 5000;
+  empire.stocks.minerais = 0;
+  const got = G.signDeal(game, empire, deal({ resources: { minerais: 5000 } }, { techs: [free] }));
+  check(got.ok && game.research.done.includes(free), `technologie reçue : ${free}`);
+  check(game.log.some((l) => JSON.stringify(l).includes('obtenue par échange')), 'annoncée au journal');
+  game.resources.minerais = 100;
+  check(G.signDeal(game, empire, deal({ resources: { minerais: 1 } }, { techs: [free] })).reason === 'tech-take', 'technologie déjà connue : refusée');
+  const other = known.find((k) => k !== free && TECHS[k].tier < DIPLOMACY.closedTier && TECHS[k].requires.every((r) => game.research.done.includes(r)));
+  game.resources.minerais = 5000;
+  check(G.signDeal(game, empire, deal({ resources: { minerais: 5000 } }, { techs: [other] })).reason === 'tech-delay', 'délai entre deux échanges de technologies');
+  game.time += DIPLOMACY.techDelay + 1;
+  const tier4 = Object.keys(TECHS).find((k) => TECHS[k].tier === DIPLOMACY.closedTier && !TECHS[k].artefacts);
+  check(G.signDeal(game, empire, deal({ resources: { minerais: 1000 } }, { techs: [tier4] })).reason === 'tech-closed', 'le palier 4 ne s\'achète pas');
+  const blocked = Object.keys(TECHS).find((k) => TECHS[k].tier < DIPLOMACY.closedTier && !TECHS[k].artefacts && known.includes(k) && TECHS[k].requires.some((r) => !game.research.done.includes(r)));
+  check(!blocked || G.signDeal(game, empire, deal({ resources: { minerais: 1000 } }, { techs: [blocked] })).reason === 'tech-take', 'il faut les prérequis pour acheter');
+
+  // Vente au rival.
+  const buyer = trader();
+  buyer.empire.power = 0;
+  const key = Object.keys(TECHS).find((k) => TECHS[k].tier === 1 && !TECHS[k].requires.length && !TECHS[k].artefacts);
+  check(G.signDeal(buyer.game, buyer.empire, deal({ techs: [key] }, { resources: { biomasse: 1 } })).reason === 'tech-give', 'on ne vend pas une technologie qu\'on n\'a pas');
+  buyer.game.research.done.push(key);
+  const p = buyer.empire.power;
+  const sold = G.signDeal(buyer.game, buyer.empire, deal({ techs: [key] }, { resources: { biomasse: 1 } }));
+  check(sold.ok && D.rivalTechs(buyer.empire).includes(key) && buyer.empire.power > p, 'technologie vendue : connue de l\'empire, puissance en hausse');
+}
+// Cartes.
+{
+  const { game, empire } = trader();
+  const E = await imp('empires.js');
+  for (let d = 0; d < 800; d++) {
+    game.time += 1;
+    E.tickEmpires(game, 1);
+  }
+  const hidden = empire.colonies.slice(1);
+  check(hidden.length > 0 && hidden.every((c) => !game.stars[c.starId].planets[c.planetIndex].inhabitedBy), 'cartes : colonies cachées avant');
+  game.resources.minerais = 3000;
+  const bought = G.signDeal(game, empire, deal({ resources: { minerais: 3000 } }, { map: true }));
+  check(bought.ok && hidden.every((c) => c.known && game.stars[c.starId].planets[c.planetIndex].inhabitedBy && game.stars[c.starId].level >= 2), 'carte achetée : colonies révélées');
+  game.resources.minerais = 3000;
+  check(G.signDeal(game, empire, deal({ resources: { minerais: 100 } }, { map: true })).reason === 'map-take', 'rien de nouveau à révéler : refusé');
+  check(game.empires.filter((e) => e !== empire).every((e) => e.colonies.slice(1).every((c) => !c.known)), 'les autres empires restent cachés');
+}
+// Sauvegarde des échanges.
+{
+  const { game, empire } = trader();
+  empire.extraTechs = ['cartographie'];
+  empire.nextTechTrade = 321;
+  empire.nextMapTrade = 654;
+  const back = restore(copy(serialize(game))).empires.find((e) => e.species === empire.species);
+  check(back.extraTechs.join() === 'cartographie' && back.nextTechTrade === 321 && back.nextMapTrade === 654, 'échanges conservés à la sauvegarde');
+  const bad = copy(serialize(game));
+  bad.empires.forEach((e) => {
+    e.extraTechs = ['inconnue', 3];
+    e.nextTechTrade = 'x';
+  });
+  const fixed = restore(bad).empires[0];
+  check(fixed.extraTechs.length === 0 && fixed.nextTechTrade === 0, 'données d\'échange invalides : nettoyées');
 }
 
 // Le jeu complet appelle bien les relations.
