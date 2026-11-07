@@ -157,6 +157,24 @@ export const RIVALS = { min: 3, max: 7, default: 4 };
 // Rivaux du profil neutre : les 4 premiers sont ceux des parties d'avant le choix d'espèce.
 export const NEUTRAL_RIVALS = ['vaskhar', 'ondesiens', 'keltirr', 'synodes', 'orrhaides', 'thrennes', 'liseurs'];
 
+// Diplomatie (diplomacy.js). Note de -100 à 100 envers le joueur ; attitudes de la plus haute à la plus basse.
+export const DIPLOMACY = {
+  attitudes: [
+    { key: 'allie', label: 'Allié', min: 60 },
+    { key: 'amical', label: 'Amical', min: 20 },
+    { key: 'neutre', label: 'Neutre', min: -19 },
+    { key: 'mefiant', label: 'Méfiant', min: -59 },
+    { key: 'hostile', label: 'Hostile', min: -100 },
+  ],
+  rivalries: [['vaskhar', 'ondesiens'], ['keltirr', 'orrhaides'], ['synodes', 'thrennes'], ['liseurs', 'vaskhar'], ['ashkari', 'keltirr']],
+  startRelation: { ondesiens: 20, ashkari: 15, synodes: 5, liseurs: 5, orrhaides: 0, vaskhar: 0, keltirr: -15, thrennes: -20 },
+  returnPerDay: 0.003, // part de l'écart à la note de départ rattrapée chaque jour
+  proximityRange: 30, // al : une colonie du joueur à cette distance d'un empire le gêne
+  proximityPerColony: 0.02, // points perdus par jour et par colonie proche
+  proximityMax: 0.1,
+  digReaction: { ondesiens: -6, orrhaides: -6, synodes: 4, liseurs: 4 }, // par artefact fouillé
+};
+
 // Expansion des empires rivaux (empires.js). Un niveau de difficulté pourra agir sur ces réglages.
 // Une colonie coûte baseCost points × (1 + costGrowth par colonie déjà fondée) ; un empire gagne growth points par jour.
 // power : monte chaque jour, augmente la portée (al) et autorise les milieux hostiles. deposits : poids des gisements.
