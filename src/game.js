@@ -15,7 +15,7 @@ import { generateSurface, hexDistance } from './surface.js';
 import { tickColony, colonyReport, SHIPYARD, canAfford } from './economy.js';
 import { TECHS, hasTech, bindResearch, markTech, techCost } from './research.js';
 import { SPECIES, DEFAULT_SPECIES, RIVALS } from './config.js';
-import { tickRelations } from './diplomacy.js';
+import { tickDiplomacy } from './diplomacy.js';
 import { createEmpires, tickEmpires, revealEmpires, rivalColonyAt, newContacts } from './empires.js';
 import { bindSpecies, speciesBonus, speciesHabitat, hostilePenalty, currentSpecies, normalizeRivals, rivalInfo } from './species.js';
 
@@ -511,7 +511,7 @@ export function tick(game, days) {
     // Un vaisseau du joueur sur place voit la colonie s'installer.
     if (game.ships.some((s) => s.starId === colony.starId && s.state !== 'travel')) changed = discoverRivals(game, colony.starId) || changed;
   }
-  tickRelations(game, days);
+  tickDiplomacy(game, days);
   const logLength = game.log.length;
   tickResearch(game, days);
   if (game.log.length !== logLength) changed = true;

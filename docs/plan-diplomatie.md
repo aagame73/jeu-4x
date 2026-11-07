@@ -1,6 +1,6 @@
 # Plan : diplomatie et échanges (première version)
 
-État : **plan validé le 07/11/2026.** Étape 1 faite. Étape 2 en cours.
+État : **plan validé le 07/11/2026.** Étape 1 faite. Étape 2 codée et testée, en attente de validation.
 
 ## 1. Point de départ
 
@@ -83,3 +83,20 @@
 7. **Initiative et dialogues** : propositions, expiration, jamais sans premier contact, textes par espèce. *Test* : Node, navigateur et relecture des textes.
 
 Puis relecteur et commit après validation de chaque étape. Publication sur le site seulement à ta demande.
+
+## 6. Résultats de l'étape 2 (07/11/2026)
+
+Simulation `docs/outils/sim-diplomatie.mjs` : 7 rivaux, 4 graines, sans joueur, valeurs moyennes.
+
+| Espèce | Jour | Colonies | Minerais | Alliages | Vélarine | Technologies |
+|---|---|---|---|---|---|---|
+| Vaskhar | 200 | 5 | 424 | 144 | 8 | 1 |
+| Vaskhar | 2000 | 21 | 3150 | 1260 | 105 | 10 |
+| Vaskhar | 5000 | 35 | 5250 | 2100 | 175 | 24 |
+| Synodes | 200 | 3 | 203 | 98 | 5 | 2 |
+| Synodes | 2000 | 14 | 2100 | 840 | 70 | 24 |
+| Synodes | 5000 | 24 | 3600 | 1440 | 120 | 41 |
+| Thrennes | 2000 | 17 | 2550 | 1020 | 85 | 12 |
+| Ashkari | 2000 | 17 | 2550 | 1020 | 85 | 20 |
+
+**À revoir à l'étape 3** : les stocks atteignent vite leur plafond, et la Vélarine est trop abondante pour une ressource « rare et disputée » (le joueur démarre à 0). Le plafond sera réglé avec les prix.

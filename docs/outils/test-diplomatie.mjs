@@ -7,6 +7,7 @@ const G = await imp('game.js');
 const D = await imp('diplomacy.js');
 const S = await imp('species.js');
 const { DIPLOMACY, SPECIES } = await imp('config.js');
+const { TECHS } = await imp('research.js');
 const { restore, serialize } = await imp('save.js');
 
 let fails = 0;
@@ -48,7 +49,7 @@ const near = (a, b, e = 1e-9) => Math.abs(a - b) < e;
   D.reactToDig(game);
   for (let d = 0; d < 300; d++) {
     game.time += 1;
-    D.tickRelations(game, 1);
+    D.tickDiplomacy(game, 1);
   }
   check(e.relation === before, 'un empire non rencontré ne réagit pas');
   game.colonies.length = 0;
@@ -74,7 +75,7 @@ function run(step, days = 2000, withColony = true) {
   if (withColony) game.colonies.push({ starId: e.homeId, planetIndex: 0 });
   for (let t = 0; t < days; t += step) {
     game.time += step;
-    D.tickRelations(game, step);
+    D.tickDiplomacy(game, step);
   }
   return e;
 }
@@ -104,6 +105,97 @@ function run(step, days = 2000, withColony = true) {
     const r = restore(data).empires[0].relation;
     check(Number.isFinite(r) && r >= -100 && r <= 100, `note invalide (${String(bad)}) : remplacée (${r})`);
   }
+}
+
+// Étape 2 : stocks des rivaux.
+{
+  const MATERIALS = Object.keys(DIPLOMACY.stockCap);
+  check(!MATERIALS.includes('energie'), "l'énergie ne fait pas partie des stocks");
+  let negative = 0;
+  let overCap = 0;
+  let grew = true;
+  let total = 0;
+  const E = await imp('empires.js');
+  for (const seed of [1, 42, 77]) {
+    const game = G.createGame(seed, 'vaskhar', 7);
+    const first = copy(game.empires.map((e) => e.stocks));
+    for (let d = 0; d < 5000; d++) {
+      game.time += 1;
+      E.tickEmpires(game, 1);
+      D.tickDiplomacy(game, 1);
+      for (const e of game.empires) {
+        for (const res of MATERIALS) {
+          if (!(e.stocks[res] >= 0)) negative++;
+          if (e.stocks[res] > DIPLOMACY.stockCap[res] * e.colonies.length + 1e-9) overCap++;
+          total++;
+        }
+      }
+    }
+    game.empires.forEach((e, i) => {
+      if (!(e.stocks.minerais > first[i].minerais)) grew = false;
+    });
+  }
+  check(total > 0 && negative === 0, 'stocks jamais négatifs sur 5 000 jours');
+  check(overCap === 0, 'stocks jamais au-dessus du plafond');
+  check(grew, 'les stocks montent avec le temps');
+}
+{
+  const game = G.createGame(42, 'ondesiens', 7);
+  const pick = (k) => game.empires.find((e) => e.species === k);
+  const a = pick('vaskhar');
+  const b = pick('synodes');
+  a.stocks.minerais = 0;
+  b.stocks.minerais = 0;
+  game.time += 1;
+  D.tickDiplomacy(game, 1);
+  check(a.stocks.minerais > b.stocks.minerais, `bonus d'espèce appliqué : Vaskhar plus riches en minerais que Synodes`);
+  check(game.empires.filter((e) => !e.colonies.some((c) => game.stars[c.starId].planets[c.planetIndex].ruins)).every((e) => e.stocks.artefacts === 0), 'pas de ruines, pas d\'artefacts');
+}
+{
+  const game = G.createGame(42, 'vaskhar', 5);
+  const noStocks = copy(serialize(game));
+  noStocks.empires.forEach((e) => delete e.stocks);
+  const r = restore(noStocks);
+  check(r.empires.every((e) => Number.isFinite(e.stocks.minerais) && e.stocks.minerais > 0), 'sauvegarde sans stocks : stocks de départ');
+  for (const bad of ['x', -5, null]) {
+    const data = copy(serialize(game));
+    data.empires[0].stocks.minerais = bad;
+    const v = restore(data).empires[0].stocks.minerais;
+    check(Number.isFinite(v) && v >= 0, `stock invalide (${String(bad)}) : remplacé`);
+  }
+  game.empires[0].stocks.alliages = 12.5;
+  check(restore(copy(serialize(game))).empires[0].stocks.alliages === 12.5, 'les stocks survivent à la sauvegarde');
+}
+
+// Étape 2 : technologies des rivaux.
+{
+  const empire = (species, power) => ({ species, power });
+  check(D.rivalTechs(empire('vaskhar', 0)).length === 0, 'puissance nulle : aucune technologie');
+  let badReq = 0;
+  let badTier = 0;
+  let notMono = 0;
+  let artefacts = 0;
+  for (const species of S.playableSpecies()) {
+    let previous = new Set();
+    for (let power = 0; power <= 150; power += 1) {
+      const list = D.rivalTechs(empire(species, power));
+      const set = new Set(list);
+      const cap = DIPLOMACY.techTierPower.filter((p) => power >= p).length;
+      for (const k of list) {
+        if (TECHS[k].requires.some((r) => !set.has(r))) badReq++;
+        if (TECHS[k].tier > cap) badTier++;
+        if (TECHS[k].artefacts) artefacts++;
+      }
+      if ([...previous].some((k) => !set.has(k))) notMono++;
+      previous = set;
+    }
+  }
+  check(badReq === 0, 'chaque technologie a ses prérequis');
+  check(badTier === 0, 'palier toujours autorisé par la puissance');
+  check(notMono === 0, 'une technologie connue le reste quand la puissance monte');
+  check(artefacts === 0, "pas de technologie à artefacts");
+  const has = (species, power, branch) => D.rivalTechs(empire(species, power)).filter((k) => TECHS[k].branch === branch).length;
+  check(has('thrennes', 25, 'armement') >= has('ondesiens', 25, 'armement'), 'le style oriente les technologies (armement : Thrennes au moins autant qu\'Ondésiens)');
 }
 
 // Le jeu complet appelle bien les relations.

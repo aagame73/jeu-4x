@@ -173,6 +173,24 @@ export const DIPLOMACY = {
   proximityPerColony: 0.02, // points perdus par jour et par colonie proche
   proximityMax: 0.1,
   digReaction: { ondesiens: -6, orrhaides: -6, synodes: 4, liseurs: 4 }, // par artefact fouillé
+  // Stocks simulés des rivaux, par colonie : gain par jour (× bonus de l'espèce) et plafond.
+  // Les artefacts ne viennent que des colonies sur des ruines. L'énergie ne se transporte pas.
+  stockPerDay: { minerais: 0.5, alliages: 0.2, biomasse: 0.4, eau: 0.4, deuterium: 0.3, velarine: 0.01, artefacts: 0.005 },
+  stockCap: { minerais: 150, alliages: 60, biomasse: 120, eau: 120, deuterium: 80, velarine: 5, artefacts: 2 },
+  stockStart: 0.25, // part du plafond possédée au départ
+  // Technologies simulées : nombre connu = puissance × techPerPower, palier ouvert selon la puissance.
+  techPerPower: 0.5,
+  techTierPower: [0, 10, 30, 60], // puissance requise pour les paliers 1 à 4
+  techBranches: {
+    vaskhar: ['industrie', 'structure'],
+    ondesiens: ['vie', 'energie'],
+    keltirr: ['propulsion', 'armement'],
+    synodes: ['energie', 'vie', 'industrie'],
+    orrhaides: ['energie', 'propulsion'],
+    thrennes: ['armement', 'structure'],
+    liseurs: ['veilleurs', 'propulsion'],
+    ashkari: ['propulsion', 'industrie'],
+  },
 };
 
 // Expansion des empires rivaux (empires.js). Un niveau de difficulté pourra agir sur ces réglages.
