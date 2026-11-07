@@ -163,7 +163,14 @@ const coloniesOf = (game) => game.empires.flatMap((e) => e.colonies.map((c) => `
   check(!!back.stars[target.starId].planets[target.planetIndex].inhabitedBy, 'colonie découverte toujours connue après rechargement');
   const other = hidden.find((c) => c.starId !== target.starId);
   check(!!other && !back.stars[other.starId].planets[other.planetIndex].inhabitedBy, 'les autres restent cachées après rechargement');
-  game.stars[target.starId].level = 3;
+  const analyst = { id: 93, kind: 'sonde', starId: target.starId, state: 'idle', age: 0, name: 'Sonde analyse' };
+  game.ships.push(analyst);
+  game.stars[target.starId].level = 2;
+  G.startAnalysis(game, analyst);
+  for (let d = 0; d < 60 && game.stars[target.starId].level < 3; d++) G.tick(game, 1);
+  const owner = E.rivalColonyAt(game, target.starId, target.planetIndex).empire.species;
+  check(game.log.some((l) => JSON.stringify(l).includes(`Colonie des ${SPECIES[owner].label} (${SPECIES[owner].empire})`)), "l'analyse nomme l'empire de la colonie");
+  check(S.knownRival(game.stars[target.starId], planet.inhabitedBy)?.empire === SPECIES[owner].empire, 'identité connue une fois le système analysé');
   const colonist = { id: 91, kind: 'colonie', starId: target.starId, state: 'idle', age: 0, name: 'Colonie test' };
   game.ships.push(colonist);
   check(/habitée/.test(G.foundingProblem(game, colonist, target.starId, target.planetIndex) ?? ''), 'planète prise : fondation refusée');

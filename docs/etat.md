@@ -11,7 +11,7 @@
 - Outils : hook de fin de réponse qui lance `npm run build` (`.claude/settings.json`), agent `relecteur` (`.claude/agents/relecteur.md`), serveur lancé au démarrage de Windows.
 
 ## En cours
-- IA des rivaux (`docs/plan-rivaux-ia.md`) : étapes 1 et 2 codées et testées, non commitées, en attente de validation.
+- IA des rivaux (`docs/plan-rivaux-ia.md`) : étapes 1 à 3 commitées. Reste l'étape 4 (premier contact).
 
 ## Prochaine étape
 - Première version de l'IA : les rivaux s'étendent, sans combat (plan `docs/plan-rivaux-ia.md`, validé). Ensuite, dans l'ordre : diplomatie, commerce, combat.

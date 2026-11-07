@@ -1,6 +1,6 @@
 # Plan : comportement des rivaux (première version de l'IA)
 
-État : **plan validé le 07/11/2026.** Étapes 1 et 2 codées et testées (résultats au § 5), non commitées. Étapes 3 et 4 à venir.
+État : **plan validé le 07/11/2026.** Étapes 1 et 2 faites (résultats au § 5). Étape 3 faite. Étape 4 à venir.
 
 ## 1. Point de départ
 
