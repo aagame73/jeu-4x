@@ -1,7 +1,7 @@
 // Empires rivaux simulés (voir docs/plan-rivaux-ia.md) : ils s'étendent dans l'amas sans bâtir
 // sur les hexagones. Réglages dans config.js (RIVAL_AI). Pas encore de combat ni de diplomatie.
 import { RIVAL_AI, SPECIES } from './config.js';
-import { startRelation } from './diplomacy.js';
+import { startRelation, startStocks } from './diplomacy.js';
 import { starDistance } from './galaxy.js';
 import { createRng } from './rng.js';
 import { habitatFor } from './species.js';
@@ -10,16 +10,20 @@ import { habitatFor } from './species.js';
 export function createEmpires(stars) {
   return stars
     .filter((star) => star.rival)
-    .map((star) => ({
-      species: star.rival,
-      homeId: star.id,
-      colonies: [{ starId: star.id, planetIndex: star.planets.findIndex((p) => p.inhabitedBy === star.rival), known: false }],
-      points: 0,
-      power: 0,
-      nextTry: 0,
-      met: false,
-      relation: startRelation(star.rival),
-    }));
+    .map((star) => {
+      const empire = {
+        species: star.rival,
+        homeId: star.id,
+        colonies: [{ starId: star.id, planetIndex: star.planets.findIndex((p) => p.inhabitedBy === star.rival), known: false }],
+        points: 0,
+        power: 0,
+        nextTry: 0,
+        met: false,
+        relation: startRelation(star.rival),
+      };
+      empire.stocks = startStocks(empire);
+      return empire;
+    });
 }
 
 const growthOf = (empire, day) => {
@@ -87,6 +91,12 @@ function chooseTarget(game, empire) {
 const validRelation = (empire) =>
   Number.isFinite(empire.relation) && Math.abs(empire.relation) <= 100 ? empire.relation : startRelation(empire.species);
 
+// Une matière absente ou invalide reprend sa valeur de départ.
+const validStocks = (empire) => {
+  const start = startStocks(empire);
+  return Object.fromEntries(Object.keys(start).map((res) => [res, Number.isFinite(empire.stocks?.[res]) && empire.stocks[res] >= 0 ? empire.stocks[res] : start[res]]));
+};
+
 // Empires d'une sauvegarde, s'ils correspondent à cette partie ; sinon null (un fichier modifié
 // ne doit ni planter ni fausser la partie : les rivaux repartent alors de leur monde natal).
 export function validEmpires(game, saved) {
@@ -100,7 +110,7 @@ export function validEmpires(game, saved) {
     return empire.colonies.every((c) => c && typeof c.known === 'boolean' && game.stars[c.starId]?.planets[c.planetIndex]?.size);
   });
   if (!fine) return null;
-  return saved.map((empire) => ({ ...empire, nextTry: number(empire.nextTry) ? empire.nextTry : 0, met: empire.met === true, relation: validRelation(empire) }));
+  return saved.map((empire) => ({ ...empire, nextTry: number(empire.nextTry) ? empire.nextTry : 0, met: empire.met === true, relation: validRelation(empire), stocks: validStocks(empire) }));
 }
 
 // Colonies d'un système découvertes par un vaisseau du joueur qui s'y trouve. Renvoie les nouvelles.
