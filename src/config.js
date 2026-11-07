@@ -156,3 +156,31 @@ export const DEFAULT_SPECIES = 'sans-espece';
 export const RIVALS = { min: 3, max: 7, default: 4 };
 // Rivaux du profil neutre : les 4 premiers sont ceux des parties d'avant le choix d'espèce.
 export const NEUTRAL_RIVALS = ['vaskhar', 'ondesiens', 'keltirr', 'synodes', 'orrhaides', 'thrennes', 'liseurs'];
+
+// Expansion des empires rivaux (empires.js). Un niveau de difficulté pourra agir sur ces réglages.
+// Une colonie coûte baseCost points × (1 + costGrowth par colonie déjà fondée) ; un empire gagne growth points par jour.
+// power : monte chaque jour, augmente la portée (al) et autorise les milieux hostiles. deposits : poids des gisements.
+// ruins : attrait des ruines ; frontier : attrait des systèmes proches d'un autre empire.
+export const RIVAL_AI = {
+  baseCost: 40,
+  costGrowth: 0.25,
+  startRange: 22,
+  maxExtraRange: 28,
+  hostilePower: 15,
+  keepFreeRuins: 3, // pour que le fil rouge reste réalisable tant que le combat n'existe pas
+  scoreNoise: 1.5,
+  distancePenalty: 0.15,
+  habitatScore: { favored: 8, neutral: 3, hostile: 0 },
+  sizeScore: { petite: 1, moyenne: 2, grande: 3 },
+  retryDays: 5, // sans planète à portée, un empire attend avant de chercher de nouveau
+  styles: {
+    vaskhar: { growth: 1.4, power: 0.01, deposits: { minerais: 2 }, ruins: 0, frontier: 0 }, // expansion
+    ondesiens: { growth: 1, power: 0.012, deposits: { biomasse: 1, eau: 1 }, ruins: 0, frontier: 0 }, // commerce
+    keltirr: { growth: 1.4, power: 0.01, deposits: {}, ruins: 0, frontier: 6 }, // agressif
+    synodes: { growth: 0.7, power: 0.025, deposits: {}, ruins: 2, frontier: 0 }, // technologie
+    orrhaides: { growth: 0.7, lateGrowth: 1.4, lateDay: 800, power: 0.02, deposits: { energie: 1 }, ruins: 6, frontier: 0 }, // technologie puis expansion
+    thrennes: { growth: 1, power: 0.012, deposits: { minerais: 1 }, ruins: 0, frontier: 6 }, // agressif
+    liseurs: { growth: 0.7, power: 0.015, deposits: {}, ruins: 12, frontier: 0 }, // savoir
+    ashkari: { growth: 1, power: 0.02, deposits: { deuterium: 2 }, ruins: 0, frontier: 0 }, // commerce, longues distances
+  },
+};

@@ -15,6 +15,7 @@ import { generateSurface, hexDistance } from './surface.js';
 import { tickColony, colonyReport, SHIPYARD, canAfford } from './economy.js';
 import { TECHS, hasTech, bindResearch, markTech, techCost } from './research.js';
 import { SPECIES, DEFAULT_SPECIES, RIVALS } from './config.js';
+import { createEmpires, tickEmpires, revealEmpires, rivalColonyAt } from './empires.js';
 import { bindSpecies, speciesBonus, speciesHabitat, hostilePenalty, currentSpecies, normalizeRivals, rivalInfo } from './species.js';
 
 export const LEVEL_LABELS = ['Inconnu', 'Lueur repérée', 'Système survolé', 'Système analysé'];
@@ -83,6 +84,7 @@ export function createGame(seed, species = DEFAULT_SPECIES, rivals = RIVALS.defa
     research: { current: null, progress: 0, done: [], bank: 0, partial: {}, paid: [] },
     surfaces: new Map(), // surfaces générées à la demande, clé "étoile-planète"
     colonies: [],
+    empires: createEmpires(galaxy.stars),
   };
   bindResearch(game.research);
   const home = game.stars[game.homeId];
@@ -263,8 +265,9 @@ export function foundingProblem(game, ship, starId, planetIndex) {
   if (ship.starId !== starId || ship.state !== 'idle') return `${ship.name} doit être en attente dans ce système.`;
   if (star.level < 3) return "Analysez d'abord le système.";
   if (!planet.size) return 'Cette planète ne se colonise pas.';
-  if (planet.inhabitedBy) {
-    const rival = rivalInfo(planet.inhabitedBy);
+  const occupant = planet.inhabitedBy ?? rivalColonyAt(game, starId, planetIndex)?.empire.species;
+  if (occupant) {
+    const rival = rivalInfo(occupant);
     return `Planète habitée par les ${rival.label} (${rival.empire}).`;
   }
   if (colonyOn(game, starId, planetIndex)) return 'Une colonie existe déjà ici.';
@@ -502,6 +505,10 @@ export function tick(game, days) {
       }
     }
   }
+  for (const { colony } of tickEmpires(game, days)) {
+    // Un vaisseau du joueur sur place voit la colonie s'installer.
+    if (game.ships.some((s) => s.starId === colony.starId && s.state !== 'travel')) changed = discoverRivals(game, colony.starId) || changed;
+  }
   const logLength = game.log.length;
   tickResearch(game, days);
   if (game.log.length !== logLength) changed = true;
@@ -522,6 +529,15 @@ export function tick(game, days) {
 }
 
 // --- Exploration -----------------------------------------------------------------------
+
+// Un vaisseau du joueur découvre les colonies rivales de son système. Avant l'analyse, on ne
+// sait pas encore de qui il s'agit (l'identité vient avec knownRival).
+function discoverRivals(game, starId) {
+  const star = game.stars[starId];
+  const found = revealEmpires(game, starId);
+  if (found.some(({ colony, empire }) => colony.starId !== empire.homeId)) addLog(game, `Une colonie étrangère est installée dans le système ${star.name}.`, 'alert');
+  return found.length > 0;
+}
 
 // Au premier passage, on ne repère que les grosses planètes (géantes gazeuses, grandes
 // planètes, et une moyenne sur deux) ; l'analyse révèle toutes les autres.
@@ -552,6 +568,7 @@ function arrive(game, ship) {
   const seen = sense(game, star);
   if (seen > 0) addLog(game, `${seen} ${seen > 1 ? 'nouvelles lueurs' : 'nouvelle lueur'} autour de ${star.name}.`);
   revealCurrents(game, star);
+  discoverRivals(game, star.id);
 }
 
 function completeAnalysis(game, ship) {
