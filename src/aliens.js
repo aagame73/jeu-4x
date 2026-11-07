@@ -1170,7 +1170,7 @@ function drawOrrhaides(ctx, s) {
   shard2D(ctx, s, 0.27 + yaw * 0.1, -0.48, 0.3, 0.05, 0.5, L);
   // Lumière intérieure (vue à travers les facettes)
   ctx.globalCompositeOperation = 'lighter';
-  sprite(ctx, softTex(accent), 0, -0.32, 0.5, 0.5 + 0.4 * sing);
+  sprite(ctx, softTex(accent), 0, -0.32, 0.5, 0.38 + 0.18 * sing);
   ctx.globalCompositeOperation = 'source-over';
   ctx.globalAlpha = 1;
   const front = [], back = [];
@@ -1218,7 +1218,7 @@ function drawOrrhaides(ctx, s) {
   ctx.translate(-yaw * 0.12, 0);
   blit(ctx, s, 'or-incl-head', -0.4, -0.95, 0.8, 1.2, (g) => orInclusions(g, s, 83, [-0.25, -0.8, 0.25, 0.1]));
   ctx.restore();
-  const pulse = 0.12 + 0.05 * Math.sin(t * 1.4) + 0.3 * sing + 0.2 * mouth * hash(s.syl);
+  const pulse = 0.1 + 0.04 * Math.sin(t * 1.4) + 0.14 * sing + 0.08 * mouth * hash(s.syl);
   sprite(ctx, softTex(accent), 0, -0.4, 0.42, pulse);
   sprite(ctx, glowTex('#ffffff'), 0, -0.42, 0.09, pulse * 0.4);
   const g0 = ((t * 0.18) % 1) * 2.4 - 1.2;
