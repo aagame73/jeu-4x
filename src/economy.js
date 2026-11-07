@@ -3,6 +3,7 @@
 // stock commun ; l'énergie ne se stocke pas : chaque colonie doit produire ce qu'elle consomme.
 import { neighbors } from './surface.js';
 import { hasTech } from './research.js';
+import { reactToDig } from './diplomacy.js';
 import { productionFactor, growthFactor, speciesBonus, speciesExtra } from './species.js';
 
 export const RESOURCE_LABELS = {
@@ -431,6 +432,7 @@ export function tickColony(game, colony, surface, days) {
       game.resources.artefacts = (game.resources.artefacts ?? 0) + 1 + speciesExtra('digArtefacts');
       const fragment = LORE[(game.lore ?? 0) % LORE.length];
       game.lore = (game.lore ?? 0) + 1;
+      reactToDig(game);
       events.push(`Fouille sur ${colony.name} : un artefact des Veilleurs ! ${fragment}`);
       if (b.left === 0) events.push(`Les ruines de ${colony.name} ont livré tous leurs secrets.`);
     }

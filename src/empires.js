@@ -1,6 +1,7 @@
 // Empires rivaux simulés (voir docs/plan-rivaux-ia.md) : ils s'étendent dans l'amas sans bâtir
 // sur les hexagones. Réglages dans config.js (RIVAL_AI). Pas encore de combat ni de diplomatie.
 import { RIVAL_AI, SPECIES } from './config.js';
+import { startRelation } from './diplomacy.js';
 import { starDistance } from './galaxy.js';
 import { createRng } from './rng.js';
 import { habitatFor } from './species.js';
@@ -17,6 +18,7 @@ export function createEmpires(stars) {
       power: 0,
       nextTry: 0,
       met: false,
+      relation: startRelation(star.rival),
     }));
 }
 
@@ -82,6 +84,9 @@ function chooseTarget(game, empire) {
   return best;
 }
 
+const validRelation = (empire) =>
+  Number.isFinite(empire.relation) && Math.abs(empire.relation) <= 100 ? empire.relation : startRelation(empire.species);
+
 // Empires d'une sauvegarde, s'ils correspondent à cette partie ; sinon null (un fichier modifié
 // ne doit ni planter ni fausser la partie : les rivaux repartent alors de leur monde natal).
 export function validEmpires(game, saved) {
@@ -95,7 +100,7 @@ export function validEmpires(game, saved) {
     return empire.colonies.every((c) => c && typeof c.known === 'boolean' && game.stars[c.starId]?.planets[c.planetIndex]?.size);
   });
   if (!fine) return null;
-  return saved.map((empire) => ({ ...empire, nextTry: number(empire.nextTry) ? empire.nextTry : 0, met: empire.met === true }));
+  return saved.map((empire) => ({ ...empire, nextTry: number(empire.nextTry) ? empire.nextTry : 0, met: empire.met === true, relation: validRelation(empire) }));
 }
 
 // Colonies d'un système découvertes par un vaisseau du joueur qui s'y trouve. Renvoie les nouvelles.

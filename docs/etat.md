@@ -14,7 +14,7 @@
 - IA des rivaux (`docs/plan-rivaux-ia.md`) : première version terminée.
 
 ## Prochaine étape
-- Plan de la diplomatie à écrire, puis commerce et combat, dans cet ordre.
+- Diplomatie et échanges, ensemble (`docs/plan-diplomatie.md`, à valider), puis combat.
 
 ## Questions ouvertes
 - Équilibre à juger en jouant : Liseurs de Vey trop forts en milieu réel (120 %), Thrennes un peu faibles (87 %, bonus militaires non mesurés tant que le combat n'existe pas).
