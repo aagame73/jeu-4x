@@ -183,16 +183,22 @@ export const DIPLOMACY = {
   techTierPower: [0, 10, 30, 60], // puissance requise pour les paliers 1 à 4
   // Échanges. Valeur d'une unité de matière, modulée par la rareté chez l'empire (× 0,5 à × 1,5).
   values: { minerais: 1, alliages: 3, biomasse: 1, eau: 1, deuterium: 2, velarine: 25, artefacts: 40 },
+  scarcity: { full: 0.5, empty: 1.5 }, // facteur de valeur : stock plein → full, stock vide → empty
   techValue: 2, // valeur d'une technologie = coût × techValue
   mapValuePerColony: 15, // valeur d'une carte, par colonie révélée
   // L'empire accepte si ce qu'il reçoit vaut au moins ce qu'il donne × ce facteur ; hostile : il refuse tout.
-  margin: { allie: 0.9, amical: 1, neutre: 1.2, mefiant: 1.6 },
-  tradeFactor: { ondesiens: 0.9, ashkari: 0.9, thrennes: 1.1, keltirr: 1.1 }, // ouverture au commerce selon l'espèce
+  // Jamais moins de marginFloor : sinon des allers-retours rapporteraient des matières gratuites.
+  margin: { allie: 1, amical: 1.05, neutre: 1.2, mefiant: 1.6 },
+  tradeFactor: { ondesiens: 0.95, ashkari: 0.95, thrennes: 1.1, keltirr: 1.1 }, // ouverture au commerce selon l'espèce
+  marginFloor: 1,
   techDelay: 200, // jours entre deux échanges de technologies avec un même empire
   mapDelay: 500, // jours entre deux ventes de carte à un même empire
   soldTechPower: 1, // puissance gagnée par un empire qui reçoit une technologie
   closedTier: 4, // ce palier ne s'échange pas
-  tradeGainPerValue: 0.01, // note gagnée auprès du partenaire
+  rareValue: 25, // à partir de cette valeur, l'écran compte la matière à l'unité
+  inputSteps: [10, 100], // pas des boutons − et + (avec Maj)
+  tradeGainPerValue: 0.05, // note gagnée par unité de valeur donnée en plus du nécessaire
+  generosityMin: 0.1, // il faut donner au moins 10 % de plus que nécessaire pour gagner de la note
   tradeGainMax: 8,
   rivalPenaltyPerValue: 0.02, // note perdue auprès des rivaux du partenaire
   rivalPenaltyMin: 1,

@@ -239,12 +239,15 @@ const deal = (give, get) => ({ give: { resources: {}, ...give }, get: { resource
   empire.met = true;
   empire.relation = -80;
   check(G.signDeal(game, empire, offer).reason === 'hostile', 'empire hostile : refuse tout');
-  const small = deal({ resources: { minerais: 10 } }, { resources: { biomasse: 17 } });
+  // La meilleure offre qu'accepte un allié, puis la même devant un empire méfiant.
   empire.relation = 70;
-  const friendly = D.evaluateDeal(game, empire, small).ok;
+  let n = 0;
+  while (D.evaluateDeal(game, empire, deal({ resources: { minerais: 20 } }, { resources: { biomasse: n + 1 } })).ok) n++;
+  const small = deal({ resources: { minerais: 20 } }, { resources: { biomasse: n } });
+  const friendly = n > 0 && D.evaluateDeal(game, empire, small).ok;
   empire.relation = -40;
   const wary = D.evaluateDeal(game, empire, small).ok;
-  check(friendly && !wary, 'la même offre passe auprès d\'un allié, pas d\'un empire méfiant');
+  check(friendly && !wary, `la même offre (20 minerais contre ${n} biomasse) passe auprès d'un allié, pas d'un empire méfiant`);
 }
 {
   const { game, empire } = trader();
@@ -263,6 +266,55 @@ const deal = (give, get) => ({ give: { resources: {}, ...give }, get: { resource
   check(counter.give === offer.give, 'la contre-offre ne demande pas plus au joueur');
   check(D.counterOffer(game, empire, deal({ resources: { minerais: 1 } }, { resources: { biomasse: 500 } })) === null || D.evaluateDeal(game, empire, D.counterOffer(game, empire, deal({ resources: { minerais: 1 } }, { resources: { biomasse: 500 } }))).reason !== 'unbalanced', 'contre-offre impossible : aucune, ou valable');
 }
+// Pas d'achat-revente gagnant, même avec l'allié le plus ouvert (relecture du 08/11) : on achète le
+// plus d'alliages possible pour 60 minerais, puis on les revend le plus cher possible, 10 fois.
+for (const species of ['ondesiens', 'ashkari', 'vaskhar']) {
+  const game = G.createGame(42, 'thrennes', 7);
+  const empire = game.empires.find((e) => e.species === species);
+  empire.met = true;
+  empire.relation = 80;
+  game.resources.minerais = 1000;
+  game.resources.alliages = 0;
+  let trades = 0;
+  for (let i = 0; i < 10; i++) {
+    let n = 0;
+    while (D.evaluateDeal(game, empire, deal({ resources: { minerais: 60 } }, { resources: { alliages: n + 1 } })).ok) n++;
+    if (!n || !G.signDeal(game, empire, deal({ resources: { minerais: 60 } }, { resources: { alliages: n } })).ok) break;
+    trades++;
+    const a = game.resources.alliages;
+    let m = 0;
+    while (D.evaluateDeal(game, empire, deal({ resources: { alliages: a } }, { resources: { minerais: m + 1 } })).ok) m++;
+    if (!m || !G.signDeal(game, empire, deal({ resources: { alliages: a } }, { resources: { minerais: m } })).ok) break;
+    trades++;
+  }
+  check(trades >= 10, `${species} : allers-retours réellement conclus (${trades} échanges)`);
+  check(game.resources.minerais + 3 * game.resources.alliages <= 1000, `${species} : aucune matière gagnée (minerais ${game.resources.minerais}, alliages ${game.resources.alliages})`);
+  check(empire.relation <= 80 + 1e-9, `${species} : échanges au plus juste, la note ne monte pas (${empire.relation.toFixed(1)})`);
+}
+{
+  const game = G.createGame(42, 'vaskhar', 7);
+  const empire = game.empires.find((e) => e.species === 'ondesiens');
+  empire.met = true;
+  empire.relation = 80;
+  game.resources.minerais = 100;
+  check(D.evaluateDeal(game, empire, deal({ resources: { minerais: 10 } }, { resources: { minerais: 11 } })).ok === false, 'échanger 10 contre 11 de la même matière : refusé');
+}
+{
+  // Points de recherche d'une technologie commencée puis mise de côté, puis obtenue par échange.
+  const game = G.createGame(42, 'vaskhar', 7);
+  const empire = game.empires.find((e) => e.species === 'ondesiens');
+  empire.met = true;
+  empire.relation = 30;
+  empire.power = 100;
+  const key = D.buyableTechs(game, empire)[0];
+  game.research.partial[key] = 37;
+  game.research.bank = 5;
+  game.resources.minerais = 5000;
+  empire.stocks.minerais = 0;
+  const ok = G.signDeal(game, empire, deal({ resources: { minerais: 5000 } }, { techs: [key] })).ok;
+  check(ok && game.research.bank === 42 && !(key in game.research.partial), 'technologie obtenue par échange : ses points partiels passent de côté');
+}
+
 // Note auprès des rivaux du partenaire.
 {
   const { game, empire } = trader('thrennes', 'ondesiens');

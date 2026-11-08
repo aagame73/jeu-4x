@@ -1,5 +1,5 @@
 // Empires rivaux simulés (voir docs/plan-rivaux-ia.md) : ils s'étendent dans l'amas sans bâtir
-// sur les hexagones. Réglages dans config.js (RIVAL_AI). Pas encore de combat ni de diplomatie.
+// sur les hexagones. Réglages dans config.js (RIVAL_AI). Diplomatie : diplomacy.js ; pas encore de combat.
 import { RIVAL_AI, SPECIES } from './config.js';
 import { startRelation, startStocks, treatyForbids } from './diplomacy.js';
 import { starDistance } from './galaxy.js';

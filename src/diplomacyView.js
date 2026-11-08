@@ -39,9 +39,13 @@ export function createDiplomacyView(root, game, actions) {
   let listPortraits = [];
   let portrait = null;
 
-  function stopPortraits() {
+  function stopListPortraits() {
     listPortraits.forEach((p) => p.destroy());
     listPortraits = [];
+  }
+
+  function stopPortraits() {
+    stopListPortraits();
     portrait?.destroy();
     portrait = null;
   }
@@ -131,7 +135,7 @@ export function createDiplomacyView(root, game, actions) {
   function renderList() {
     const list = root.querySelector('#dp-list');
     const empires = metEmpires(game);
-    stopPortraits();
+    stopListPortraits(); // le grand portrait de l'empire choisi continue de vivre
     list.innerHTML = empires
       .map((e, i) => {
         const r = rivalInfo(e.species);
@@ -214,8 +218,9 @@ export function createDiplomacyView(root, game, actions) {
     if (step) {
       e.preventDefault(); // le bouton est dans un label : ne pas redonner le focus au champ
       const input = step.parentElement.querySelector('input');
-      const rare = DIPLOMACY.values[input.dataset.res] >= 25; // Vélarine et artefacts : à l'unité
-      const size = rare ? 1 : e.shiftKey ? 100 : 10;
+      const [step10, step100] = DIPLOMACY.inputSteps;
+      const rare = DIPLOMACY.values[input.dataset.res] >= DIPLOMACY.rareValue; // Vélarine et artefacts : à l'unité
+      const size = rare ? 1 : e.shiftKey ? step100 : step10;
       input.value = Math.max(0, Math.min(Number(input.max), (Number(input.value) || 0) + Number(step.dataset.step) * size));
       input.dispatchEvent(new Event('input', { bubbles: true }));
       return;

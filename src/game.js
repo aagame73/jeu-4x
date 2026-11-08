@@ -545,10 +545,15 @@ export function signDeal(game, empire, offer) {
   if (!answer.ok) return answer;
   for (const key of applyDeal(game, empire, offer, answer)) {
     const r = game.research;
+    // L'effort déjà fourni sur cette technologie n'est pas perdu : il part dans les points de côté.
     if (r.current === key) {
-      r.bank = (r.bank ?? 0) + r.progress; // l'effort déjà fourni n'est pas perdu
+      r.bank = (r.bank ?? 0) + r.progress;
       r.current = null;
       r.progress = 0;
+    }
+    if (r.partial?.[key]) {
+      r.bank = (r.bank ?? 0) + r.partial[key];
+      delete r.partial[key];
     }
     markTech(r, key);
     applyTech(game, key);

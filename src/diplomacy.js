@@ -111,10 +111,15 @@ export function breakTreaties(game, starId) {
 const resourcesOf = (side) => Object.entries(side.resources ?? {});
 const isEmpty = (side) => !resourcesOf(side).length && !side.techs?.length && !side.map && !side.treaties?.length;
 
-// Rareté chez l'empire : une matière dont il a peu vaut plus cher pour lui.
-function materialValue(empire, res, amount) {
-  const fill = Math.min(1, empire.stocks[res] / stockCap(empire, res));
-  return amount * DIPLOMACY.values[res] * (1.5 - fill);
+// Rareté chez l'empire : une matière dont il a peu vaut plus cher pour lui. Le prix suit le stock
+// pendant l'échange (prix moyen entre avant et après) : sinon acheter puis revendre rapporterait.
+function materialValue(empire, res, amount, empireReceives) {
+  const cap = stockCap(empire, res);
+  const { full, empty } = DIPLOMACY.scarcity;
+  const factor = (stock) => empty - (empty - full) * Math.min(1, Math.max(0, stock / cap));
+  const before = empire.stocks[res];
+  const after = before + (empireReceives ? amount : -amount);
+  return amount * DIPLOMACY.values[res] * ((factor(before) + factor(after)) / 2);
 }
 
 const techValue = (key) => TECHS[key].cost * DIPLOMACY.techValue;
@@ -122,7 +127,7 @@ const techValue = (key) => TECHS[key].cost * DIPLOMACY.techValue;
 const unknownColonies = (empire) => empire.colonies.filter((c) => !c.known).length;
 
 function sideValue(game, empire, side, playerGives) {
-  let total = resourcesOf(side).reduce((sum, [res, amount]) => sum + materialValue(empire, res, amount), 0);
+  let total = resourcesOf(side).reduce((sum, [res, amount]) => sum + materialValue(empire, res, amount, playerGives), 0);
   total += (side.techs ?? []).reduce((sum, key) => sum + techValue(key), 0);
   if (side.map) total += DIPLOMACY.mapValuePerColony * (playerGives ? game.colonies.length : unknownColonies(empire));
   total += (side.treaties ?? []).reduce((sum, key) => sum + DIPLOMACY.treaties[key].value, 0);
@@ -139,7 +144,7 @@ function dealProblem(game, empire, offer) {
   if (attitudeOf(empire.relation).key === 'hostile') return 'hostile';
   for (const side of [offer.give, offer.get]) {
     for (const [res, amount] of resourcesOf(side)) {
-      if (!(res in DIPLOMACY.values) || !validAmount(amount)) return 'invalid';
+      if (!Object.hasOwn(DIPLOMACY.values, res) || !validAmount(amount)) return 'invalid';
     }
   }
   for (const [res, amount] of resourcesOf(offer.give)) if ((game.resources[res] ?? 0) < amount) return 'player-short';
@@ -195,8 +200,8 @@ export function evaluateDeal(game, empire, offer) {
   if (problem) return { ok: false, reason: problem, received: 0, given: 0 };
   const received = sideValue(game, empire, offer.give, true);
   const given = sideValue(game, empire, offer.get, false);
-  const margin = DIPLOMACY.margin[attitudeOf(empire.relation).key] * (DIPLOMACY.tradeFactor[empire.species] ?? 1);
-  return received >= given * margin ? { ok: true, reason: null, received, given } : { ok: false, reason: 'unbalanced', received, given, margin };
+  const margin = Math.max(DIPLOMACY.marginFloor, DIPLOMACY.margin[attitudeOf(empire.relation).key] * (DIPLOMACY.tradeFactor[empire.species] ?? 1));
+  return { ok: received >= given * margin, reason: received >= given * margin ? null : 'unbalanced', received, given, margin };
 }
 
 // Contre-offre simple : l'empire garde l'offre du joueur mais donne moins de matières. Null si impossible.
@@ -244,9 +249,11 @@ export function applyDeal(game, empire, offer, answer) {
       star.planets[colony.planetIndex].inhabitedBy = empire.species;
     }
   }
-  // Le partenaire apprécie ; ses rivaux l'apprennent, même ceux que le joueur n'a pas rencontrés.
+  // Le partenaire n'apprécie que ce qu'on lui donne en plus du nécessaire ; ses rivaux l'apprennent,
+  // même ceux que le joueur n'a pas rencontrés.
   const worth = Math.max(answer.received, answer.given);
-  changeRelation(empire, Math.min(DIPLOMACY.tradeGainMax, worth * DIPLOMACY.tradeGainPerValue));
+  const surplus = Math.max(0, answer.received - answer.given * answer.margin * (1 + DIPLOMACY.generosityMin));
+  changeRelation(empire, Math.min(DIPLOMACY.tradeGainMax, surplus * DIPLOMACY.tradeGainPerValue));
   const penalty = Math.min(DIPLOMACY.rivalPenaltyMax, Math.max(DIPLOMACY.rivalPenaltyMin, worth * DIPLOMACY.rivalPenaltyPerValue));
   const rivals = rivalsOf(empire.species);
   for (const other of game.empires) if (rivals.includes(other.species)) changeRelation(other, -penalty);
