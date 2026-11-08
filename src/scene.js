@@ -187,6 +187,7 @@ export function createGalaxyView(container, game, callbacks) {
     for (const [id, v] of fleetViews) {
       if (game.fleets.some((f) => f.id === id)) continue;
       scene.remove(v.holder, v.marker);
+      v.marker.material.dispose();
       fleetViews.delete(id);
     }
     for (const fleet of game.fleets) {
@@ -242,7 +243,7 @@ export function createGalaxyView(container, game, callbacks) {
   let shotTimer = 0;
   function updateBattles(dt) {
     shotTimer -= dt;
-    if (shotTimer <= 0 && (game.battles ?? []).length) {
+    if (shotTimer <= 0 && !game.paused && (game.battles ?? []).length) {
       shotTimer = 0.12;
       for (const starId of game.battles) {
         if (game.stars[starId].level < 2) continue;

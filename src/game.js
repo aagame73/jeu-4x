@@ -301,7 +301,7 @@ export function foundColony(game, ship, starId, planetIndex, tileIndex) {
   const tile = surface.tiles[tileIndex];
   if (!tile || tile.terrain === 'ocean' || tile.building || tile.deposit?.resource === 'minerais' || tile.deposit?.resource === 'velarine') return false;
   const planet = game.stars[starId].planets[planetIndex];
-  const first = game.colonies.length === 0;
+  const first = ship.kind === 'arche'; // la toute première colonie, même après avoir tout perdu
   for (const empire of breakTreaties(game, starId)) {
     addLog(game, `Traité de frontières rompu avec les ${rivalInfo(empire.species).label}. « ${line(empire.species, 'rupture')} »`, 'alert');
   }
@@ -522,6 +522,7 @@ export function tick(game, days) {
     if (game.ships.some((s) => s.starId === colony.starId && s.state !== 'travel')) changed = discoverRivals(game, colony.starId) || changed;
   }
   for (const convoy of tickConvoys(game, days)) {
+    if (convoy.supply) continue; // ravitaillement ennemi : livré à son empire, le joueur n'en sait rien
     const goods = Object.entries(convoy.resources).map(([res, n]) => `${n} ${(RESOURCE_LABELS[res] ?? res).toLowerCase()}`).join(', ');
     addLog(game, `Convoi des ${rivalInfo(convoy.species).label} arrivé à ${game.stars[convoy.toId].name} : ${goods}.`, 'build');
     changed = true;

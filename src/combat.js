@@ -149,7 +149,9 @@ function captureFromEmpire(game, empire, entry) {
   empire.colonies = empire.colonies.filter((c) => c !== entry);
   const planet = game.stars[entry.starId].planets[entry.planetIndex];
   planet.inhabitedBy = null;
-  if (entry.captured?.starId === entry.starId && entry.captured?.planetIndex === entry.planetIndex) {
+  const kept = entry.captured;
+  const intact = kept?.starId === entry.starId && kept?.planetIndex === entry.planetIndex && typeof kept.name === 'string' && Number.isFinite(kept.population) && kept.orbital;
+  if (intact) {
     game.colonies.push({ ...entry.captured, damage: 0, siegeDays: 0 });
     return 'retaken';
   }
@@ -175,6 +177,18 @@ function captureFromEmpire(game, empire, entry) {
   return 'captured';
 }
 
+// Colonies rivales que les vaisseaux du joueur peuvent assiéger ici : empire en guerre, colonie connue,
+// et jamais un monde natal (imprenable pour l'instant : l'assiéger ne mènerait à rien).
+function besiegeable(game, starId) {
+  return game.empires
+    .filter((e) => e.war)
+    .flatMap((e) =>
+      e.colonies
+        .filter((c) => c.starId === starId && c !== e.colonies[0] && game.stars[starId].planets[c.planetIndex].inhabitedBy)
+        .map((c) => ({ empire: e, colony: c })),
+    );
+}
+
 // Une journée de combat dans un système, s'il y a lieu. Renvoie les événements à annoncer.
 function battleDay(game, starId, rng) {
   const star = game.stars[starId];
@@ -183,9 +197,7 @@ function battleDay(game, starId, rng) {
   const warships = ships.filter((s) => SHIP_KINDS[s.kind].warship);
   const colony = game.colonies.find((c) => c.starId === starId);
   const fleets = game.fleets.filter((f) => f.starId === starId && f.state === 'idle');
-  const enemyColonies = game.empires
-    .filter((e) => e.war)
-    .flatMap((e) => e.colonies.filter((c) => c.starId === starId).map((c) => ({ empire: e, colony: c })));
+  const enemyColonies = besiegeable(game, starId);
   const fighting = (fleets.length && (ships.length || colony)) || (warships.length && enemyColonies.length);
   if (!fighting) return events;
 
@@ -322,9 +334,11 @@ function warDay(game) {
   for (const starId of new Set([...idleFleetStars, ...warshipStars])) {
     const rng = createRng((game.seed ^ Math.imul(starId + 1, 0x632be5ab) ^ Math.imul(Math.floor(game.time), 0x2545f491)) >>> 0);
     const happened = battleDay(game, starId, rng);
+    const warshipsHere = game.ships.some((s) => s.starId === starId && s.state !== 'travel' && SHIP_KINDS[s.kind].warship);
     const contested =
-      game.fleets.some((f) => f.starId === starId && f.state === 'idle') &&
-      (game.ships.some((s) => s.starId === starId && s.state !== 'travel') || game.colonies.some((c) => c.starId === starId));
+      (game.fleets.some((f) => f.starId === starId && f.state === 'idle') &&
+        (game.ships.some((s) => s.starId === starId && s.state !== 'travel') || game.colonies.some((c) => c.starId === starId))) ||
+      (warshipsHere && besiegeable(game, starId).length > 0);
     if (happened.length || contested) inBattle.add(starId);
     events.push(...happened);
   }

@@ -6,6 +6,7 @@ const imp = (f) => import(pathToFileURL(`${root}/src/${f}`).href);
 const G = await imp('game.js');
 const D = await imp('diplomacy.js');
 const { DIPLOMACY } = await imp('config.js');
+const { rivalInfo } = await imp('species.js');
 const { restore, serialize } = await imp('save.js');
 
 let fails = 0;
@@ -357,6 +358,43 @@ function supplyGame() {
   empire.nextSupply = 0;
   G.tick(game, 1);
   check(!game.convoys.some((c) => c.supply), 'en paix, pas de convoi de ravitaillement');
+}
+
+// Corrections de la relecture du combat.
+{
+  // Le ravitaillement ennemi n'apparaît pas au journal du joueur.
+  const { game, empire } = supplyGame();
+  empire.nextSupply = 0;
+  G.tick(game, 1);
+  const convoy = game.convoys.find((c) => c.supply);
+  for (let d = 0; d < 400 && game.convoys.includes(convoy); d++) G.tick(game, 1);
+  check(!game.log.some((l) => JSON.stringify(l).includes(`Convoi des ${rivalInfo(empire.species).label} arrivé`)), "l'arrivée d'un ravitaillement ennemi n'est pas annoncée au joueur");
+}
+{
+  // Un monde natal n'est pas assiégé (il ne peut pas tomber) ; une colonie rivale assiégée ne se répare pas.
+  const w = warGame(5);
+  const home = w.empire.colonies[0];
+  w.game.fleets = [];
+  w.empire.nextFleet = 1e9;
+  const ship = addWarship(w.game, 'fregate', home.starId);
+  for (let d = 0; d < 20; d++) G.tick(w.game, 1);
+  check(!(home.damage > 0) && (ship.damage ?? 0) === 0, 'pas de combat sans fin devant un monde natal');
+  const s2 = supplyGame();
+  const target = s2.empire.colonies.slice(1).find((c) => s2.game.stars[c.starId].planets[c.planetIndex].inhabitedBy) ?? s2.empire.colonies[1];
+  s2.game.stars[target.starId].planets[target.planetIndex].inhabitedBy = s2.empire.species;
+  s2.game.fleets = [];
+  s2.empire.nextFleet = 1e9;
+  addWarship(s2.game, 'fregate', target.starId);
+  G.tick(s2.game, 1);
+  check((s2.game.battles ?? []).includes(target.starId), 'siège d\'une colonie rivale : reconnu comme un combat chaque jour');
+}
+{
+  // En guerre, la note ne remonte pas d'elle-même.
+  const { game, empire } = setup('ondesiens', 'vaskhar');
+  G.declareWarOn(game, empire);
+  const r = empire.relation;
+  for (let d = 0; d < 300; d++) G.tick(game, 1);
+  check(empire.relation <= r + 1e-9, `en guerre, la rancune ne s'efface pas (${r} → ${empire.relation.toFixed(1)})`);
 }
 
 // Étape 7 : répliques de guerre.

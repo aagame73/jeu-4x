@@ -115,7 +115,9 @@ Lecture : le hasard compte surtout entre forces proches ; une flotte nettement s
 ## 10. Pas encore traité
 
 - Partie perdue quand le joueur n'a plus de colonie ; victoire (« plus d'ennemis », 80 % des systèmes).
-- Prise des mondes natals, élimination d'un empire.
+- Prise des mondes natals, élimination d'un empire (pour l'instant, tes vaisseaux n'attaquent pas un monde natal : il ne peut pas tomber).
+- Si tu perds toutes tes colonies, la partie continue sans fin et les flottes ennemies restent sur place.
 - Guerres entre rivaux, alliances.
 - Flottes ennemies dans la vue 3D du système (elles n'apparaissent que sur la carte de l'amas).
+- Relecture du 08/11 corrigée : ravitaillement ennemi plus annoncé au joueur, sièges du joueur reconnus comme combats, note figée en guerre, bonus de première colonie réservé à l'Arche, colonies cachées non attaquées, tirs arrêtés en pause.
 - Équilibrage en jouant : fréquence et taille des flottes, prix de la paix, part pillée.

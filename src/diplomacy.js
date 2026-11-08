@@ -108,7 +108,7 @@ export function breakTreaties(game, starId) {
 
 // --- Guerre et paix -----------------------------------------------------------------------
 
-export const peaceValue = (empire) => DIPLOMACY.peaceValue + DIPLOMACY.peaceValuePerPower * empire.power;
+const peaceValue = (empire) => DIPLOMACY.peaceValue + DIPLOMACY.peaceValuePerPower * empire.power;
 
 // Quantité minimale d'une matière pour acheter la paix à cet empire (selon sa rareté chez lui).
 export function peacePrice(empire, res) {
@@ -502,7 +502,9 @@ function diplomacyDay(game) {
     }
     if (!empire.met) continue;
     const pressure = Math.min(DIPLOMACY.proximityMax, nearColonies(game, empire) * DIPLOMACY.proximityPerColony);
-    changeRelation(empire, (startRelation(empire.species) - empire.relation) * DIPLOMACY.returnPerDay - pressure);
+    // En guerre, la rancune ne s'efface pas d'elle-même.
+    const drift = empire.war ? 0 : (startRelation(empire.species) - empire.relation) * DIPLOMACY.returnPerDay;
+    changeRelation(empire, drift - pressure);
     // Changement d'attitude, quelle qu'en soit la cause (échange, traité, fouilles, voisinage).
     const attitude = attitudeOf(empire.relation);
     const ranks = DIPLOMACY.attitudes.map((a) => a.key);
