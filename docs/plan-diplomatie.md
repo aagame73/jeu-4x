@@ -1,6 +1,6 @@
 # Plan : diplomatie et échanges (première version)
 
-État : **plan validé le 07/11/2026.** Étapes 1 à 5 faites. Reste l'étape 6 (convois) et l'étape 7 (initiative et dialogues). Réponses encore génériques (textes par espèce : étape 7) ; matières livrées tout de suite (convois : étape 6).
+État : **plan validé le 07/11/2026.** Étapes 1 à 6 faites (convois : affichage sur la carte pas encore vu dans le navigateur). Étape 7 en cours. Réponses encore génériques (textes par espèce : étape 7) ; matières livrées tout de suite (convois : étape 6).
 
 ## 1. Point de départ
 

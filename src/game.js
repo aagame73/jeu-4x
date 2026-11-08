@@ -12,10 +12,10 @@ import { CONFIG } from './config.js';
 import { generateCluster, starDistance, STAR_TYPES } from './galaxy.js';
 import { SHIP_NAMES, SHIP_ACCENTS } from './ships.js';
 import { generateSurface, hexDistance } from './surface.js';
-import { tickColony, colonyReport, SHIPYARD, canAfford } from './economy.js';
+import { tickColony, colonyReport, SHIPYARD, canAfford, RESOURCE_LABELS } from './economy.js';
 import { TECHS, hasTech, bindResearch, markTech, techCost } from './research.js';
 import { SPECIES, DEFAULT_SPECIES, RIVALS, DIPLOMACY } from './config.js';
-import { applyDeal, breakTreaties, evaluateDeal, tickDiplomacy } from './diplomacy.js';
+import { applyDeal, breakTreaties, evaluateDeal, tickConvoys, tickDiplomacy } from './diplomacy.js';
 import { createEmpires, tickEmpires, revealEmpires, rivalColonyAt, newContacts } from './empires.js';
 import { bindSpecies, speciesBonus, speciesHabitat, hostilePenalty, currentSpecies, normalizeRivals, rivalInfo } from './species.js';
 
@@ -87,6 +87,8 @@ export function createGame(seed, species = DEFAULT_SPECIES, rivals = RIVALS.defa
     colonies: [],
     empires: createEmpires(galaxy.stars),
     contacts: [], // espèces à présenter à l'écran (premier contact), non enregistré
+    convoys: [], // matières reçues par échange, en route
+    nextConvoyId: 0,
   };
   bindResearch(game.research);
   const home = game.stars[game.homeId];
@@ -514,6 +516,11 @@ export function tick(game, days) {
     // Un vaisseau du joueur sur place voit la colonie s'installer.
     if (game.ships.some((s) => s.starId === colony.starId && s.state !== 'travel')) changed = discoverRivals(game, colony.starId) || changed;
   }
+  for (const convoy of tickConvoys(game, days)) {
+    const goods = Object.entries(convoy.resources).map(([res, n]) => `${n} ${(RESOURCE_LABELS[res] ?? res).toLowerCase()}`).join(', ');
+    addLog(game, `Convoi des ${rivalInfo(convoy.species).label} arrivé à ${game.stars[convoy.toId].name} : ${goods}.`, 'build');
+    changed = true;
+  }
   for (const { empire, key } of tickDiplomacy(game, days)) {
     addLog(game, `${DIPLOMACY.treaties[key].label} avec les ${rivalInfo(empire.species).label} : arrivé à son terme.`, 'info');
     changed = true;
@@ -559,7 +566,9 @@ export function signDeal(game, empire, offer) {
     applyTech(game, key);
     addLog(game, `Technologie obtenue par échange : ${TECHS[key].label}. ${TECHS[key].unlocks}`, 'discovery');
   }
-  addLog(game, `Échange conclu avec les ${rivalInfo(empire.species).label}.`, 'info');
+  const convoy = game.convoys.at(-1);
+  const travel = convoy && convoy.progress === 0 && convoy.species === empire.species ? ` Un convoi part de ${game.stars[convoy.fromId].name} : arrivée dans ${Math.ceil(convoy.distance / DIPLOMACY.convoySpeed)} jours.` : '';
+  addLog(game, `Échange conclu avec les ${rivalInfo(empire.species).label}.${travel}`, 'info');
   return answer;
 }
 

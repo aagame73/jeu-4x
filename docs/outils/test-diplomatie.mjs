@@ -209,6 +209,10 @@ function trader(species = 'vaskhar', partner = 'ondesiens') {
   return { game, empire };
 }
 const deal = (give, get) => ({ give: { resources: {}, ...give }, get: { resources: {}, ...get } });
+// Attend l'arrivée de tous les convois en route.
+const deliver = (game) => {
+  for (let d = 0; d < 1000 && game.convoys.length; d++) D.tickConvoys(game, 1);
+};
 {
   const { game, empire } = trader();
   const stockBefore = empire.stocks.biomasse;
@@ -217,7 +221,10 @@ const deal = (give, get) => ({ give: { resources: {}, ...give }, get: { resource
   const good = deal({ resources: { minerais: 200 } }, { resources: { biomasse: 10 } });
   const answer = G.signDeal(game, empire, good);
   check(answer.ok, 'offre rentable : acceptée');
-  check(game.resources.minerais === mineBefore - 200 && game.resources.biomasse === bioBefore + 10, 'les matières changent de main');
+  check(game.resources.minerais === mineBefore - 200 && game.resources.biomasse === bioBefore, 'ce que le joueur donne part tout de suite ; ce qu\'il reçoit est en route');
+  check(game.convoys.length === 1 && game.convoys[0].resources.biomasse === 10, 'un convoi transporte la biomasse');
+  deliver(game);
+  check(game.resources.biomasse === bioBefore + 10 && game.convoys.length === 0, 'à l\'arrivée du convoi, la biomasse est livrée');
   check(empire.stocks.biomasse === stockBefore - 10, "le stock de l'empire baisse d'autant");
 
   const before = JSON.stringify(game.resources);
@@ -280,11 +287,13 @@ for (const species of ['ondesiens', 'ashkari', 'vaskhar']) {
     let n = 0;
     while (D.evaluateDeal(game, empire, deal({ resources: { minerais: 60 } }, { resources: { alliages: n + 1 } })).ok) n++;
     if (!n || !G.signDeal(game, empire, deal({ resources: { minerais: 60 } }, { resources: { alliages: n } })).ok) break;
+    deliver(game);
     trades++;
     const a = game.resources.alliages;
     let m = 0;
     while (D.evaluateDeal(game, empire, deal({ resources: { alliages: a } }, { resources: { minerais: m + 1 } })).ok) m++;
     if (!m || !G.signDeal(game, empire, deal({ resources: { alliages: a } }, { resources: { minerais: m } })).ok) break;
+    deliver(game);
     trades++;
   }
   check(trades >= 10, `${species} : allers-retours réellement conclus (${trades} échanges)`);
@@ -503,6 +512,50 @@ for (const species of ['ondesiens', 'ashkari', 'vaskhar']) {
   delete bad.empires[1].treaties;
   const fixed = restore(bad);
   check(fixed.empires[0].treaties.frontieres === 0 && fixed.empires[1].treaties.ruines === 0, 'traités invalides ou absents : aucun traité');
+}
+
+// Étape 6 : convois.
+{
+  const { game, empire } = trader();
+  game.resources.minerais = 1000;
+  const bio = game.resources.biomasse;
+  G.signDeal(game, empire, deal({ resources: { minerais: 200 } }, { resources: { biomasse: 10 } }));
+  const convoy = game.convoys[0];
+  const days = Math.ceil(convoy.distance / DIPLOMACY.convoySpeed);
+  check(empire.colonies.some((c) => c.starId === convoy.fromId), 'le convoi part d\'une colonie de l\'empire');
+  check(convoy.toId === game.homeId, 'sans colonie, il va vers le système de départ');
+  check(game.log.some((l) => JSON.stringify(l).includes(`arrivée dans ${days} jours`)), `le journal annonce la durée (${days} jours)`);
+  const back = restore(copy(serialize(game)));
+  check(back.convoys.length === 1 && back.convoys[0].resources.biomasse === 10 && back.nextConvoyId === game.nextConvoyId, 'un convoi en route survit à la sauvegarde');
+  for (let d = 0; d < days - 1; d++) G.tick(game, 1);
+  check(game.resources.biomasse === bio && game.convoys.length === 1, 'pas encore arrivé la veille');
+  G.tick(game, 1);
+  check(game.convoys.length === 0, 'arrivé au bout du trajet');
+  check(game.resources.biomasse > bio + 9, 'biomasse livrée (la colonie consomme peut-être un peu entre-temps)');
+  check(game.log.some((l) => JSON.stringify(l).includes('Convoi des')), 'arrivée annoncée au journal');
+  for (const [name, spoil] of Object.entries({
+    'liste invalide': (d) => (d.convoys = 'x'),
+    'espèce inconnue': (d) => (d.convoys[0].species = 'inconnue'),
+    'étoile hors bornes': (d) => (d.convoys[0].toId = 99999),
+    'matière inconnue': (d) => (d.convoys[0].resources = { energie: 5 }),
+    'quantité négative': (d) => (d.convoys[0].resources = { biomasse: -5 }),
+  })) {
+    const data = copy(serialize(back));
+    spoil(data);
+    let ok = true;
+    try {
+      const g = restore(data);
+      ok = Array.isArray(g.convoys) && g.convoys.length === 0;
+      G.tick(g, 1);
+    } catch {
+      ok = false;
+    }
+    check(ok, `convoi invalide (${name}) : écarté sans plantage`);
+  }
+  const old = copy(serialize(back));
+  delete old.convoys;
+  delete old.nextConvoyId;
+  check(restore(old).convoys.length === 0, 'sauvegarde sans convois : aucun en route');
 }
 
 // Le jeu complet appelle bien les relations.
