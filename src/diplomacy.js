@@ -140,6 +140,7 @@ export function declareWar(game, empire, byPlayer) {
 
 function makePeace(game, empire) {
   empire.war = false;
+  game.fleets = game.fleets.filter((f) => f.species !== empire.species); // les flottes rentrent chez elles
   empire.truceUntil = game.time + DIPLOMACY.truceDays;
   empire.relation = Math.max(empire.relation, DIPLOMACY.peaceRelation);
 }
