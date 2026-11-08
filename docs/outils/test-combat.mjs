@@ -359,5 +359,24 @@ function supplyGame() {
   check(!game.convoys.some((c) => c.supply), 'en paix, pas de convoi de ravitaillement');
 }
 
+// Étape 7 : répliques de guerre.
+{
+  const { DIALOGUES } = await imp('dialogues.js');
+  const S = await imp('species.js');
+  const war = ['guerre', 'paix', 'victoire', 'defaite', 'pillage'];
+  const all = S.playableSpecies().flatMap((k) => war.map((x) => DIALOGUES[k]?.[x]));
+  check(all.length === 40 && all.every((t) => typeof t === 'string' && t.length > 10), '40 répliques de guerre : 5 situations pour chacune des 8 espèces');
+  check(new Set(Object.values(DIALOGUES).flatMap((d) => Object.values(d))).size === 120, '120 répliques au total, aucune en double');
+  // Elles apparaissent bien au journal.
+  const { game, empire } = setup('thrennes', 'vaskhar');
+  G.declareWarOn(game, empire);
+  game.resources.minerais = 1e6;
+  G.signDeal(game, empire, deal({ resources: { minerais: D.peacePrice(empire, 'minerais') } }, { peace: true }));
+  check(game.log.some((l) => JSON.stringify(l).includes(DIALOGUES.thrennes.paix.slice(0, 20))), "la paix est commentée par la réplique de l'espèce");
+  const w = warGame(42);
+  for (let d = 0; d < 1500 && w.game.colonies.length; d++) G.tick(w.game, 1);
+  check(w.game.log.some((l) => JSON.stringify(l).includes(DIALOGUES[w.empire.species].victoire.slice(0, 20))), "la prise d'une colonie est commentée par le vainqueur");
+}
+
 console.log(fails ? `\n${fails} échec(s)` : '\nTous les tests passent.');
 process.exit(fails ? 1 : 0);

@@ -535,11 +535,13 @@ export function tick(game, days) {
     } else if (event.type === 'proposal') {
       addLog(game, `Les ${label} proposent ${describeOffer(event.proposal.offer)}. « ${line(empire.species, 'proposition')} » Répondez dans la diplomatie (D).`, 'alert');
     } else if (event.type === 'expired') addLog(game, `La proposition des ${label} a expiré.`, 'info');
-    else if (event.type === 'war') addLog(game, `Les ${label} vous déclarent la guerre !`, 'alert');
+    else if (event.type === 'war') addLog(game, `Les ${label} vous déclarent la guerre ! « ${line(empire.species, 'guerre')} »`, 'alert');
     changed = true;
   }
   for (const event of tickCombat(game, days)) {
-    addLog(game, event.text, event.kind ?? 'alert');
+    // Réplique de l'empire concerné, selon ce qui vient d'arriver.
+    const situation = { 'colony-lost': 'victoire', 'fleet-lost': 'defaite', pillage: 'pillage' }[event.type];
+    addLog(game, situation && event.species ? `${event.text} « ${line(event.species, situation)} »` : event.text, event.kind ?? 'alert');
     changed = true;
   }
   const logLength = game.log.length;
@@ -585,7 +587,7 @@ export function signDeal(game, empire, offer) {
     addLog(game, `Technologie obtenue par échange : ${TECHS[key].label}. ${TECHS[key].unlocks}`, 'discovery');
   }
   const travel = convoy ? ` Un convoi part de ${game.stars[convoy.fromId].name} : arrivée dans ${Math.ceil(convoy.distance / DIPLOMACY.convoySpeed)} jours.` : '';
-  if (offer.get.peace) addLog(game, `Paix signée avec les ${rivalInfo(empire.species).label}. Trêve jusqu'au jour ${Math.floor(empire.truceUntil) + 1}.`, 'info');
+  if (offer.get.peace) addLog(game, `Paix signée avec les ${rivalInfo(empire.species).label}. Trêve jusqu'au jour ${Math.floor(empire.truceUntil) + 1}. « ${line(empire.species, 'paix')} »`, 'info');
   else addLog(game, `Échange conclu avec les ${rivalInfo(empire.species).label}.${travel}`, 'info');
   return answer;
 }

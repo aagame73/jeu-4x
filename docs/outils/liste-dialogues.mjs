@@ -17,6 +17,11 @@ const SITUATIONS = {
   rupture: 'Traité de frontières rompu',
   plusAmical: 'Attitude en hausse',
   plusHostile: 'Attitude en baisse',
+  guerre: 'Déclaration de guerre',
+  paix: 'Paix acceptée',
+  victoire: 'Prend une de vos colonies',
+  defaite: 'Perd une flotte',
+  pillage: 'Convoi de ravitaillement pillé',
 };
 let md = '# Répliques des espèces rivales\n\nGénéré par `docs/outils/liste-dialogues.mjs` à partir de `src/dialogues.js` : modifier ce dernier, puis relancer.\n';
 for (const [key, lines] of Object.entries(DIALOGUES)) {
