@@ -11,11 +11,12 @@
 - Outils : hook de fin de réponse qui lance `npm run build` (`.claude/settings.json`), agent `relecteur` (`.claude/agents/relecteur.md`), serveur lancé au démarrage de Windows.
 
 ## En cours
-- **Combat** (`docs/plan-combat.md`) : les 7 étapes sont faites et commitées, **non publiées** (relecture à passer).
+- Rien. **Combat** (`docs/plan-combat.md`) : les 7 étapes sont faites, relues et publiées le 08/11/2026.
 
-## Prochaine étape
-- Relecture du combat, puis publication si tu le demandes.
-- À choisir ensuite : partie perdue et victoire, prise des mondes natals, équilibrage en jouant, ou un des chantiers des questions ouvertes.
+## Prochaine étape (décisions du 08/11/2026)
+- **Flottes ennemies et combats dans la vue 3D du système** : à ajouter (pour l'instant, ils ne se voient que sur la carte de l'amas).
+- **Conditions de victoire et fin de partie** : plus tard. D'ici là, perdre toutes ses colonies ou ne pas pouvoir prendre les mondes natals ne termine pas la partie.
+- **Équilibrage** : une fois le jeu terminé, par simulations (flottes, prix de la paix, pillage, espèces, rivaux, échanges).
 - À relire ensemble quand tu veux : les 120 répliques (`docs/dialogues-especes.md`).
 
 ## Questions ouvertes
