@@ -5,8 +5,8 @@
 | Étape | Contenu | Où on en est |
 |---|---|---|
 | 1 | Guerre et paix | ✅ faite (commitée, non publiée) |
-| 2 | Résolution d'un combat | ⏳ prochaine |
-| 3 | Flottes rivales | à faire |
+| 2 | Résolution d'un combat | ✅ faite (commitée, non publiée) |
+| 3 | Flottes rivales | ⏳ en cours |
 | 4 | Sièges et capture des colonies | à faire |
 | 5 | Pillage des convois | à faire |
 | 6 | Affichage : flottes, combats animés | à faire |
@@ -68,3 +68,19 @@ Précisions de l'étape 1 : bouton de déclaration à confirmer (deux clics) ; l
 7. **Annonces et répliques** : déclaration, paix, défaite, victoire d'un combat, par espèce. *Test* : relecture.
 
 Puis relecteur, commit après chaque étape validée, et publication à ta demande.
+
+## 5. Résultats de l'étape 2 (08/11/2026)
+
+Règles : chaque jour, chaque camp inflige la somme de ses attaques (± 25 % de hasard) ; une unité tombe quand ses dégâts atteignent 3 × sa défense ; les dégâts achèvent d'abord l'unité la plus abîmée. Simulation `docs/outils/sim-combat.mjs`, 2 000 combats par ligne ; « puissance » = attaque totale × défense totale.
+
+| Camp A | Camp B | rapport de puissance A/B | victoire A | victoire B | sans vainqueur | durée moyenne (jours) | pertes moyennes de A |
+|---|---|---|---|---|---|---|---|
+| 1 corvette | 1 corvette | 1.00 | 24 % | 25 % | 51 % | 3.3 | 0.76 |
+| 2 corvettes | 1 corvette | 4.00 | 100 % | 0 % | 0 % | 2.0 | 0.00 |
+| 1 frégate | 2 corvettes | 1.56 | 100 % | 0 % | 0 % | 3.0 | 0.00 |
+| 1 frégate | 3 corvettes | 0.69 | 4 % | 72 % | 25 % | 3.3 | 0.96 |
+| 1 croiseur | 2 frégates | 1.20 | 100 % | 0 % | 0 % | 3.5 | 0.00 |
+| 1 cuirassé | 2 croiseurs | 1.15 | 99 % | 0 % | 1 % | 3.9 | 0.01 |
+| 3 frégates | 1 croiseur + 1 frégate | 0.88 | 3 % | 87 % | 11 % | 4.2 | 2.98 |
+
+Lecture : le hasard compte surtout entre forces proches ; une flotte nettement supérieure gagne presque toujours, en 2 à 4 jours. « Sans vainqueur » : les deux camps tombent le même jour.
