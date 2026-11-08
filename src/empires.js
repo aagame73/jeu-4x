@@ -1,6 +1,6 @@
 // Empires rivaux simulés (voir docs/plan-rivaux-ia.md) : ils s'étendent dans l'amas sans bâtir
 // sur les hexagones. Réglages dans config.js (RIVAL_AI). Diplomatie : diplomacy.js ; pas encore de combat.
-import { RIVAL_AI, SPECIES } from './config.js';
+import { DIPLOMACY, RIVAL_AI, SPECIES } from './config.js';
 import { startRelation, startStocks, treatyForbids } from './diplomacy.js';
 import { starDistance } from './galaxy.js';
 import { TECHS } from './research.js';
@@ -126,7 +126,7 @@ export function validEmpires(game, saved) {
     nextMapTrade: number(empire.nextMapTrade) ? empire.nextMapTrade : 0,
     treaties: { frontieres: number(empire.treaties?.frontieres) ? empire.treaties.frontieres : 0, ruines: number(empire.treaties?.ruines) ? empire.treaties.ruines : 0 },
     nextProposal: number(empire.nextProposal) ? empire.nextProposal : 0,
-    lastAttitude: typeof empire.lastAttitude === 'string' ? empire.lastAttitude : undefined,
+    lastAttitude: DIPLOMACY.attitudes.some((a) => a.key === empire.lastAttitude) ? empire.lastAttitude : undefined,
   }));
 }
 

@@ -113,14 +113,17 @@ export function breakTreaties(game, starId) {
 function startConvoy(game, empire, resources) {
   const targets = game.colonies.length ? game.colonies.map((c) => game.stars[c.starId]) : [game.stars[game.homeId]];
   let best = null;
-  for (const colony of empire.colonies) {
+  // Seulement depuis une colonie que le joueur connaît (au moins le monde natal) : un convoi ne
+  // doit pas trahir l'emplacement d'une colonie cachée.
+  const known = empire.colonies.filter((c) => c.starId === empire.homeId || game.stars[c.starId].planets[c.planetIndex].inhabitedBy);
+  for (const colony of known) {
     const from = game.stars[colony.starId];
     for (const to of targets) {
       const d = starDistance(from, to);
       if (!best || d < best.d) best = { d, from, to };
     }
   }
-  game.convoys.push({
+  const convoy = {
     id: game.nextConvoyId++,
     species: empire.species,
     fromId: best.from.id,
@@ -128,7 +131,9 @@ function startConvoy(game, empire, resources) {
     distance: Math.max(1, best.d),
     progress: 0,
     resources,
-  });
+  };
+  game.convoys.push(convoy);
+  return convoy;
 }
 
 // Avance les convois ; renvoie ceux qui sont arrivés (leurs matières sont déjà livrées).
@@ -279,8 +284,8 @@ export function counterOffer(game, empire, offer) {
   return null;
 }
 
-// Effets communs d'un échange accepté : matières, note, délais. Les technologies reçues sont
-// renvoyées à game.js, qui seul sait les appliquer.
+// Effets communs d'un échange accepté : matières, note, délais. Renvoie les technologies reçues
+// (game.js seul sait les appliquer) et le convoi parti, s'il y en a un.
 export function applyDeal(game, empire, offer, answer) {
   for (const [res, amount] of resourcesOf(offer.give)) {
     game.resources[res] -= amount;
@@ -289,7 +294,7 @@ export function applyDeal(game, empire, offer, answer) {
   // Ce que le joueur reçoit voyage par convoi ; ce qu'il donne part tout de suite.
   const shipped = Object.fromEntries(resourcesOf(offer.get));
   for (const [res, amount] of resourcesOf(offer.get)) empire.stocks[res] -= amount;
-  if (Object.keys(shipped).length) startConvoy(game, empire, shipped);
+  const convoy = Object.keys(shipped).length ? startConvoy(game, empire, shipped) : null;
   const given = offer.give.techs ?? [];
   const taken = offer.get.techs ?? [];
   if (given.length || taken.length) empire.nextTechTrade = game.time + DIPLOMACY.techDelay;
@@ -315,7 +320,7 @@ export function applyDeal(game, empire, offer, answer) {
   const penalty = Math.min(DIPLOMACY.rivalPenaltyMax, Math.max(DIPLOMACY.rivalPenaltyMin, worth * DIPLOMACY.rivalPenaltyPerValue));
   const rivals = rivalsOf(empire.species);
   for (const other of game.empires) if (rivals.includes(other.species)) changeRelation(other, -penalty);
-  return taken;
+  return { techs: taken, convoy };
 }
 
 // --- Propositions des rivaux -----------------------------------------------------------
@@ -358,7 +363,13 @@ function proposalDay(game, empire, events) {
     events.push({ type: 'expired', empire });
   }
   if (!empire.nextProposal) scheduleProposal(game, empire);
-  if (proposalOf(game, empire) || game.time < empire.nextProposal || attitudeOf(empire.relation).key === 'hostile') return;
+  const hostile = attitudeOf(empire.relation).key === 'hostile';
+  // Un empire devenu hostile retire sa proposition.
+  if (hostile && proposalOf(game, empire)) {
+    game.proposals = game.proposals.filter((p) => p.species !== empire.species);
+    events.push({ type: 'expired', empire });
+  }
+  if (proposalOf(game, empire) || game.time < empire.nextProposal || hostile) return;
   const offer = makeProposal(game, empire);
   scheduleProposal(game, empire);
   if (!offer) return;
@@ -372,7 +383,11 @@ export function dropProposal(game, species) {
   game.proposals = game.proposals.filter((p) => p.species !== species);
 }
 
-export const pendingProposal = (game, empire) => proposalOf(game, empire) ?? null;
+// Proposition encore valable (une proposition échue n'est retirée qu'au passage du jour).
+export const pendingProposal = (game, empire) => {
+  const proposal = proposalOf(game, empire);
+  return proposal && game.time < proposal.expires ? proposal : null;
+};
 
 // Texte court d'une offre : « 50 minerais contre 30 biomasse ».
 export function describeOffer(offer) {

@@ -559,7 +559,8 @@ export function tick(game, days) {
 export function signDeal(game, empire, offer) {
   const answer = evaluateDeal(game, empire, offer);
   if (!answer.ok) return answer;
-  for (const key of applyDeal(game, empire, offer, answer)) {
+  const { techs, convoy } = applyDeal(game, empire, offer, answer);
+  for (const key of techs) {
     const r = game.research;
     // L'effort déjà fourni sur cette technologie n'est pas perdu : il part dans les points de côté.
     if (r.current === key) {
@@ -575,8 +576,7 @@ export function signDeal(game, empire, offer) {
     applyTech(game, key);
     addLog(game, `Technologie obtenue par échange : ${TECHS[key].label}. ${TECHS[key].unlocks}`, 'discovery');
   }
-  const convoy = game.convoys.at(-1);
-  const travel = convoy && convoy.progress === 0 && convoy.species === empire.species ? ` Un convoi part de ${game.stars[convoy.fromId].name} : arrivée dans ${Math.ceil(convoy.distance / DIPLOMACY.convoySpeed)} jours.` : '';
+  const travel = convoy ? ` Un convoi part de ${game.stars[convoy.fromId].name} : arrivée dans ${Math.ceil(convoy.distance / DIPLOMACY.convoySpeed)} jours.` : '';
   addLog(game, `Échange conclu avec les ${rivalInfo(empire.species).label}.${travel}`, 'info');
   return answer;
 }

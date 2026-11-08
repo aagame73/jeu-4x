@@ -256,7 +256,8 @@ export function createDiplomacyView(root, game, actions) {
     else if (action === 'accept-proposal') {
       const proposal = pendingProposal(game, selected);
       dropProposal(game, selected.species);
-      propose(proposal.offer);
+      if (proposal?.offer) propose(proposal.offer);
+      else renderDetail(); // échue entre-temps
       renderList();
     } else if (action === 'decline') {
       dropProposal(game, selected.species);

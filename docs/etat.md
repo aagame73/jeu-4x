@@ -11,11 +11,11 @@
 - Outils : hook de fin de réponse qui lance `npm run build` (`.claude/settings.json`), agent `relecteur` (`.claude/agents/relecteur.md`), serveur lancé au démarrage de Windows.
 
 ## En cours
-- Diplomatie et échanges (`docs/plan-diplomatie.md`) : étapes 1 à 5 relues et publiées le 08/11/2026 ; étapes 6 (convois) et 7 (propositions des rivaux, 80 répliques par espèce) faites et commitées, **non relues ni publiées**, pas encore vues dans le navigateur. Écran touche D : empires rencontrés, attitudes, négociation (matières, technologies, cartes, traité de frontières, pacte de ruines).
+- Rien. Diplomatie et échanges (`docs/plan-diplomatie.md`) : les 7 étapes sont faites, relues, vérifiées dans le navigateur et publiées le 08/11/2026.
 
 ## Prochaine étape
-- Relire ensemble les 80 répliques (`docs/dialogues-especes.md`), regarder convois et propositions dans le jeu, passer le relecteur, puis publier.
-- Ensuite : combat, dont le **pillage des convois** d'une nation en guerre.
+- Plan du **combat** (à écrire dans `docs/`, sans coder), dont le pillage des convois d'une nation en guerre.
+- À relire ensemble quand tu veux : les 80 répliques (`docs/dialogues-especes.md`).
 
 ## Questions ouvertes
 - Équilibre à juger en jouant : Liseurs de Vey trop forts en milieu réel (120 %), Thrennes un peu faibles (87 %, bonus militaires non mesurés tant que le combat n'existe pas).
@@ -23,6 +23,8 @@
 - Smartphone (simulé le 07/11) : interface à adapter, chantier à part. Tablette plus facile. Écran trop petit, bandeau et panneaux superposés, boutons trop petits.
 - `src/ships.js` fait environ 2 900 lignes : le découper (matériaux à part) ?
 - Titre du jeu à choisir.
+- Mémoire graphique : les modèles 3D des vaisseaux et convois retirés de la carte ne sont pas libérés (dispose) ; à faire si la mémoire grimpe en longue partie.
+- Mises à jour : Three.js 0.170 → 0.187 (plan à faire), Vite 6 → 8, Node 24 pour la publication GitHub.
 - Prix des échanges (ex. 800 minerais pour un traité) : première estimation, à juger en jouant. Écran de diplomatie pas encore vérifié dans Firefox.
 - Publié sur https://aagame73.github.io/jeu-4x/ : chaque `git push` sur `main` republie le site.
 - Premier contact : le conseiller lit son annonce sous la cinématique ; la cinématique continue si l'onglet est masqué, et elle est perdue si la page se ferme pendant qu'elle joue.

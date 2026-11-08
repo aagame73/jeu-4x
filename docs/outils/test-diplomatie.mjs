@@ -651,6 +651,51 @@ const runDays = (game, days, everyDay = () => {}) => {
   check(full.log.some((l) => JSON.stringify(l).includes('vous jugent désormais : hostile')), 'le journal annonce le changement, avec la réplique de l\'espèce');
 }
 
+// Relecture des étapes 6 et 7.
+{
+  const { game, empire } = trader();
+  const E = await imp('empires.js');
+  for (let d = 0; d < 800; d++) {
+    game.time += 1;
+    E.tickEmpires(game, 1);
+  }
+  game.resources.minerais = 1000;
+  G.signDeal(game, empire, deal({ resources: { minerais: 300 } }, { resources: { biomasse: 5 } }));
+  const from = game.convoys[0].fromId;
+  const knownStars = empire.colonies.filter((c) => c.starId === empire.homeId || game.stars[c.starId].planets[c.planetIndex].inhabitedBy).map((c) => c.starId);
+  check(knownStars.includes(from), 'un convoi ne part que d\'une colonie connue du joueur');
+  const before = game.convoys.length;
+  game.time += DIPLOMACY.techDelay + 1;
+  empire.power = 100;
+  const key = D.buyableTechs(game, empire)[0];
+  game.resources.minerais = 5000;
+  empire.stocks.minerais = 0;
+  G.signDeal(game, empire, deal({ resources: { minerais: 5000 } }, { techs: [key] }));
+  check(game.convoys.length === before && !game.log.at(-1).text?.includes('Un convoi part'), 'échange sans matière : aucun convoi annoncé');
+}
+{
+  const game = G.createGame(42, 'vaskhar', 7);
+  game.resources.minerais = 500;
+  const e = game.empires.find((x) => x.species === 'ondesiens');
+  e.met = true;
+  e.relation = 30;
+  for (let d = 0; d < 400 && !game.proposals.length; d++) {
+    game.time += 1;
+    D.tickDiplomacy(game, 1);
+  }
+  const p = game.proposals[0];
+  game.time = p.expires + 0.5;
+  check(D.pendingProposal(game, e) === null, 'une proposition échue n\'est plus proposée, même avant le passage du jour');
+  game.time = p.expires - 1;
+  e.relation = -90;
+  game.time += 1;
+  D.tickDiplomacy(game, 1);
+  check(!game.proposals.some((x) => x.species === e.species), 'un empire devenu hostile retire sa proposition');
+  const data = copy(serialize(game));
+  data.empires.find((x) => x.species === 'ondesiens').lastAttitude = 'inconnue';
+  check(restore(data).empires.find((x) => x.species === 'ondesiens').lastAttitude === undefined, 'attitude enregistrée inconnue : ignorée');
+}
+
 // Le jeu complet appelle bien les relations.
 {
   const game = G.createGame(42, 'vaskhar', 4);
