@@ -208,6 +208,7 @@ export const DIPLOMACY = {
     frontieres: { label: 'Traité de frontières', value: 150, days: 1000, minRelation: -19, range: 25 },
     ruines: { label: 'Pacte de ruines', value: 250, days: 1000, minRelation: 20, range: 40 },
   },
+  convoySpeed: 2, // al par jour : les matières reçues voyagent depuis la colonie la plus proche de l'empire
   treatyRespectPerDay: 0.01, // note gagnée chaque jour tant qu'un traité tient
   treatyBreakPenalty: 25, // note perdue à la rupture
   techBranches: {

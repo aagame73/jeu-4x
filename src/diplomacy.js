@@ -104,6 +104,62 @@ export function breakTreaties(game, starId) {
   return broken;
 }
 
+// --- Convois ----------------------------------------------------------------------------
+// game.convoys : { id, species, fromId, toId, distance, progress, resources }. Visibles sur la carte ;
+// on ne peut ni les attaquer ni les perdre tant que le combat n'existe pas.
+
+function startConvoy(game, empire, resources) {
+  const targets = game.colonies.length ? game.colonies.map((c) => game.stars[c.starId]) : [game.stars[game.homeId]];
+  let best = null;
+  for (const colony of empire.colonies) {
+    const from = game.stars[colony.starId];
+    for (const to of targets) {
+      const d = starDistance(from, to);
+      if (!best || d < best.d) best = { d, from, to };
+    }
+  }
+  game.convoys.push({
+    id: game.nextConvoyId++,
+    species: empire.species,
+    fromId: best.from.id,
+    toId: best.to.id,
+    distance: Math.max(1, best.d),
+    progress: 0,
+    resources,
+  });
+}
+
+// Avance les convois ; renvoie ceux qui sont arrivés (leurs matières sont déjà livrées).
+export function tickConvoys(game, days) {
+  const arrived = [];
+  for (const convoy of game.convoys) {
+    convoy.progress += DIPLOMACY.convoySpeed * days;
+    if (convoy.progress < convoy.distance) continue;
+    for (const [res, amount] of Object.entries(convoy.resources)) game.resources[res] = (game.resources[res] ?? 0) + amount;
+    arrived.push(convoy);
+  }
+  game.convoys = game.convoys.filter((c) => !arrived.includes(c));
+  return arrived;
+}
+
+// Convois d'une sauvegarde : ceux qui ne correspondent pas à cette partie sont écartés.
+export function validConvoys(game, saved) {
+  if (!Array.isArray(saved)) return [];
+  const number = (x) => Number.isFinite(x) && x >= 0;
+  return saved.filter(
+    (c) =>
+      c &&
+      game.empires.some((e) => e.species === c.species) &&
+      game.stars[c.fromId] &&
+      game.stars[c.toId] &&
+      number(c.distance) &&
+      number(c.progress) &&
+      Number.isInteger(c.id) &&
+      c.resources &&
+      Object.entries(c.resources).every(([res, n]) => Object.hasOwn(DIPLOMACY.values, res) && Number.isInteger(n) && n > 0),
+  );
+}
+
 // --- Échanges ---------------------------------------------------------------------------
 // Une offre : { give: { resources: { minerais: 10 }, techs: [clé], map: false }, get: { ... } }.
 // give : ce que le joueur donne ; get : ce qu'il reçoit.
@@ -228,10 +284,10 @@ export function applyDeal(game, empire, offer, answer) {
     game.resources[res] -= amount;
     empire.stocks[res] += amount;
   }
-  for (const [res, amount] of resourcesOf(offer.get)) {
-    empire.stocks[res] -= amount;
-    game.resources[res] = (game.resources[res] ?? 0) + amount;
-  }
+  // Ce que le joueur reçoit voyage par convoi ; ce qu'il donne part tout de suite.
+  const shipped = Object.fromEntries(resourcesOf(offer.get));
+  for (const [res, amount] of resourcesOf(offer.get)) empire.stocks[res] -= amount;
+  if (Object.keys(shipped).length) startConvoy(game, empire, shipped);
   const given = offer.give.techs ?? [];
   const taken = offer.get.techs ?? [];
   if (given.length || taken.length) empire.nextTechTrade = game.time + DIPLOMACY.techDelay;

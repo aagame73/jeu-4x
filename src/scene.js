@@ -5,7 +5,8 @@ import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer
 import { CONFIG } from './config.js';
 import { STAR_TYPES, starDistance } from './galaxy.js';
 import { reachableStars, shipProgress, selectedShip } from './game.js';
-import { currentSpecies, knownRival } from './species.js';
+import { currentSpecies, knownRival, rivalInfo } from './species.js';
+import { SPECIES } from './config.js';
 import { createSky } from './skybox.js';
 import { animateShip, createShip, shipScale } from './ships.js';
 import { canvasTexture, glowTexture } from './textures.js';
@@ -142,6 +143,40 @@ export function createGalaxyView(container, game, callbacks) {
     }
   }
 
+  // Convois des échanges : un transport au style de l'empire, de sa colonie vers celle du joueur.
+  const convoyViews = new Map();
+  function syncConvoys() {
+    for (const [id, v] of convoyViews) {
+      if (game.convoys.some((c) => c.id === id)) continue;
+      scene.remove(v.holder);
+      convoyViews.delete(id);
+    }
+    for (const convoy of game.convoys) {
+      if (convoyViews.has(convoy.id)) continue;
+      const model = createShip(convoy.id * 7919 + 17, rivalInfo(convoy.species).accent, '', 'transport', SPECIES[convoy.species].shipStyle);
+      const holder = new THREE.Group();
+      holder.add(model);
+      scene.add(holder);
+      convoyViews.set(convoy.id, { convoy, model, holder, look: new THREE.Vector3(), placed: false });
+    }
+  }
+  const _from = new THREE.Vector3();
+  function updateConvoys(dt, time) {
+    for (const v of convoyViews.values()) {
+      const { convoy } = v;
+      const to = toVec(game.stars[convoy.toId].pos);
+      _from.copy(toVec(game.stars[convoy.fromId].pos)).lerp(to, Math.min(1, convoy.progress / convoy.distance));
+      _from.y += 1.4;
+      const k = v.placed ? Math.min(1, dt * 6) : 1;
+      v.placed = true;
+      v.holder.position.lerp(_from, k);
+      v.look.copy(to).setY(to.y + 1.4);
+      v.holder.lookAt(v.look);
+      v.holder.scale.setScalar(THREE.MathUtils.clamp(camera.position.distanceTo(v.holder.position) * 0.028, 0.45, 9));
+      animateShip(v.model, time, 1);
+    }
+  }
+
   // Position et point visé : en orbite autour de l'étoile, ou en route vers la destination.
   const _pos = new THREE.Vector3();
   const _look = new THREE.Vector3();
@@ -165,6 +200,7 @@ export function createGalaxyView(container, game, callbacks) {
 
   // Synchronise l'affichage avec l'état de la partie.
   function update() {
+    syncConvoys();
     for (const v of starViews) {
       const { star, sprite, el } = v;
       const size = STAR_TYPES[star.type].size;
@@ -387,6 +423,7 @@ export function createGalaxyView(container, game, callbacks) {
       v.marker.material.rotation -= dt * 0.6;
     }
 
+    updateConvoys(dt, time);
     ring.material.rotation += dt * 0.4;
     renderer.render(scene, camera);
     labelRenderer.render(scene, camera);

@@ -3,6 +3,7 @@
 import { createGame, getSurface, currentDay, STARTING_RESOURCES } from './game.js';
 import { bindResearch, TECHS } from './research.js';
 import { applyKnownColonies, newContacts, validEmpires } from './empires.js';
+import { validConvoys } from './diplomacy.js';
 import { DEFAULT_SPECIES, RIVALS } from './config.js';
 
 const VERSION = 1;
@@ -31,6 +32,8 @@ export function serialize(game) {
     ships: game.ships.map(({ thumbnail, ...ship }) => ship),
     colonies: game.colonies,
     empires: game.empires,
+    convoys: game.convoys,
+    nextConvoyId: game.nextConvoyId,
     surfaces: [...game.surfaces].map(([key, surface]) => [
       key,
       surface.tiles.map(({ terrain, deposit, building, yield: y }) => ({ terrain, deposit, building, yield: y })),
@@ -62,6 +65,9 @@ export function restore(data) {
   // Une partie d'avant les empires les voit démarrer aujourd'hui, avec leur seul monde natal.
   game.empires = validEmpires(game, data.empires) ?? game.empires;
   applyKnownColonies(game);
+  // Une partie d'avant les convois n'en a aucun en route.
+  game.convoys = validConvoys(game, data.convoys);
+  game.nextConvoyId = Math.max(Number.isInteger(data.nextConvoyId) ? data.nextConvoyId : 0, ...game.convoys.map((c) => c.id + 1));
   data.stars.forEach((level, i) => (game.stars[i].level = level));
   data.currents.forEach((known, i) => (game.currents[i].known = known));
   // Une partie d'avant les premiers contacts : les rivaux déjà identifiés sont déjà rencontrés.
