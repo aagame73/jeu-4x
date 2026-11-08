@@ -558,6 +558,99 @@ for (const species of ['ondesiens', 'ashkari', 'vaskhar']) {
   check(restore(old).convoys.length === 0, 'sauvegarde sans convois : aucun en route');
 }
 
+// Étape 7 : répliques, propositions des rivaux, changements d'attitude.
+{
+  const { DIALOGUES } = await imp('dialogues.js');
+  const situations = ['accueil', 'accepte', 'refus', 'refusFaible', 'refusHostile', 'contreOffre', 'proposition', 'rupture', 'plusAmical', 'plusHostile'];
+  const all = S.playableSpecies().flatMap((k) => situations.map((x) => DIALOGUES[k]?.[x]));
+  check(all.length === 80 && all.every((t) => typeof t === 'string' && t.length > 10), '80 répliques : 10 situations pour chacune des 8 espèces');
+  check(new Set(all).size === 80, 'aucune réplique en double');
+}
+const runDays = (game, days, everyDay = () => {}) => {
+  const events = [];
+  for (let d = 0; d < days; d++) {
+    game.time += 1;
+    everyDay();
+    events.push(...D.tickDiplomacy(game, 1));
+  }
+  return events;
+};
+{
+  const game = G.createGame(42, 'vaskhar', 7);
+  game.resources.minerais = 500;
+  game.resources.biomasse = 300;
+  const met = game.empires.find((e) => e.species === 'ondesiens');
+  const unmet = game.empires.find((e) => e.species === 'synodes');
+  const hostile = game.empires.find((e) => e.species === 'thrennes');
+  met.met = true;
+  met.relation = 30;
+  hostile.met = true;
+  hostile.relation = -90;
+  const events = runDays(game, 300, () => (hostile.relation = -90)); // il reste hostile tout du long
+  const proposals = events.filter((e) => e.type === 'proposal');
+  check(proposals.some((e) => e.empire === met), `un empire rencontré fait des propositions (${proposals.filter((e) => e.empire === met).length} en 300 jours)`);
+  check(!proposals.some((e) => e.empire === unmet), 'un empire non rencontré ne propose rien');
+  check(!proposals.some((e) => e.empire === hostile), 'un empire hostile ne propose rien');
+  check(game.proposals.filter((p) => p.species === met.species).length <= 1, 'au plus une proposition en attente par empire');
+  check(events.some((e) => e.type === 'expired' && e.empire === met), 'une proposition sans réponse expire');
+  const p = proposals.find((e) => e.empire === met).proposal;
+  check(D.evaluateDeal(game, met, p.offer).reason !== 'nothing-free' && Object.keys(p.offer.give.resources).length === 1 && Object.keys(p.offer.get.resources).length === 1, `proposition : une matière contre une autre (${D.describeOffer(p.offer)})`);
+  const [[res, asked]] = Object.entries(p.offer.give.resources);
+  check(asked <= Math.ceil(game.resources[res] * DIPLOMACY.proposalShare) + 1, `le rival ne demande qu'une part du stock (${asked} sur ${game.resources[res]})`);
+}
+{
+  // Accepter une proposition : l'échange se fait au prix proposé.
+  const game = G.createGame(42, 'vaskhar', 7);
+  game.resources.minerais = 500;
+  const e = game.empires.find((x) => x.species === 'ondesiens');
+  e.met = true;
+  e.relation = 30;
+  let proposal = null;
+  for (let d = 0; d < 400 && !proposal; d++) {
+    game.time += 1;
+    proposal = D.tickDiplomacy(game, 1).find((x) => x.type === 'proposal')?.proposal ?? null;
+  }
+  check(!!proposal, 'une proposition arrive');
+  const ok = G.signDeal(game, e, proposal.offer).ok;
+  D.dropProposal(game, e.species);
+  check(ok && game.proposals.length === 0, 'accepter une proposition conclut l\'échange');
+  // Sauvegarde.
+  for (let d = 0; d < 400 && !game.proposals.length; d++) {
+    game.time += 1;
+    D.tickDiplomacy(game, 1);
+  }
+  const back = restore(copy(serialize(game)));
+  check(back.proposals.length === game.proposals.length && back.proposals.length > 0, 'une proposition en attente survit à la sauvegarde');
+  const bad = copy(serialize(game));
+  bad.proposals = [{ species: 'inconnue', offer: {}, expires: 5 }, 'x'];
+  check(restore(bad).proposals.length === 0, 'propositions invalides : écartées');
+  const old = copy(serialize(game));
+  delete old.proposals;
+  check(restore(old).proposals.length === 0, 'sauvegarde sans propositions : aucune');
+}
+{
+  // Changement d'attitude : annoncé une seule fois.
+  const game = G.createGame(42, 'vaskhar', 7);
+  const e = game.empires.find((x) => x.species === 'ondesiens');
+  e.met = true;
+  e.relation = 30;
+  runDays(game, 1);
+  e.relation = -70;
+  const changes = runDays(game, 5).filter((x) => x.type === 'attitude' && x.empire === e);
+  check(changes.length === 1 && !changes[0].better && changes[0].attitude.key === 'hostile', 'attitude en baisse : annoncée une fois');
+  e.relation = 90;
+  const up = runDays(game, 3).filter((x) => x.type === 'attitude' && x.empire === e);
+  check(up.length === 1 && up[0].better, 'attitude en hausse : annoncée');
+  const full = G.createGame(42, 'vaskhar', 7);
+  const f = full.empires.find((x) => x.species === 'ondesiens');
+  f.met = true;
+  f.relation = 30;
+  G.tick(full, 1);
+  f.relation = -70;
+  for (let d = 0; d < 3; d++) G.tick(full, 1);
+  check(full.log.some((l) => JSON.stringify(l).includes('vous jugent désormais : hostile')), 'le journal annonce le changement, avec la réplique de l\'espèce');
+}
+
 // Le jeu complet appelle bien les relations.
 {
   const game = G.createGame(42, 'vaskhar', 4);

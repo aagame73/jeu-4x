@@ -25,6 +25,7 @@ export function createEmpires(stars) {
         nextTechTrade: 0,
         nextMapTrade: 0,
         treaties: { frontieres: 0, ruines: 0 },
+        nextProposal: 0, // 0 : fixé au premier contact
       };
       empire.stocks = startStocks(empire);
       return empire;
@@ -124,6 +125,8 @@ export function validEmpires(game, saved) {
     nextTechTrade: number(empire.nextTechTrade) ? empire.nextTechTrade : 0,
     nextMapTrade: number(empire.nextMapTrade) ? empire.nextMapTrade : 0,
     treaties: { frontieres: number(empire.treaties?.frontieres) ? empire.treaties.frontieres : 0, ruines: number(empire.treaties?.ruines) ? empire.treaties.ruines : 0 },
+    nextProposal: number(empire.nextProposal) ? empire.nextProposal : 0,
+    lastAttitude: typeof empire.lastAttitude === 'string' ? empire.lastAttitude : undefined,
   }));
 }
 

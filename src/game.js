@@ -15,7 +15,8 @@ import { generateSurface, hexDistance } from './surface.js';
 import { tickColony, colonyReport, SHIPYARD, canAfford, RESOURCE_LABELS } from './economy.js';
 import { TECHS, hasTech, bindResearch, markTech, techCost } from './research.js';
 import { SPECIES, DEFAULT_SPECIES, RIVALS, DIPLOMACY } from './config.js';
-import { applyDeal, breakTreaties, evaluateDeal, tickConvoys, tickDiplomacy } from './diplomacy.js';
+import { applyDeal, breakTreaties, describeOffer, evaluateDeal, tickConvoys, tickDiplomacy } from './diplomacy.js';
+import { line } from './dialogues.js';
 import { createEmpires, tickEmpires, revealEmpires, rivalColonyAt, newContacts } from './empires.js';
 import { bindSpecies, speciesBonus, speciesHabitat, hostilePenalty, currentSpecies, normalizeRivals, rivalInfo } from './species.js';
 
@@ -88,6 +89,7 @@ export function createGame(seed, species = DEFAULT_SPECIES, rivals = RIVALS.defa
     empires: createEmpires(galaxy.stars),
     contacts: [], // espèces à présenter à l'écran (premier contact), non enregistré
     convoys: [], // matières reçues par échange, en route
+    proposals: [], // propositions des rivaux en attente de réponse
     nextConvoyId: 0,
   };
   bindResearch(game.research);
@@ -298,7 +300,7 @@ export function foundColony(game, ship, starId, planetIndex, tileIndex) {
   const planet = game.stars[starId].planets[planetIndex];
   const first = game.colonies.length === 0;
   for (const empire of breakTreaties(game, starId)) {
-    addLog(game, `Traité de frontières rompu : les ${rivalInfo(empire.species).label} ne vous le pardonneront pas de sitôt.`, 'alert');
+    addLog(game, `Traité de frontières rompu avec les ${rivalInfo(empire.species).label}. « ${line(empire.species, 'rupture')} »`, 'alert');
   }
   const habitat = speciesHabitat(planet);
   tile.terrain = 'plaine';
@@ -521,8 +523,15 @@ export function tick(game, days) {
     addLog(game, `Convoi des ${rivalInfo(convoy.species).label} arrivé à ${game.stars[convoy.toId].name} : ${goods}.`, 'build');
     changed = true;
   }
-  for (const { empire, key } of tickDiplomacy(game, days)) {
-    addLog(game, `${DIPLOMACY.treaties[key].label} avec les ${rivalInfo(empire.species).label} : arrivé à son terme.`, 'info');
+  for (const event of tickDiplomacy(game, days)) {
+    const { empire } = event;
+    const label = rivalInfo(empire.species).label;
+    if (event.type === 'ended') addLog(game, `${DIPLOMACY.treaties[event.key].label} avec les ${label} : arrivé à son terme.`, 'info');
+    else if (event.type === 'attitude') {
+      addLog(game, `Les ${label} vous jugent désormais : ${event.attitude.label.toLowerCase()}. « ${line(empire.species, event.better ? 'plusAmical' : 'plusHostile')} »`, event.better ? 'info' : 'alert');
+    } else if (event.type === 'proposal') {
+      addLog(game, `Les ${label} proposent ${describeOffer(event.proposal.offer)}. « ${line(empire.species, 'proposition')} » Répondez dans la diplomatie (D).`, 'alert');
+    } else if (event.type === 'expired') addLog(game, `La proposition des ${label} a expiré.`, 'info');
     changed = true;
   }
   const logLength = game.log.length;

@@ -3,6 +3,8 @@
 import { DIPLOMACY, SPECIES } from './config.js';
 import { starDistance } from './galaxy.js';
 import { TECHS } from './research.js';
+import { RESOURCE_LABELS } from './economy.js';
+import { createRng } from './rng.js';
 
 export const startRelation = (species) => DIPLOMACY.startRelation[species];
 
@@ -316,8 +318,92 @@ export function applyDeal(game, empire, offer, answer) {
   return taken;
 }
 
+// --- Propositions des rivaux -----------------------------------------------------------
+// game.proposals : { species, offer, expires }, au plus une par empire.
+
+// Offre que l'empire juge acceptable : il demande au joueur la matière qui lui manque le plus,
+// contre celle qu'il a en abondance, au meilleur prix qu'il accepterait lui-même.
+function makeProposal(game, empire) {
+  const fill = (res) => empire.stocks[res] / stockCap(empire, res);
+  const materials = DIPLOMACY.proposalMaterials;
+  const wanted = materials
+    .filter((res) => (game.resources[res] ?? 0) >= DIPLOMACY.proposalMin / DIPLOMACY.proposalShare) // jamais plus d'une part du stock
+    .sort((a, b) => fill(a) - fill(b))[0];
+  const offered = materials.filter((res) => res !== wanted && empire.stocks[res] >= 1).sort((a, b) => fill(b) - fill(a))[0];
+  if (!wanted || !offered) return null;
+  const amount = Math.max(DIPLOMACY.proposalMin, Math.min(DIPLOMACY.proposalMax, Math.round((game.resources[wanted] ?? 0) * DIPLOMACY.proposalShare)));
+  const build = (n) => ({ give: { resources: { [wanted]: amount }, techs: [], map: false }, get: { resources: { [offered]: n }, techs: [], map: false, treaties: [] } });
+  let low = 0;
+  let high = Math.floor(empire.stocks[offered]);
+  while (low < high) {
+    const mid = Math.ceil((low + high) / 2);
+    if (evaluateDeal(game, empire, build(mid)).ok) low = mid;
+    else high = mid - 1;
+  }
+  return low > 0 ? build(low) : null;
+}
+
+const proposalOf = (game, empire) => game.proposals.find((p) => p.species === empire.species);
+
+// Jour de la prochaine proposition : environ proposalEvery jours plus tard, sans générateur à enregistrer.
+function scheduleProposal(game, empire) {
+  const rng = createRng((game.seed ^ Math.imul(empire.homeId + 1, 0x2c1b3c6d) ^ Math.floor(game.time)) >>> 0);
+  empire.nextProposal = game.time + DIPLOMACY.proposalEvery * (0.75 + rng.next() * 0.5);
+}
+
+function proposalDay(game, empire, events) {
+  const current = proposalOf(game, empire);
+  if (current && game.time >= current.expires) {
+    game.proposals = game.proposals.filter((p) => p !== current);
+    events.push({ type: 'expired', empire });
+  }
+  if (!empire.nextProposal) scheduleProposal(game, empire);
+  if (proposalOf(game, empire) || game.time < empire.nextProposal || attitudeOf(empire.relation).key === 'hostile') return;
+  const offer = makeProposal(game, empire);
+  scheduleProposal(game, empire);
+  if (!offer) return;
+  const proposal = { species: empire.species, offer, expires: game.time + DIPLOMACY.proposalDays };
+  game.proposals.push(proposal);
+  events.push({ type: 'proposal', empire, proposal });
+}
+
+// Le joueur répond à une proposition : on retire la proposition dans tous les cas.
+export function dropProposal(game, species) {
+  game.proposals = game.proposals.filter((p) => p.species !== species);
+}
+
+export const pendingProposal = (game, empire) => proposalOf(game, empire) ?? null;
+
+// Texte court d'une offre : « 50 minerais contre 30 biomasse ».
+export function describeOffer(offer) {
+  const side = (s) =>
+    [
+      ...resourcesOf(s).map(([res, n]) => `${n} ${(RESOURCE_LABELS[res] ?? res).toLowerCase()}`),
+      ...(s.techs ?? []).map((k) => TECHS[k].label),
+      ...(s.map ? ['une carte'] : []),
+      ...(s.treaties ?? []).map((k) => DIPLOMACY.treaties[k].label.toLowerCase()),
+    ].join(', ');
+  return `${side(offer.give)} contre ${side(offer.get)}`;
+}
+
+const validSide = (side) =>
+  side &&
+  typeof side === 'object' &&
+  Object.entries(side.resources ?? {}).every(([res, n]) => Object.hasOwn(DIPLOMACY.values, res) && Number.isInteger(n) && n > 0) &&
+  (side.techs ?? []).every((k) => TECHS[k]) &&
+  (side.treaties ?? []).every((k) => DIPLOMACY.treaties[k]);
+
+// Propositions d'une sauvegarde : celles qui ne correspondent pas à cette partie sont écartées.
+export function validProposals(game, saved) {
+  if (!Array.isArray(saved)) return [];
+  return saved.filter(
+    (p) => p && game.empires.some((e) => e.species === p.species && e.met) && Number.isFinite(p.expires) && validSide(p.offer?.give) && validSide(p.offer?.get),
+  );
+}
+
 // Un jour entier : les stocks montent chez tous ; chez les empires rencontrés, la note revient vers
-// sa valeur de départ et baisse si le joueur est trop près. Renvoie les traités arrivés à terme.
+// sa valeur de départ et baisse si le joueur est trop près, l'attitude est suivie et des
+// propositions arrivent. Renvoie les événements : traités à terme, attitudes, propositions.
 function diplomacyDay(game) {
   const ended = [];
   for (const empire of game.empires) {
@@ -327,12 +413,20 @@ function diplomacyDay(game) {
       if (treatyActive(game, empire, key)) changeRelation(empire, DIPLOMACY.treatyRespectPerDay);
       else {
         empire.treaties[key] = 0;
-        ended.push({ empire, key });
+        ended.push({ type: 'ended', empire, key });
       }
     }
     if (!empire.met) continue;
     const pressure = Math.min(DIPLOMACY.proximityMax, nearColonies(game, empire) * DIPLOMACY.proximityPerColony);
     changeRelation(empire, (startRelation(empire.species) - empire.relation) * DIPLOMACY.returnPerDay - pressure);
+    // Changement d'attitude, quelle qu'en soit la cause (échange, traité, fouilles, voisinage).
+    const attitude = attitudeOf(empire.relation);
+    const ranks = DIPLOMACY.attitudes.map((a) => a.key);
+    if (empire.lastAttitude && empire.lastAttitude !== attitude.key) {
+      ended.push({ type: 'attitude', empire, attitude, better: ranks.indexOf(attitude.key) < ranks.indexOf(empire.lastAttitude) });
+    }
+    empire.lastAttitude = attitude.key;
+    proposalDay(game, empire, ended);
   }
   return ended;
 }

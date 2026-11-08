@@ -208,6 +208,13 @@ export const DIPLOMACY = {
     frontieres: { label: 'Traité de frontières', value: 150, days: 1000, minRelation: -19, range: 25 },
     ruines: { label: 'Pacte de ruines', value: 250, days: 1000, minRelation: 20, range: 40 },
   },
+  // Propositions des rivaux rencontrés (et non hostiles) : environ une tous les proposalEvery jours, valable proposalDays jours.
+  proposalEvery: 100,
+  proposalDays: 60,
+  proposalShare: 0.25, // part de son stock que le rival demande au joueur
+  proposalMin: 10,
+  proposalMax: 200,
+  proposalMaterials: ['minerais', 'alliages', 'biomasse', 'eau', 'deuterium'], // la Vélarine et les artefacts ne se proposent pas
   convoySpeed: 2, // al par jour : les matières reçues voyagent depuis la colonie la plus proche de l'empire
   treatyRespectPerDay: 0.01, // note gagnée chaque jour tant qu'un traité tient
   treatyBreakPenalty: 25, // note perdue à la rupture
