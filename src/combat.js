@@ -5,6 +5,8 @@ import { starDistance } from './galaxy.js';
 import { SHIP_KINDS, colonyDefense, getSurface, removeShip, shipStats } from './game.js';
 import { createRng } from './rng.js';
 import { rivalInfo, speciesHabitat } from './species.js';
+import { changeRelation } from './diplomacy.js';
+import { RESOURCE_LABELS } from './economy.js';
 
 // Une unité : { attack, defense, damage } (vaisseau, flotte ou défense de colonie). Elle tombe quand
 // ses dégâts atteignent sa résistance.
@@ -242,9 +244,63 @@ function battleDay(game, starId, rng) {
   return events;
 }
 
-// Un jour entier de guerre : flottes construites et déplacées, combats, réparations.
+// Convoi de ravitaillement : du monde natal vers la colonie la plus proche du joueur.
+function sendSupply(game, empire) {
+  if (empire.colonies.length < 2 || !game.colonies.length) return;
+  const home = game.stars[empire.homeId];
+  const front = empire.colonies
+    .slice(1)
+    .map((c) => game.stars[c.starId])
+    .sort((a, b) => Math.min(...game.colonies.map((c) => starDistance(a, game.stars[c.starId]))) - Math.min(...game.colonies.map((c) => starDistance(b, game.stars[c.starId]))))[0];
+  if (front.id === home.id) return;
+  const resources = {};
+  for (const [res, max] of Object.entries(COMBAT.supplyLoad)) {
+    const n = Math.floor(Math.min(max, empire.stocks[res]));
+    if (n > 0) {
+      resources[res] = n;
+      empire.stocks[res] -= n;
+    }
+  }
+  if (!Object.keys(resources).length) return;
+  game.convoys.push({ id: game.nextConvoyId++, species: empire.species, fromId: home.id, toId: front.id, distance: Math.max(1, starDistance(home, front)), progress: 0, resources, supply: true });
+}
+
+// Position d'un convoi sur sa route.
+function convoyPosition(game, convoy) {
+  const a = game.stars[convoy.fromId].pos;
+  const b = game.stars[convoy.toId].pos;
+  const t = Math.min(1, convoy.progress / convoy.distance);
+  return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t, z: a.z + (b.z - a.z) * t };
+}
+
+// Un vaisseau de guerre du joueur intercepte les convois de ravitaillement ennemis passant près de lui.
+function pillageDay(game) {
+  const events = [];
+  const posts = game.ships.filter((s) => s.state !== 'travel' && SHIP_KINDS[s.kind].warship).map((s) => game.stars[s.starId]);
+  if (!posts.length) return events;
+  for (const convoy of [...game.convoys]) {
+    if (!convoy.supply || !atWar(game, convoy.species)) continue;
+    const pos = convoyPosition(game, convoy);
+    if (!posts.some((star) => Math.hypot(star.pos.x - pos.x, star.pos.y - pos.y, star.pos.z - pos.z) <= COMBAT.interceptRange)) continue;
+    const loot = Object.entries(convoy.resources).map(([res, n]) => [res, Math.floor(n * COMBAT.pillageShare)]).filter(([, n]) => n > 0);
+    for (const [res, n] of loot) game.resources[res] = (game.resources[res] ?? 0) + n;
+    game.convoys = game.convoys.filter((c) => c !== convoy);
+    changeRelation(empireOf(game, convoy.species), -COMBAT.pillageRelation);
+    const goods = loot.map(([res, n]) => `${n} ${(RESOURCE_LABELS[res] ?? res).toLowerCase()}`).join(', ') || 'rien';
+    events.push({ text: `Convoi de ravitaillement des ${rivalInfo(convoy.species).label} intercepté : butin ${goods}.`, kind: 'discovery', type: 'pillage', species: convoy.species });
+  }
+  return events;
+}
+
+// Un jour entier de guerre : flottes construites et déplacées, ravitaillement, combats, réparations.
 function warDay(game) {
   const events = [];
+  for (const empire of game.empires) {
+    if (!empire.war || game.time < empire.nextSupply) continue;
+    empire.nextSupply = game.time + COMBAT.supplyEvery;
+    sendSupply(game, empire);
+  }
+  events.push(...pillageDay(game));
   for (const empire of game.empires) {
     if (!empire.war || game.time < empire.nextFleet) continue;
     empire.nextFleet = game.time + COMBAT.fleetEvery;
