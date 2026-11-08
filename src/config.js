@@ -242,6 +242,13 @@ export const DIPLOMACY = {
   },
 };
 
+// Combat (combat.js, docs/plan-combat.md). Résolution automatique, une journée à la fois.
+export const COMBAT = {
+  hpPerDefense: 3, // une unité tombe quand ses dégâts atteignent 3 × sa défense
+  spread: 0.25, // part de hasard sur les dégâts d'une journée (± 25 %)
+  maxBattleDays: 60, // au-delà, les deux camps se séparent (simulation seulement)
+};
+
 // Expansion des empires rivaux (empires.js). Un niveau de difficulté pourra agir sur ces réglages.
 // Une colonie coûte baseCost points × (1 + costGrowth par colonie déjà fondée) ; un empire gagne growth points par jour.
 // power : monte chaque jour, augmente la portée (al) et autorise les milieux hostiles. deposits : poids des gisements.

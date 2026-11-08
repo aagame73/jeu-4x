@@ -146,5 +146,37 @@ const setup = (partner = 'ondesiens', player = 'thrennes') => {
   check(restore(old).empires.every((e) => e.war === false), 'ancienne sauvegarde : aucune guerre');
 }
 
+// Étape 2 : résolution d'un combat.
+{
+  const C = await imp('combat.js');
+  const { createRng } = await imp('rng.js');
+  const { SHIP_KINDS } = G;
+  const unit = (kind) => ({ attack: SHIP_KINDS[kind].attack, defense: SHIP_KINDS[kind].defense, damage: 0 });
+  const many = (kind, n) => Array.from({ length: n }, () => unit(kind));
+  const outcomes = (a, b, n = 800) => {
+    const r = { A: 0, B: 0, none: 0 };
+    for (let i = 0; i < n; i++) r[C.fightToEnd(a(), b(), createRng(i + 1)).winner ?? 'none']++;
+    return { A: r.A / n, B: r.B / n };
+  };
+  const even = outcomes(() => many('fregate', 2), () => many('fregate', 2));
+  check(Math.abs(even.A - even.B) < 0.08, `forces égales : chances égales (${Math.round(even.A * 100)} % contre ${Math.round(even.B * 100)} %)`);
+  const r1 = outcomes(() => many('corvette', 2), () => many('corvette', 2)).A;
+  const r2 = outcomes(() => many('corvette', 3), () => many('corvette', 2)).A;
+  const r3 = outcomes(() => many('corvette', 5), () => many('corvette', 2)).A;
+  check(r1 < r2 && r2 <= r3 && r3 > 0.95, `plus de vaisseaux, plus de victoires (${Math.round(r1 * 100)} %, ${Math.round(r2 * 100)} %, ${Math.round(r3 * 100)} %)`);
+  check(outcomes(() => many('cuirasse', 1), () => many('corvette', 3)).A > 0.95, 'un cuirassé bat 3 corvettes');
+  const a = many('fregate', 2);
+  const b = many('corvette', 3);
+  const r = C.fightToEnd(a, b, createRng(5));
+  const a2 = many('fregate', 2);
+  const b2 = many('corvette', 3);
+  const rb = C.fightToEnd(a2, b2, createRng(5));
+  check(r.days === rb.days && r.winner === rb.winner && JSON.stringify(a) === JSON.stringify(a2), 'même hasard, même combat (rejouable)');
+  check([...a, ...b].every((u) => u.damage >= 0 && u.damage <= C.toughness(u)), 'les dégâts ne dépassent jamais la résistance');
+  const lone = [unit('corvette')];
+  const fallen = C.fightDay(lone, [{ attack: 0, defense: 50, damage: 0 }], createRng(1));
+  check(fallen.length === 0 && lone[0].damage === 0, "une unité sans attaque n'inflige rien");
+}
+
 console.log(fails ? `\n${fails} échec(s)` : '\nTous les tests passent.');
 process.exit(fails ? 1 : 0);
