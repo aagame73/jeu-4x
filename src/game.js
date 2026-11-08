@@ -15,7 +15,7 @@ import { generateSurface, hexDistance } from './surface.js';
 import { tickColony, colonyReport, SHIPYARD, canAfford, RESOURCE_LABELS } from './economy.js';
 import { TECHS, hasTech, bindResearch, markTech, techCost } from './research.js';
 import { SPECIES, DEFAULT_SPECIES, RIVALS, DIPLOMACY } from './config.js';
-import { applyDeal, breakTreaties, describeOffer, evaluateDeal, tickConvoys, tickDiplomacy } from './diplomacy.js';
+import { applyDeal, breakTreaties, declareWar, describeOffer, evaluateDeal, tickConvoys, tickDiplomacy } from './diplomacy.js';
 import { line } from './dialogues.js';
 import { createEmpires, tickEmpires, revealEmpires, rivalColonyAt, newContacts } from './empires.js';
 import { bindSpecies, speciesBonus, speciesHabitat, hostilePenalty, currentSpecies, normalizeRivals, rivalInfo } from './species.js';
@@ -532,6 +532,7 @@ export function tick(game, days) {
     } else if (event.type === 'proposal') {
       addLog(game, `Les ${label} proposent ${describeOffer(event.proposal.offer)}. « ${line(empire.species, 'proposition')} » Répondez dans la diplomatie (D).`, 'alert');
     } else if (event.type === 'expired') addLog(game, `La proposition des ${label} a expiré.`, 'info');
+    else if (event.type === 'war') addLog(game, `Les ${label} vous déclarent la guerre !`, 'alert');
     changed = true;
   }
   const logLength = game.log.length;
@@ -577,8 +578,17 @@ export function signDeal(game, empire, offer) {
     addLog(game, `Technologie obtenue par échange : ${TECHS[key].label}. ${TECHS[key].unlocks}`, 'discovery');
   }
   const travel = convoy ? ` Un convoi part de ${game.stars[convoy.fromId].name} : arrivée dans ${Math.ceil(convoy.distance / DIPLOMACY.convoySpeed)} jours.` : '';
-  addLog(game, `Échange conclu avec les ${rivalInfo(empire.species).label}.${travel}`, 'info');
+  if (offer.get.peace) addLog(game, `Paix signée avec les ${rivalInfo(empire.species).label}. Trêve jusqu'au jour ${Math.floor(empire.truceUntil) + 1}.`, 'info');
+  else addLog(game, `Échange conclu avec les ${rivalInfo(empire.species).label}.${travel}`, 'info');
   return answer;
+}
+
+// Le joueur déclare la guerre à un empire rencontré. Renvoie false si c'est impossible.
+export function declareWarOn(game, empire) {
+  if (!empire.met || empire.war) return false;
+  declareWar(game, empire, true);
+  addLog(game, `Vous déclarez la guerre aux ${rivalInfo(empire.species).label}. Traités rompus, commerce interrompu.`, 'alert');
+  return true;
 }
 
 // --- Exploration -----------------------------------------------------------------------

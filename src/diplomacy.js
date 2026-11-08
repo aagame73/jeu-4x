@@ -106,6 +106,54 @@ export function breakTreaties(game, starId) {
   return broken;
 }
 
+// --- Guerre et paix -----------------------------------------------------------------------
+
+export const peaceValue = (empire) => DIPLOMACY.peaceValue + DIPLOMACY.peaceValuePerPower * empire.power;
+
+// Quantité minimale d'une matière pour acheter la paix à cet empire (selon sa rareté chez lui).
+export function peacePrice(empire, res) {
+  const needed = peaceValue(empire) * DIPLOMACY.warMargin;
+  let low = 1;
+  let high = 1;
+  while (materialValue(empire, res, high, true) < needed && high < 1e6) high *= 2;
+  while (low < high) {
+    const mid = Math.floor((low + high) / 2);
+    if (materialValue(empire, res, mid, true) >= needed) high = mid;
+    else low = mid + 1;
+  }
+  return low;
+}
+
+// La guerre rompt les traités et annule les propositions ; déclarée par le joueur, elle plaît
+// aux rivaux de cet empire (même à ceux qu'il n'a pas rencontrés).
+export function declareWar(game, empire, byPlayer) {
+  empire.war = true;
+  empire.warSince = game.time;
+  for (const key of Object.keys(DIPLOMACY.treaties)) empire.treaties[key] = 0;
+  dropProposal(game, empire.species);
+  empire.relation = Math.min(empire.relation, DIPLOMACY.warRelation);
+  if (byPlayer) {
+    const rivals = rivalsOf(empire.species);
+    for (const other of game.empires) if (rivals.includes(other.species)) changeRelation(other, DIPLOMACY.warRivalGain);
+  }
+}
+
+function makePeace(game, empire) {
+  empire.war = false;
+  empire.truceUntil = game.time + DIPLOMACY.truceDays;
+  empire.relation = Math.max(empire.relation, DIPLOMACY.peaceRelation);
+}
+
+// Un rival hostile peut déclarer la guerre : jamais avant le délai de grâce ni pendant une trêve.
+function warDay(game, empire, events) {
+  if (empire.war || game.time < DIPLOMACY.graceDays || game.time < empire.truceUntil) return;
+  if (attitudeOf(empire.relation).key !== 'hostile') return;
+  const rng = createRng((game.seed ^ Math.imul(empire.homeId + 1, 0x7f4a7c15) ^ Math.imul(Math.floor(game.time), 0x165667b1)) >>> 0);
+  if (rng.next() >= DIPLOMACY.warChancePerDay * (DIPLOMACY.warStyle[empire.species] ?? 1)) return;
+  declareWar(game, empire, false);
+  events.push({ type: 'war', empire });
+}
+
 // --- Convois ----------------------------------------------------------------------------
 // game.convoys : { id, species, fromId, toId, distance, progress, resources }. Visibles sur la carte ;
 // on ne peut ni les attaquer ni les perdre tant que le combat n'existe pas.
@@ -172,7 +220,7 @@ export function validConvoys(game, saved) {
 // give : ce que le joueur donne ; get : ce qu'il reçoit.
 
 const resourcesOf = (side) => Object.entries(side.resources ?? {});
-const isEmpty = (side) => !resourcesOf(side).length && !side.techs?.length && !side.map && !side.treaties?.length;
+const isEmpty = (side) => !resourcesOf(side).length && !side.techs?.length && !side.map && !side.treaties?.length && !side.peace;
 
 // Rareté chez l'empire : une matière dont il a peu vaut plus cher pour lui. Le prix suit le stock
 // pendant l'échange (prix moyen entre avant et après) : sinon acheter puis revendre rapporterait.
@@ -194,6 +242,7 @@ function sideValue(game, empire, side, playerGives) {
   total += (side.techs ?? []).reduce((sum, key) => sum + techValue(key), 0);
   if (side.map) total += DIPLOMACY.mapValuePerColony * (playerGives ? game.colonies.length : unknownColonies(empire));
   total += (side.treaties ?? []).reduce((sum, key) => sum + DIPLOMACY.treaties[key].value, 0);
+  if (side.peace) total += peaceValue(empire);
   return total;
 }
 
@@ -204,7 +253,16 @@ const tradableTech = (key) => TECHS[key] && !TECHS[key].artefacts && TECHS[key].
 function dealProblem(game, empire, offer) {
   if (!empire.met) return 'unknown';
   if (isEmpty(offer.give) || isEmpty(offer.get)) return 'nothing-free';
-  if (attitudeOf(empire.relation).key === 'hostile') return 'hostile';
+  // En guerre, seule la paix se négocie ; hors guerre, elle n'a pas de sens.
+  const { get } = offer;
+  if (empire.war) {
+    if (!get.peace) return 'war';
+    if (resourcesOf(get).length || get.techs?.length || get.map || get.treaties?.length || offer.give.treaties?.length) return 'war';
+  } else {
+    if (get.peace || offer.give.peace) return 'invalid';
+    if (attitudeOf(empire.relation).key === 'hostile') return 'hostile';
+  }
+  if (offer.give.peace) return 'invalid';
   for (const side of [offer.give, offer.get]) {
     for (const [res, amount] of resourcesOf(side)) {
       if (!Object.hasOwn(DIPLOMACY.values, res) || !validAmount(amount)) return 'invalid';
@@ -263,7 +321,9 @@ export function evaluateDeal(game, empire, offer) {
   if (problem) return { ok: false, reason: problem, received: 0, given: 0 };
   const received = sideValue(game, empire, offer.give, true);
   const given = sideValue(game, empire, offer.get, false);
-  const margin = Math.max(DIPLOMACY.marginFloor, DIPLOMACY.margin[attitudeOf(empire.relation).key] * (DIPLOMACY.tradeFactor[empire.species] ?? 1));
+  const margin = empire.war
+    ? DIPLOMACY.warMargin
+    : Math.max(DIPLOMACY.marginFloor, DIPLOMACY.margin[attitudeOf(empire.relation).key] * (DIPLOMACY.tradeFactor[empire.species] ?? 1));
   return { ok: received >= given * margin, reason: received >= given * margin ? null : 'unbalanced', received, given, margin };
 }
 
@@ -304,6 +364,7 @@ export function applyDeal(game, empire, offer, answer) {
   }
   if (offer.give.map) empire.nextMapTrade = game.time + DIPLOMACY.mapDelay;
   for (const key of offer.get.treaties ?? []) empire.treaties[key] = game.time + DIPLOMACY.treaties[key].days;
+  if (offer.get.peace) makePeace(game, empire);
   if (offer.get.map) {
     for (const colony of empire.colonies) {
       colony.known = true;
@@ -365,11 +426,11 @@ function proposalDay(game, empire, events) {
   if (!empire.nextProposal) scheduleProposal(game, empire);
   const hostile = attitudeOf(empire.relation).key === 'hostile';
   // Un empire devenu hostile retire sa proposition.
-  if (hostile && proposalOf(game, empire)) {
+  if ((hostile || empire.war) && proposalOf(game, empire)) {
     game.proposals = game.proposals.filter((p) => p.species !== empire.species);
     events.push({ type: 'expired', empire });
   }
-  if (proposalOf(game, empire) || game.time < empire.nextProposal || hostile) return;
+  if (proposalOf(game, empire) || game.time < empire.nextProposal || hostile || empire.war) return;
   const offer = makeProposal(game, empire);
   scheduleProposal(game, empire);
   if (!offer) return;
@@ -397,6 +458,7 @@ export function describeOffer(offer) {
       ...(s.techs ?? []).map((k) => TECHS[k].label),
       ...(s.map ? ['une carte'] : []),
       ...(s.treaties ?? []).map((k) => DIPLOMACY.treaties[k].label.toLowerCase()),
+      ...(s.peace ? ['la paix'] : []),
     ].join(', ');
   return `${side(offer.give)} contre ${side(offer.get)}`;
 }
@@ -441,6 +503,7 @@ function diplomacyDay(game) {
       ended.push({ type: 'attitude', empire, attitude, better: ranks.indexOf(attitude.key) < ranks.indexOf(empire.lastAttitude) });
     }
     empire.lastAttitude = attitude.key;
+    warDay(game, empire, ended);
     proposalDay(game, empire, ended);
   }
   return ended;
