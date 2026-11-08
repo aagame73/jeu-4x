@@ -114,17 +114,25 @@ export function createDiplomacyView(root, game, actions) {
         <section>
           <h4>Vous donnez</h4>
           ${materialRows('give', empire)}
-          <h5>Technologies</h5>${techRows('give', empire)}
-          <h5>Cartes</h5>
-          <label class="dp-check"><input type="checkbox" data-side="give" data-map ${offer.give.map ? 'checked' : ''} /><span>Votre carte de l'amas</span></label>
+          <div class="dp-extras">
+            <div><h5>Technologies</h5>${techRows('give', empire)}</div>
+            <div>
+              <h5>Cartes</h5>
+              <label class="dp-check"><input type="checkbox" data-side="give" data-map ${offer.give.map ? 'checked' : ''} /><span>Votre carte de l'amas</span></label>
+            </div>
+          </div>
         </section>
         <section>
           <h4>Vous recevez</h4>
           ${materialRows('get', empire)}
-          <h5>Technologies</h5>${techRows('get', empire)}
-          <h5>Cartes</h5>
-          <label class="dp-check"><input type="checkbox" data-side="get" data-map ${offer.get.map ? 'checked' : ''} /><span>La carte de ses colonies</span></label>
-          <h5>Accords</h5>${treatyRows(empire)}
+          <div class="dp-extras">
+            <div><h5>Technologies</h5>${techRows('get', empire)}</div>
+            <div>
+              <h5>Cartes</h5>
+              <label class="dp-check"><input type="checkbox" data-side="get" data-map ${offer.get.map ? 'checked' : ''} /><span>La carte de ses colonies</span></label>
+              <h5>Accords</h5>${treatyRows(empire)}
+            </div>
+          </div>
         </section>
       </div>
       <div id="dp-opinion" class="dp-opinion"></div>
