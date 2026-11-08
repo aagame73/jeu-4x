@@ -109,6 +109,7 @@ export function createDiplomacyView(root, game, actions) {
       <p class="small"><b>Rivaux :</b> ${enemies.join(', ') || 'aucun'}. Commercer ici fera baisser votre note auprès d'eux.</p>
       <p class="small"><b>Accords en cours :</b> ${treaties.map((k) => `${DIPLOMACY.treaties[k].label} (encore ${Math.ceil(empire.treaties[k] - game.time)} jours)`).join(', ') || 'aucun'}</p>`;
     detail.querySelector('.dp-deal').innerHTML = `
+      ${proposalBox(empire)}
       <div class="dp-columns">
         <section>
           <h4>Vous donnez</h4>
@@ -127,7 +128,6 @@ export function createDiplomacyView(root, game, actions) {
         </section>
       </div>
       <div id="dp-opinion" class="dp-opinion"></div>
-      ${proposalBox(empire)}
       ${reply ? `<div class="dp-reply ${reply.ok === null ? 'greet' : reply.ok ? 'ok' : 'no'}">« ${reply.text} »${reply.detail ? `<small class="dp-why">${reply.detail}</small>` : ''}${reply.counter ? `<div class="dp-counter">Contre-proposition : ${reply.counter.get.resources ? Object.entries(reply.counter.get.resources).map(([res, n]) => `${n} ${(RESOURCE_LABELS[res] ?? res).toLowerCase()}`).join(', ') : ''} <button data-dp="counter">Accepter</button></div>` : ''}</div>` : ''}
       <div class="dp-actions"><button data-dp="reset">Vider l'offre</button><button class="primary" data-dp="propose">Proposer l'échange</button></div>`;
     renderOpinion(empire);
