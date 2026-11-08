@@ -11,11 +11,10 @@
 - Outils : hook de fin de réponse qui lance `npm run build` (`.claude/settings.json`), agent `relecteur` (`.claude/agents/relecteur.md`), serveur lancé au démarrage de Windows.
 
 ## En cours
-- Diplomatie et échanges (`docs/plan-diplomatie.md`) : étapes 1 à 5 faites et commitées, **non publiées** sur le site. Écran touche D : empires rencontrés, attitudes, négociation (matières, technologies, cartes, traité de frontières, pacte de ruines).
+- Diplomatie et échanges (`docs/plan-diplomatie.md`) : étapes 1 à 5 faites, relues et publiées le 08/11/2026. Écran touche D : empires rencontrés, attitudes, négociation (matières, technologies, cartes, traité de frontières, pacte de ruines).
 
 ## Prochaine étape
 - Étape 6 : convois visibles sur la carte (matières livrées à la fin du trajet). Puis étape 7 : propositions des rivaux et dialogues écrits à la main par espèce (environ 80 phrases, à relire ensemble).
-- Passer le relecteur sur toute la diplomatie (pas encore relue) avant de publier.
 - Ensuite : combat, dont le **pillage des convois** d'une nation en guerre.
 
 ## Questions ouvertes

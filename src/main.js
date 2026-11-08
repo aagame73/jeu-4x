@@ -283,7 +283,7 @@ document.addEventListener('visibilitychange', () => document.hidden && saveOnLea
 if (import.meta.env.DEV) window.jeu = { game, actions, refresh, tick };
 
 window.addEventListener('keydown', (e) => {
-  if (e.target.tagName === 'INPUT') return; // saisie d'un nom en cours
+  if (e.target.tagName === 'INPUT' && e.target.type !== 'checkbox') return; // saisie en cours (nom, quantité)
   if (speciesView.isOpen) return;
   if (menu.isOpen) {
     if (e.key === 'Escape' && !document.getElementById('menu').classList.contains('start')) menu.close();
