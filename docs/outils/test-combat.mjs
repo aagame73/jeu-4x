@@ -297,5 +297,55 @@ const addWarship = (game, kind, starId) => {
   check(restore(old).fleets.length === 0, 'sauvegarde sans flottes : aucune');
 }
 
+// Étape 5 : ravitaillement et pillage.
+function supplyGame() {
+  const { game, empire, home, colony } = warGame(42);
+  game.empires.forEach((e) => (e.war = false));
+  game.fleets = [];
+  for (let d = 0; d < 600; d++) G.tick(game, 1); // l'empire s'étend : il lui faut au moins 2 colonies
+  G.declareWarOn(game, empire) || (empire.war = true);
+  empire.nextFleet = 1e9; // pas de flotte : on teste le ravitaillement seul
+  empire.stocks.alliages = 500;
+  empire.stocks.minerais = 500;
+  return { game, empire, home, colony };
+}
+{
+  const { game, empire } = supplyGame();
+  check(empire.colonies.length >= 2, `l'empire a plusieurs colonies (${empire.colonies.length})`);
+  empire.nextSupply = 0;
+  G.tick(game, 1);
+  const convoy = game.convoys.find((c) => c.supply && c.species === empire.species);
+  check(!!convoy && convoy.fromId === empire.homeId, "en guerre, l'empire envoie un convoi de ravitaillement depuis son monde natal");
+  // Le même jour, l'empire produit aussi un peu d'alliages (quelques unités).
+  check(empire.stocks.alliages < 500 - (convoy?.resources.alliages ?? 0) + 5, `la cargaison quitte ses stocks (${Math.round(empire.stocks.alliages)} sur 500, convoi de ${convoy?.resources.alliages})`);
+  const back = restore(copy(serialize(game)));
+  check(back.convoys.some((c) => c.supply === true), 'un convoi de ravitaillement survit à la sauvegarde');
+  // Sans interception, il livre l'empire, pas le joueur.
+  const mine = game.resources.alliages;
+  const before = empire.stocks.alliages;
+  for (let d = 0; d < 400 && game.convoys.includes(convoy); d++) G.tick(game, 1);
+  check(!game.convoys.includes(convoy) && empire.stocks.alliages > before && game.resources.alliages === mine, 'arrivé, le ravitaillement va à l\'empire, pas au joueur');
+}
+{
+  const { game, empire } = supplyGame();
+  addWarship(game, 'fregate', empire.homeId); // posté au départ du convoi
+  const mine = game.resources.alliages;
+  const relation = empire.relation;
+  empire.nextSupply = 0;
+  G.tick(game, 1);
+  check(!game.convoys.some((c) => c.supply), 'un vaisseau de guerre posté sur la route intercepte le convoi');
+  check(game.resources.alliages === mine + Math.floor(Math.min(40, 500) * 0.6), `butin : ${game.resources.alliages - mine} alliages (60 %)`);
+  // −10, puis la note remonte à peine dans la journée vers sa valeur de départ.
+  check(empire.relation < relation - 9, `l'empire pillé vous en veut (${relation} → ${empire.relation.toFixed(1)})`);
+  check(game.log.some((l) => JSON.stringify(l).includes('intercepté')), 'pillage annoncé au journal');
+}
+{
+  const { game, empire } = supplyGame();
+  empire.war = false; // paix : plus de ravitaillement de guerre
+  empire.nextSupply = 0;
+  G.tick(game, 1);
+  check(!game.convoys.some((c) => c.supply), 'en paix, pas de convoi de ravitaillement');
+}
+
 console.log(fails ? `\n${fails} échec(s)` : '\nTous les tests passent.');
 process.exit(fails ? 1 : 0);

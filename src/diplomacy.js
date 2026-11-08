@@ -191,7 +191,12 @@ export function tickConvoys(game, days) {
   for (const convoy of game.convoys) {
     convoy.progress += DIPLOMACY.convoySpeed * days;
     if (convoy.progress < convoy.distance) continue;
-    for (const [res, amount] of Object.entries(convoy.resources)) game.resources[res] = (game.resources[res] ?? 0) + amount;
+    // Un convoi de ravitaillement livre son empire ; les autres livrent le joueur.
+    const empire = convoy.supply ? game.empires.find((e) => e.species === convoy.species) : null;
+    for (const [res, amount] of Object.entries(convoy.resources)) {
+      if (empire) empire.stocks[res] += amount;
+      else if (!convoy.supply) game.resources[res] = (game.resources[res] ?? 0) + amount;
+    }
     arrived.push(convoy);
   }
   game.convoys = game.convoys.filter((c) => !arrived.includes(c));
@@ -211,6 +216,7 @@ export function validConvoys(game, saved) {
       number(c.distance) &&
       number(c.progress) &&
       Number.isInteger(c.id) &&
+      (c.supply === undefined || typeof c.supply === 'boolean') &&
       c.resources &&
       Object.entries(c.resources).every(([res, n]) => Object.hasOwn(DIPLOMACY.values, res) && Number.isInteger(n) && n > 0),
   );

@@ -263,6 +263,12 @@ export const COMBAT = {
   regenPerDay: 0.05, // part de sa résistance qu'une colonie répare chaque jour sans combat
   repairPerDay: 0.1, // idem pour un vaisseau en orbite d'une colonie du joueur
   wearPerBattleDay: 5, // jours d'usure ajoutés à un vaisseau à chaque jour de combat
+  // Ravitaillement des empires en guerre, que le joueur peut piller.
+  supplyEvery: 40, // jours entre deux convois de ravitaillement d'un empire
+  supplyLoad: { alliages: 40, minerais: 60 }, // au plus, pris dans ses stocks
+  interceptRange: 10, // al : un vaisseau de guerre du joueur intercepte un convoi passant à cette distance
+  pillageShare: 0.6, // part de la cargaison récupérée
+  pillageRelation: 10, // note perdue auprès de l'empire pillé
 };
 
 // Expansion des empires rivaux (empires.js). Un niveau de difficulté pourra agir sur ces réglages.

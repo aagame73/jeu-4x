@@ -30,6 +30,7 @@ export function createEmpires(stars) {
         warSince: 0,
         truceUntil: 0,
         nextFleet: 0,
+        nextSupply: 0,
       };
       empire.stocks = startStocks(empire);
       return empire;
@@ -134,6 +135,7 @@ export function validEmpires(game, saved) {
     warSince: number(empire.warSince) ? empire.warSince : 0,
     truceUntil: number(empire.truceUntil) ? empire.truceUntil : 0,
     nextFleet: number(empire.nextFleet) ? empire.nextFleet : 0,
+    nextSupply: number(empire.nextSupply) ? empire.nextSupply : 0,
     lastAttitude: DIPLOMACY.attitudes.some((a) => a.key === empire.lastAttitude) ? empire.lastAttitude : undefined,
   }));
 }

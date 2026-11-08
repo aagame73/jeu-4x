@@ -8,8 +8,8 @@
 | 2 | Résolution d'un combat | ✅ faite (commitée, non publiée) |
 | 3 | Flottes rivales | ✅ faite (commitée, non publiée) |
 | 4 | Sièges et capture des colonies | ✅ faite (commitée, non publiée) |
-| 5 | Pillage des convois | ⏳ en cours |
-| 6 | Affichage : flottes, combats animés | à faire |
+| 5 | Pillage des convois | ✅ faite (commitée, non publiée) |
+| 6 | Affichage : flottes, combats animés | ⏳ en cours |
 | 7 | Annonces et répliques de guerre | à faire |
 
 ## 1. Point de départ
@@ -93,3 +93,9 @@ Lecture : le hasard compte surtout entre forces proches ; une flotte nettement s
 - Tes vaisseaux de guerre dans un système rival attaquent ses colonies ; une colonie rivale prise devient une petite colonie à toi (2 colons). **Les mondes natals ne se prennent pas** dans cette version.
 - Hors combat, colonies et vaisseaux (en orbite d'une de tes colonies) se réparent. La paix renvoie les flottes chez elles.
 - Pas encore traité : la partie perdue quand tu n'as plus de colonie.
+
+## 7. Étape 5 : règles retenues (08/11/2026)
+
+- En guerre, un empire d'au moins deux colonies envoie tous les 40 jours un **convoi de ravitaillement** (jusqu'à 40 alliages et 60 minerais, pris dans ses stocks), de son monde natal vers sa colonie la plus proche de chez toi. Arrivé, il remplit les stocks de l'empire.
+- Un de tes **vaisseaux de guerre** au repos dans un système à moins de 10 al de la route **l'intercepte** : tu récupères 60 % de la cargaison, l'empire perd 10 de note envers toi.
+- Les convois de tes propres échanges ne se pillent pas (ils t'appartiennent).
