@@ -11,18 +11,12 @@
 - Outils : hook de fin de réponse qui lance `npm run build` (`.claude/settings.json`), agent `relecteur` (`.claude/agents/relecteur.md`), serveur lancé au démarrage de Windows.
 
 ## En cours
-- **Combat** (`docs/plan-combat.md`, plan validé le 08/11/2026), 7 étapes :
-  1. Guerre et paix : ✅ faite (commitée, non publiée)
-  2. Résolution d'un combat : ⏳ prochaine
-  3. Flottes rivales : à faire
-  4. Sièges et capture des colonies : à faire
-  5. Pillage des convois : à faire
-  6. Affichage (flottes, combats animés) : à faire
-  7. Annonces et répliques de guerre : à faire
+- **Combat** (`docs/plan-combat.md`) : les 7 étapes sont faites et commitées, **non publiées** (relecture à passer).
 
 ## Prochaine étape
-- Étape 2 du combat.
-- À relire ensemble quand tu veux : les 80 répliques (`docs/dialogues-especes.md`).
+- Relecture du combat, puis publication si tu le demandes.
+- À choisir ensuite : partie perdue et victoire, prise des mondes natals, équilibrage en jouant, ou un des chantiers des questions ouvertes.
+- À relire ensemble quand tu veux : les 120 répliques (`docs/dialogues-especes.md`).
 
 ## Questions ouvertes
 - Équilibre à juger en jouant : Liseurs de Vey trop forts en milieu réel (120 %), Thrennes un peu faibles (87 %, bonus militaires non mesurés tant que le combat n'existe pas).

@@ -1,6 +1,7 @@
 // Répliques des empires rivaux, écrites pour chaque espèce (voir docs/dialogues-especes.md).
 // Une réplique par situation : accueil, accord, refus, offre trop faible, refus hostile,
-// contre-offre, proposition, traité rompu, attitude en hausse, attitude en baisse.
+// contre-offre, proposition, traité rompu, attitude en hausse, attitude en baisse ; et pour la guerre :
+// déclaration, paix, colonie prise au joueur, flotte perdue, convoi pillé.
 export const DIALOGUES = {
   vaskhar: {
     accueil: 'La roche écoute. Parlez lentement, petit être de chair.',
@@ -13,6 +14,11 @@ export const DIALOGUES = {
     rupture: 'Vous avez creusé sur notre seuil. Le basalte a de la mémoire.',
     plusAmical: 'Vos paroles ont le poids juste. Nous vous estimons davantage.',
     plusHostile: 'Votre ombre s\'allonge sur nos galeries. Cela nous déplaît.',
+    guerre: 'La roche se fend, et nous avec. Nos mandibules viendront broyer vos coques.',
+    paix: 'Assez de poussière soulevée. Que le basalte refroidisse entre nous.',
+    victoire: 'Ce monde est à nous, désormais. Nous creuserons sous vos ruines.',
+    defaite: 'Une flotte brisée… La roche patiente. Elle se reforme toujours.',
+    pillage: 'Vous volez nos minerais sur la route ? Nous n\'oublierons pas ce filon.',
   },
   ondesiens: {
     accueil: 'Nos filaments s\'illuminent : bienvenue dans le courant.',
@@ -25,6 +31,11 @@ export const DIALOGUES = {
     rupture: 'Vous avez troublé nos eaux. Il faudra du temps pour qu\'elles redeviennent claires.',
     plusAmical: 'Notre lumière se tourne vers vous, plus douce qu\'avant.',
     plusHostile: 'Nos filaments pâlissent quand votre nom passe dans le courant.',
+    guerre: 'Le courant se retourne contre vous. Nos filaments ont cessé de briller pour vous.',
+    paix: 'Que la marée retombe. Nos eaux redeviendront calmes, si vous les laissez.',
+    victoire: 'Ce monde rejoint nos courants. Ses habitants apprendront à nager.',
+    defaite: 'Notre flotte s\'est dissoute dans le vide. Le courant pleure, puis repart.',
+    pillage: 'Vous avez coupé un courant qui nourrissait les nôtres. Cela ne s\'oublie pas.',
   },
   keltirr: {
     accueil: 'Vite, vite ! L\'essaim vous écoute, mais pas longtemps.',
@@ -37,6 +48,11 @@ export const DIALOGUES = {
     rupture: 'Vous nichez sur notre branche ! L\'essaim s\'en souviendra.',
     plusAmical: 'L\'essaim chante votre nom, un peu.',
     plusHostile: 'Des plumes se hérissent dans l\'essaim quand on parle de vous.',
+    guerre: 'L\'essaim plonge ! Vite, vite, avant que vous ne compreniez !',
+    paix: 'Bon, bon, l\'essaim se pose. Pour l\'instant.',
+    victoire: 'Ha ! Ce nid est à l\'essaim maintenant ! Trop lents, trop lents !',
+    defaite: 'Des plumes partout… L\'essaim reviendra plus nombreux.',
+    pillage: 'Voleurs ! L\'essaim a vu, l\'essaim se souviendra !',
   },
   synodes: {
     accueil: 'Le réseau s\'ouvre à vous. Mille pensées vous écoutent.',
@@ -49,6 +65,11 @@ export const DIALOGUES = {
     rupture: 'Le réseau a enregistré votre parole brisée. Il n\'oublie rien.',
     plusAmical: 'Le Synode révise favorablement son jugement à votre sujet.',
     plusHostile: 'Le Synode révise défavorablement son jugement à votre sujet.',
+    guerre: 'Le réseau a délibéré : votre existence est devenue un problème à résoudre.',
+    paix: 'Le réseau juge le conflit improductif. Il accepte de le suspendre.',
+    victoire: 'Ce monde est absorbé dans le réseau. Ses pensées seront les nôtres.',
+    defaite: 'Perte enregistrée. Le réseau ajuste ses calculs.',
+    pillage: 'Interception de nos spores de ravitaillement constatée. Réponse en préparation.',
   },
   orrhaides: {
     accueil: 'Votre lumière nous parvient. Nous résonnons à votre approche.',
@@ -61,6 +82,11 @@ export const DIALOGUES = {
     rupture: 'Une fêlure traverse notre accord. Elle ne se refermera pas seule.',
     plusAmical: 'Votre éclat nous paraît plus pur qu\'hier.',
     plusHostile: 'Votre éclat nous paraît trouble, désormais.',
+    guerre: 'Notre lumière devient lame. Elle vous traversera.',
+    paix: 'Que nos éclats cessent de se heurter. La résonance peut revenir.',
+    victoire: 'Ce monde brille désormais de notre éclat.',
+    defaite: 'Des cristaux éparpillés dans le vide… ils repousseront ailleurs.',
+    pillage: 'Vous avez éteint un de nos convois. L\'ombre que vous jetez s\'allonge.',
   },
   thrennes: {
     accueil: 'Parlez, étranger. Mais pesez chaque mot : nous les gravons.',
@@ -73,6 +99,11 @@ export const DIALOGUES = {
     rupture: 'Vous avez trahi votre parole. La honte est gravée, et elle ne s\'efface pas.',
     plusAmical: 'Vous gagnez notre respect. Ce n\'est pas rien.',
     plusHostile: 'Votre nom s\'approche de la liste de nos griefs.',
+    guerre: 'Le Serment est prononcé : guerre, jusqu\'à ce que l\'un de nous plie.',
+    paix: 'Vous avez combattu avec honneur. Nous rengainons, pour cette fois.',
+    victoire: 'Ce monde est gravé à notre nom. Une victoire de plus sur nos coques.',
+    defaite: 'Nos guerriers sont tombés debout. Leurs noms seront vengés.',
+    pillage: 'Piller nos convois ? Une lâcheté. Elle sera gravée, elle aussi.',
   },
   liseurs: {
     accueil: 'Nous lisons votre venue dans les glyphes. Soyez bienvenus.',
@@ -85,6 +116,11 @@ export const DIALOGUES = {
     rupture: 'Une parole effacée. Les Veilleurs, eux, tenaient les leurs.',
     plusAmical: 'Un chapitre plus clair s\'ouvre entre nous.',
     plusHostile: 'Votre chapitre s\'assombrit dans nos registres.',
+    guerre: 'Les glyphes ont tourné. Une page de guerre s\'ouvre entre nous.',
+    paix: 'Refermons ce chapitre. Les archives retiendront qu\'il fut bref.',
+    victoire: 'Ce monde est désormais consigné dans nos registres.',
+    defaite: 'Une flotte effacée des archives. D\'autres pages suivront.',
+    pillage: 'Vous avez déchiré une page de nos approvisionnements. Elle sera recopiée, et vous rappelée.',
   },
   ashkari: {
     accueil: 'La caravane fait halte. Que vendez-vous, voyageur ?',
@@ -97,6 +133,11 @@ export const DIALOGUES = {
     rupture: 'Un mauvais payeur ! Toutes les caravanes le sauront.',
     plusAmical: 'Bon client ! La caravane parle bien de vous.',
     plusHostile: 'Les marchands baissent la voix quand votre nom passe.',
+    guerre: 'Fini le commerce ! Nos caravanes s\'arment, et vos routes se ferment.',
+    paix: 'La guerre coûte plus qu\'elle ne rapporte. Reprenons les affaires.',
+    victoire: 'Ce monde change de propriétaire. Bonne affaire pour nous.',
+    defaite: 'Une flotte perdue, une dette de plus. Nous la recouvrerons.',
+    pillage: 'Des pillards ! Toute la route saura qui a volé nos caisses.',
   },
 };
 

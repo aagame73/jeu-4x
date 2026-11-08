@@ -206,7 +206,7 @@ export function createDiplomacyView(root, game, actions) {
     const answer = signDeal(game, selected, deal);
     if (answer.ok) {
       offer = emptyOffer();
-      say(line(species, 'accepte'), true);
+      say(line(species, deal.get.peace ? 'paix' : 'accepte'), true);
       renderList();
       actions.refresh();
     } else {
@@ -281,7 +281,7 @@ export function createDiplomacyView(root, game, actions) {
       confirmWar = false;
       if (declareWarOn(game, selected)) {
         offer = emptyOffer();
-        say(line(selected.species, 'refusHostile'), false);
+        say(line(selected.species, 'guerre'), false);
         renderList();
         actions.refresh();
       }

@@ -10,7 +10,7 @@
 | 4 | Sièges et capture des colonies | ✅ faite (commitée, non publiée) |
 | 5 | Pillage des convois | ✅ faite (commitée, non publiée) |
 | 6 | Affichage : flottes, combats animés | ✅ faite (commitée, non publiée) |
-| 7 | Annonces et répliques de guerre | ⏳ en cours |
+| 7 | Annonces et répliques de guerre | ✅ faite (commitée, non publiée) |
 
 ## 1. Point de départ
 
@@ -107,3 +107,15 @@ Lecture : le hasard compte surtout entre forces proches ; une flotte nettement s
 - Fiche du système : encadré « Combat en cours » ou « Flottes ennemies », composition des flottes, état du siège.
 - Flotte : statut « Au combat » et état de la coque d'un vaisseau abîmé.
 - Correction trouvée en regardant le jeu : une colonie ne tombe pas tant que tes vaisseaux de guerre défendent le système.
+
+## 9. Étape 7 : répliques de guerre (08/11/2026)
+
+40 répliques écrites à la main (5 par espèce) : déclaration de guerre, paix acceptée, colonie prise au joueur, flotte perdue, convoi de ravitaillement pillé. Elles apparaissent au journal et dans l'écran de diplomatie. Liste complète (120 répliques avec celles de la diplomatie) : `docs/dialogues-especes.md`.
+
+## 10. Pas encore traité
+
+- Partie perdue quand le joueur n'a plus de colonie ; victoire (« plus d'ennemis », 80 % des systèmes).
+- Prise des mondes natals, élimination d'un empire.
+- Guerres entre rivaux, alliances.
+- Flottes ennemies dans la vue 3D du système (elles n'apparaissent que sur la carte de l'amas).
+- Équilibrage en jouant : fréquence et taille des flottes, prix de la paix, part pillée.
