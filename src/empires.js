@@ -26,6 +26,9 @@ export function createEmpires(stars) {
         nextMapTrade: 0,
         treaties: { frontieres: 0, ruines: 0 },
         nextProposal: 0, // 0 : fixé au premier contact
+        war: false,
+        warSince: 0,
+        truceUntil: 0,
       };
       empire.stocks = startStocks(empire);
       return empire;
@@ -126,6 +129,9 @@ export function validEmpires(game, saved) {
     nextMapTrade: number(empire.nextMapTrade) ? empire.nextMapTrade : 0,
     treaties: { frontieres: number(empire.treaties?.frontieres) ? empire.treaties.frontieres : 0, ruines: number(empire.treaties?.ruines) ? empire.treaties.ruines : 0 },
     nextProposal: number(empire.nextProposal) ? empire.nextProposal : 0,
+    war: empire.war === true,
+    warSince: number(empire.warSince) ? empire.warSince : 0,
+    truceUntil: number(empire.truceUntil) ? empire.truceUntil : 0,
     lastAttitude: DIPLOMACY.attitudes.some((a) => a.key === empire.lastAttitude) ? empire.lastAttitude : undefined,
   }));
 }

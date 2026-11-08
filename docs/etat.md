@@ -11,10 +11,10 @@
 - Outils : hook de fin de réponse qui lance `npm run build` (`.claude/settings.json`), agent `relecteur` (`.claude/agents/relecteur.md`), serveur lancé au démarrage de Windows.
 
 ## En cours
-- Rien. Diplomatie et échanges (`docs/plan-diplomatie.md`) : les 7 étapes sont faites, relues, vérifiées dans le navigateur et publiées le 08/11/2026.
+- Combat (`docs/plan-combat.md`, plan validé le 08/11/2026) : étape 1 (guerre et paix) faite et commitée, non publiée.
 
 ## Prochaine étape
-- Plan du **combat** (à écrire dans `docs/`, sans coder), dont le pillage des convois d'une nation en guerre.
+- Étape 2 du combat : résolution d'un combat (forces, aléatoire, pertes), puis flottes rivales, sièges, pillage, affichage, répliques.
 - À relire ensemble quand tu veux : les 80 répliques (`docs/dialogues-especes.md`).
 
 ## Questions ouvertes

@@ -393,3 +393,28 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Guerre et paix */
+.dp-war {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 8px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  background: rgba(232, 72, 60, 0.75);
+}
+.dp-spacer {
+  flex: 1;
+}
+.dp-war-btn {
+  color: #ffb3ab;
+  border-color: rgba(232, 72, 60, 0.5);
+  background: rgba(232, 72, 60, 0.1);
+}
+.dp-war-btn.armed {
+  color: #fff;
+  background: rgba(232, 72, 60, 0.55);
+  box-shadow: 0 0 10px rgba(232, 72, 60, 0.6);
+}

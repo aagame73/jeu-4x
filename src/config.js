@@ -215,6 +215,18 @@ export const DIPLOMACY = {
   proposalMin: 10,
   proposalMax: 200,
   proposalMaterials: ['minerais', 'alliages', 'biomasse', 'eau', 'deuterium'], // la Vélarine et les artefacts ne se proposent pas
+  // Guerre et paix (docs/plan-combat.md). Un rival hostile peut déclarer la guerre au joueur, jamais avant graceDays
+  // ni pendant une trêve ; warChancePerDay × warStyle de l'espèce, chaque jour.
+  graceDays: 500,
+  truceDays: 300,
+  warChancePerDay: 0.004,
+  warStyle: { keltirr: 2, thrennes: 2, ondesiens: 0.5, ashkari: 0.5 },
+  warRelation: -70, // note au plus haut après une déclaration de guerre
+  peaceRelation: -30, // note au plus bas après la paix
+  warRivalGain: 10, // ses rivaux apprécient qu'on lui déclare la guerre
+  peaceValue: 300, // prix de la paix : peaceValue + peaceValuePerPower × puissance de l'empire
+  peaceValuePerPower: 10,
+  warMargin: 1.2, // en guerre, l'empire exige un peu plus que ce que vaut la paix
   convoySpeed: 2, // al par jour : les matières reçues voyagent depuis la colonie la plus proche de l'empire
   treatyRespectPerDay: 0.01, // note gagnée chaque jour tant qu'un traité tient
   treatyBreakPenalty: 25, // note perdue à la rupture

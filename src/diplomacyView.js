@@ -2,10 +2,10 @@
 // colonnes. Les règles sont dans diplomacy.js ; un échange se signe par signDeal (game.js).
 import { createAlienPortrait } from './aliens.js';
 import { DIPLOMACY, SPECIES } from './config.js';
-import { attitudeOf, buyableTechs, counterOffer, describeOffer, dropProposal, evaluateDeal, pendingProposal, relationReasons, rivalsOf, sellableTechs, treatyActive } from './diplomacy.js';
+import { attitudeOf, peacePrice, buyableTechs, counterOffer, describeOffer, dropProposal, evaluateDeal, pendingProposal, relationReasons, rivalsOf, sellableTechs, treatyActive } from './diplomacy.js';
 import { line } from './dialogues.js';
 import { RESOURCE_LABELS } from './economy.js';
-import { signDeal } from './game.js';
+import { declareWarOn, signDeal } from './game.js';
 import { TECHS } from './research.js';
 import { rivalInfo } from './species.js';
 
@@ -26,16 +26,18 @@ const REFUSALS = {
   'map-take': 'Nos cartes ne vous apprendraient rien de plus.',
   'treaty-attitude': 'Nous ne vous faisons pas assez confiance pour cela.',
   'treaty-active': 'Cet accord est déjà en vigueur.',
+  war: 'Nous sommes en guerre : seule la paix se négocie.',
   unbalanced: 'Votre offre est trop faible.',
 };
 
-const emptyOffer = () => ({ give: { resources: {}, techs: [], map: false }, get: { resources: {}, techs: [], map: false, treaties: [] } });
+const emptyOffer = () => ({ give: { resources: {}, techs: [], map: false }, get: { resources: {}, techs: [], map: false, treaties: [], peace: false } });
 const metEmpires = (game) => game.empires.filter((e) => e.met);
 
 export function createDiplomacyView(root, game, actions) {
   let selected = null;
   let offer = emptyOffer();
   let reply = null; // { text, ok, counter }
+  let confirmWar = false; // la déclaration de guerre se confirme par un second clic
   let listPortraits = [];
   let portrait = null;
 
@@ -77,6 +79,12 @@ export function createDiplomacyView(root, game, actions) {
       .join('');
   }
 
+  function peaceRow(empire) {
+    const prices = ['minerais', 'alliages', 'deuterium'].map((res) => `${peacePrice(empire, res)} ${(RESOURCE_LABELS[res] ?? res).toLowerCase()}`).join(', ou ');
+    return `<p class="small">En guerre, seule la paix se négocie. Elle s'achète : par exemple ${prices} (ou un mélange).</p>
+      <label class="dp-check"><input type="checkbox" data-peace ${offer.get.peace ? 'checked' : ''} /><span>La paix<small>suivie d'une trêve de ${DIPLOMACY.truceDays} jours</small></span></label>`;
+  }
+
   function opinion(empire) {
     const answer = evaluateDeal(game, empire, offer);
     if (answer.ok) return { cls: 'good', text: 'Cette offre devrait lui convenir.' };
@@ -104,7 +112,8 @@ export function createDiplomacyView(root, game, actions) {
     detail.querySelector('.dp-info').innerHTML = `
       <h3>${rival.empire}</h3>
       <p class="dp-species">${rival.label}</p>
-      <p><span class="dp-attitude ${attitude.key}">${attitude.label}</span></p>
+      <p><span class="dp-attitude ${attitude.key}">${attitude.label}</span>${empire.war ? ` <span class="dp-war">En guerre depuis ${Math.max(0, Math.floor(game.time - empire.warSince))} jours</span>` : ''}</p>
+      ${!empire.war && game.time < empire.truceUntil ? `<p class="small">Trêve encore ${Math.ceil(empire.truceUntil - game.time)} jours.</p>` : ''}
       ${reasons.length ? `<ul class="dp-reasons">${reasons.map((r) => `<li>${r}</li>`).join('')}</ul>` : ''}
       <p class="small"><b>Rivaux :</b> ${enemies.join(', ') || 'aucun'}. Commercer ici fera baisser votre note auprès d'eux.</p>
       <p class="small"><b>Accords en cours :</b> ${treaties.map((k) => `${DIPLOMACY.treaties[k].label} (encore ${Math.ceil(empire.treaties[k] - game.time)} jours)`).join(', ') || 'aucun'}</p>`;
@@ -124,7 +133,7 @@ export function createDiplomacyView(root, game, actions) {
         </section>
         <section>
           <h4>Vous recevez</h4>
-          ${materialRows('get', empire)}
+          ${empire.war ? peaceRow(empire) : `${materialRows('get', empire)}
           <div class="dp-extras">
             <div><h5>Technologies</h5>${techRows('get', empire)}</div>
             <div>
@@ -132,12 +141,12 @@ export function createDiplomacyView(root, game, actions) {
               <label class="dp-check"><input type="checkbox" data-side="get" data-map ${offer.get.map ? 'checked' : ''} /><span>La carte de ses colonies</span></label>
               <h5>Accords</h5>${treatyRows(empire)}
             </div>
-          </div>
+          </div>`}
         </section>
       </div>
       <div id="dp-opinion" class="dp-opinion"></div>
       ${reply ? `<div class="dp-reply ${reply.ok === null ? 'greet' : reply.ok ? 'ok' : 'no'}">« ${reply.text} »${reply.detail ? `<small class="dp-why">${reply.detail}</small>` : ''}${reply.counter ? `<div class="dp-counter">Contre-proposition : ${reply.counter.get.resources ? Object.entries(reply.counter.get.resources).map(([res, n]) => `${n} ${(RESOURCE_LABELS[res] ?? res).toLowerCase()}`).join(', ') : ''} <button data-dp="counter">Accepter</button></div>` : ''}</div>` : ''}
-      <div class="dp-actions"><button data-dp="reset">Vider l'offre</button><button class="primary" data-dp="propose">Proposer l'échange</button></div>`;
+      <div class="dp-actions">${empire.war ? '' : `<button class="dp-war-btn${confirmWar ? ' armed' : ''}" data-dp="war">${confirmWar ? `Confirmer : guerre aux ${rivalInfo(empire.species).label}` : 'Déclarer la guerre'}</button>`}<span class="dp-spacer"></span><button data-dp="reset">Vider l'offre</button><button class="primary" data-dp="propose">${empire.war ? 'Proposer la paix' : "Proposer l'échange"}</button></div>`;
     renderOpinion(empire);
   }
 
@@ -169,6 +178,7 @@ export function createDiplomacyView(root, game, actions) {
 
   function select(empire) {
     selected = empire;
+    confirmWar = false;
     offer = emptyOffer();
     reply = null;
     root.querySelectorAll('.dp-card').forEach((el) => el.classList.toggle('selected', metEmpires(game)[Number(el.dataset.empire)] === empire));
@@ -221,7 +231,8 @@ export function createDiplomacyView(root, game, actions) {
 
   root.addEventListener('change', (e) => {
     const { side, tech, treaty } = e.target.dataset;
-    if (tech) {
+    if ('peace' in e.target.dataset) offer.get.peace = e.target.checked;
+    else if (tech) {
       const list = offer[side].techs;
       if (e.target.checked) list.push(tech);
       else list.splice(list.indexOf(tech), 1);
@@ -261,6 +272,21 @@ export function createDiplomacyView(root, game, actions) {
       reply = null;
       renderDetail();
     } else if (action === 'propose') propose(offer);
+    else if (action === 'war') {
+      if (!confirmWar) {
+        confirmWar = true;
+        renderDetail();
+        return;
+      }
+      confirmWar = false;
+      if (declareWarOn(game, selected)) {
+        offer = emptyOffer();
+        say(line(selected.species, 'refusHostile'), false);
+        renderList();
+        actions.refresh();
+      }
+      renderDetail();
+    }
     else if (action === 'accept-proposal') {
       const proposal = pendingProposal(game, selected);
       dropProposal(game, selected.species);
