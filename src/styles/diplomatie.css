@@ -329,3 +329,52 @@
     overflow-y: visible;
   }
 }
+
+/* Propositions des rivaux et répliques */
+.dp-card {
+  position: relative;
+}
+.dp-badge {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  font-style: normal;
+  font-weight: 700;
+  font-size: 12px;
+  line-height: 18px;
+  text-align: center;
+  color: #02040a;
+  background: var(--empire);
+  box-shadow: 0 0 8px var(--empire);
+}
+.dp-proposal {
+  margin-top: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--empire);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--empire) 10%, transparent);
+  font-size: 13px;
+}
+.dp-proposal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 6px;
+}
+.dp-proposal-actions button {
+  width: auto;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 11px;
+}
+.dp-reply.greet {
+  opacity: 0.85;
+}
+.dp-why {
+  display: block;
+  margin-top: 4px;
+  font-style: normal;
+  opacity: 0.7;
+}

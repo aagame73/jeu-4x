@@ -2,7 +2,8 @@
 // colonnes. Les règles sont dans diplomacy.js ; un échange se signe par signDeal (game.js).
 import { createAlienPortrait } from './aliens.js';
 import { DIPLOMACY, SPECIES } from './config.js';
-import { attitudeOf, buyableTechs, counterOffer, evaluateDeal, relationReasons, rivalsOf, sellableTechs, treatyActive } from './diplomacy.js';
+import { attitudeOf, buyableTechs, counterOffer, describeOffer, dropProposal, evaluateDeal, pendingProposal, relationReasons, rivalsOf, sellableTechs, treatyActive } from './diplomacy.js';
+import { line } from './dialogues.js';
 import { RESOURCE_LABELS } from './economy.js';
 import { signDeal } from './game.js';
 import { TECHS } from './research.js';
@@ -10,7 +11,7 @@ import { rivalInfo } from './species.js';
 
 const MATERIALS = Object.keys(DIPLOMACY.values);
 
-// Réponses provisoires, communes à toutes les espèces (les textes par espèce viennent à l'étape 7).
+// Raison précise d'un refus, affichée sous la réplique de l'espèce (dialogues.js).
 const REFUSALS = {
   'nothing-free': 'Rien n\'est gratuit : chacun doit donner quelque chose.',
   hostile: 'Nous n\'avons rien à vous dire.',
@@ -27,7 +28,6 @@ const REFUSALS = {
   'treaty-active': 'Cet accord est déjà en vigueur.',
   unbalanced: 'Votre offre est trop faible.',
 };
-const ACCEPTED = 'Marché conclu.';
 
 const emptyOffer = () => ({ give: { resources: {}, techs: [], map: false }, get: { resources: {}, techs: [], map: false, treaties: [] } });
 const metEmpires = (game) => game.empires.filter((e) => e.met);
@@ -127,9 +127,18 @@ export function createDiplomacyView(root, game, actions) {
         </section>
       </div>
       <div id="dp-opinion" class="dp-opinion"></div>
-      ${reply ? `<div class="dp-reply ${reply.ok ? 'ok' : 'no'}">« ${reply.text} »${reply.counter ? `<div class="dp-counter">Contre-proposition : ${reply.counter.get.resources ? Object.entries(reply.counter.get.resources).map(([res, n]) => `${n} ${(RESOURCE_LABELS[res] ?? res).toLowerCase()}`).join(', ') : ''} <button data-dp="counter">Accepter</button></div>` : ''}</div>` : ''}
+      ${proposalBox(empire)}
+      ${reply ? `<div class="dp-reply ${reply.ok === null ? 'greet' : reply.ok ? 'ok' : 'no'}">« ${reply.text} »${reply.detail ? `<small class="dp-why">${reply.detail}</small>` : ''}${reply.counter ? `<div class="dp-counter">Contre-proposition : ${reply.counter.get.resources ? Object.entries(reply.counter.get.resources).map(([res, n]) => `${n} ${(RESOURCE_LABELS[res] ?? res).toLowerCase()}`).join(', ') : ''} <button data-dp="counter">Accepter</button></div>` : ''}</div>` : ''}
       <div class="dp-actions"><button data-dp="reset">Vider l'offre</button><button class="primary" data-dp="propose">Proposer l'échange</button></div>`;
     renderOpinion(empire);
+  }
+
+  function proposalBox(empire) {
+    const proposal = pendingProposal(game, empire);
+    if (!proposal) return '';
+    const days = Math.max(0, Math.ceil(proposal.expires - game.time));
+    return `<div class="dp-proposal"><b>Proposition en attente</b> (encore ${days} jours) : ${describeOffer(proposal.offer)}.
+      <span class="dp-proposal-actions"><button data-dp="decline">Refuser</button><button class="primary" data-dp="accept-proposal">Accepter</button></span></div>`;
   }
 
   function renderList() {
@@ -140,7 +149,8 @@ export function createDiplomacyView(root, game, actions) {
       .map((e, i) => {
         const r = rivalInfo(e.species);
         const a = attitudeOf(e.relation);
-        return `<button class="dp-card" data-empire="${i}" style="--empire:${r.accent}"><canvas class="dp-mini"></canvas><span><b>${r.empire}</b><small>${r.label}</small><i class="dp-attitude ${a.key}">${a.label}</i></span></button>`;
+        const waiting = pendingProposal(game, e) ? '<i class="dp-badge" title="Proposition en attente">!</i>' : '';
+        return `<button class="dp-card" data-empire="${i}" style="--empire:${r.accent}"><canvas class="dp-mini"></canvas><span><b>${r.empire}</b><small>${r.label}</small><i class="dp-attitude ${a.key}">${a.label}</i></span>${waiting}</button>`;
       })
       .join('');
     list.querySelectorAll('.dp-card').forEach((el, i) => {
@@ -162,24 +172,30 @@ export function createDiplomacyView(root, game, actions) {
       root.querySelector('#dp-detail').hidden = false;
     } else root.querySelector('#dp-detail').hidden = true;
     root.querySelector('#dp-none').hidden = metEmpires(game).length > 0;
+    if (empire) say(line(empire.species, attitudeOf(empire.relation).key === 'hostile' ? 'refusHostile' : 'accueil'), null);
     renderDetail();
   }
 
-  function say(text, ok, counter = null) {
-    reply = { text, ok, counter };
+  // ok : true (accord), false (refus) ou null (simple parole, comme l'accueil).
+  function say(text, ok, counter = null, detail = '') {
+    reply = { text, ok, counter, detail };
     portrait?.setSpeaking(true);
     setTimeout(() => portrait?.setSpeaking(false), 1800);
   }
 
   function propose(deal) {
+    const species = selected.species;
     const answer = signDeal(game, selected, deal);
     if (answer.ok) {
       offer = emptyOffer();
-      say(ACCEPTED, true);
+      say(line(species, 'accepte'), true);
       renderList();
       actions.refresh();
     } else {
-      say(REFUSALS[answer.reason], false, counterOffer(game, selected, deal));
+      const counter = counterOffer(game, selected, deal);
+      const situation = counter ? 'contreOffre' : answer.reason === 'unbalanced' ? 'refusFaible' : answer.reason === 'hostile' ? 'refusHostile' : 'refus';
+      const detail = ['unbalanced', 'hostile'].includes(answer.reason) ? '' : REFUSALS[answer.reason];
+      say(line(species, situation), false, counter, detail);
     }
     renderDetail();
   }
@@ -237,6 +253,17 @@ export function createDiplomacyView(root, game, actions) {
       reply = null;
       renderDetail();
     } else if (action === 'propose') propose(offer);
+    else if (action === 'accept-proposal') {
+      const proposal = pendingProposal(game, selected);
+      dropProposal(game, selected.species);
+      propose(proposal.offer);
+      renderList();
+    } else if (action === 'decline') {
+      dropProposal(game, selected.species);
+      say(line(selected.species, 'refus'), null);
+      renderList();
+      renderDetail();
+    }
     else if (action === 'counter') propose(reply.counter);
   });
 
