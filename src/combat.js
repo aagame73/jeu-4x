@@ -222,11 +222,13 @@ function battleDay(game, starId, rng) {
   }
   // Colonie du joueur assiégée.
   const besiegers = game.fleets.filter((f) => f.starId === starId && f.state === 'idle');
+  // Tant que des vaisseaux de guerre du joueur tiennent le système, la colonie ne peut pas tomber.
+  const defended = game.ships.some((s) => s.starId === starId && s.state !== 'travel' && SHIP_KINDS[s.kind].warship);
   if (colony) {
     if (colonyUnit) colony.damage = colonyUnit.damage;
-    colony.siegeDays = besiegers.length ? (colony.siegeDays ?? 0) + 1 : 0;
+    colony.siegeDays = besiegers.length && !defended ? (colony.siegeDays ?? 0) + 1 : 0;
     const fallen = colonyUnit ? !alive(colonyUnit) : colony.siegeDays >= COMBAT.captureDays;
-    if (besiegers.length && fallen) {
+    if (besiegers.length && !defended && fallen) {
       captureFromPlayer(game, colony, besiegers[0].species);
       events.push({ text: `${colony.name} est tombée aux mains des ${rivalInfo(besiegers[0].species).label} !`, type: 'colony-lost', species: besiegers[0].species });
     }
@@ -344,6 +346,24 @@ function warDay(game) {
     }
   }
   return events;
+}
+
+// Ce que le joueur voit d'un système en guerre : flottes ennemies présentes, combat, siège.
+export function warReport(game, starId) {
+  const fleets = game.fleets.filter((f) => f.starId === starId && f.state === 'idle');
+  const colony = game.colonies.find((c) => c.starId === starId);
+  const unit = colony && playerColonyUnit(game, colony);
+  return {
+    fleets,
+    battle: (game.battles ?? []).includes(starId),
+    siege: colony && fleets.length ? { colony, defenseLeft: unit ? Math.max(0, 1 - unit.damage / toughness(unit)) : null, days: colony.siegeDays ?? 0 } : null,
+  };
+}
+
+// Part de résistance qui reste à un vaisseau du joueur (1 : intact).
+export function shipHealth(game, ship) {
+  if (!ship.damage) return 1;
+  return Math.max(0, 1 - ship.damage / (Math.max(1, shipStats(game, ship).defense) * COMBAT.hpPerDefense));
 }
 
 // Calculé par jour entier, comme la diplomatie.

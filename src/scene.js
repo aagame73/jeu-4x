@@ -173,7 +173,105 @@ export function createGalaxyView(container, game, callbacks) {
       v.look.copy(to).setY(to.y + 1.4);
       v.holder.lookAt(v.look);
       v.holder.scale.setScalar(THREE.MathUtils.clamp(camera.position.distanceTo(v.holder.position) * 0.028, 0.45, 9));
+      // Le ravitaillement ennemi ne se voit que près de systèmes déjà repérés.
+      v.holder.visible = !convoy.supply || game.stars[convoy.fromId].level >= 2 || game.stars[convoy.toId].level >= 2;
       animateShip(v.model, time, 1);
+    }
+  }
+
+  // Flottes de guerre ennemies : jusqu'à 3 vaisseaux par flotte, au style de l'empire, avec un anneau
+  // rouge. On ne les voit que près de systèmes déjà repérés.
+  const fleetViews = new Map();
+  const known = (id) => id !== null && id !== undefined && game.stars[id].level >= 2;
+  function syncFleets() {
+    for (const [id, v] of fleetViews) {
+      if (game.fleets.some((f) => f.id === id)) continue;
+      scene.remove(v.holder, v.marker);
+      fleetViews.delete(id);
+    }
+    for (const fleet of game.fleets) {
+      if (fleetViews.has(fleet.id)) continue;
+      const accent = rivalInfo(fleet.species).accent;
+      const holder = new THREE.Group();
+      const models = fleet.ships.slice(0, 3).map((s, i) => {
+        const model = createShip(fleet.id * 104729 + i * 31, accent, '', s.kind, SPECIES[fleet.species].shipStyle);
+        model.position.set((i - 1) * 0.9, (i % 2) * 0.4, -Math.abs(i - 1) * 0.6);
+        holder.add(model);
+        return model;
+      });
+      const marker = new THREE.Sprite(new THREE.SpriteMaterial({ map: ringTex, color: '#ff4a4a', transparent: true, depthWrite: false, depthTest: false }));
+      marker.renderOrder = 10;
+      scene.add(holder, marker);
+      fleetViews.set(fleet.id, { fleet, models, holder, marker, look: new THREE.Vector3(), placed: false });
+    }
+  }
+  function updateFleets(dt, time) {
+    for (const v of fleetViews.values()) {
+      const { fleet } = v;
+      const visible = known(fleet.starId) || known(fleet.fromId) || known(fleet.toId);
+      v.holder.visible = v.marker.visible = visible;
+      if (!visible) continue;
+      if (fleet.state === 'travel') {
+        const to = toVec(game.stars[fleet.toId].pos);
+        _from.copy(toVec(game.stars[fleet.fromId].pos)).lerp(to, Math.min(1, fleet.progress / fleet.distance));
+        _from.y += 2;
+        v.look.copy(to).setY(to.y + 2);
+      } else {
+        const c = game.stars[fleet.starId].pos;
+        const a = time * 0.2 + fleet.id;
+        _from.set(c.x + Math.cos(a) * 4, c.y + 2, c.z + Math.sin(a) * 4);
+        v.look.set(c.x, c.y + 2, c.z);
+      }
+      const k = v.placed ? Math.min(1, dt * 6) : 1;
+      v.placed = true;
+      v.holder.position.lerp(_from, k);
+      v.holder.lookAt(v.look);
+      const scale = THREE.MathUtils.clamp(camera.position.distanceTo(v.holder.position) * 0.028, 0.45, 9);
+      v.holder.scale.setScalar(scale);
+      for (const m of v.models) animateShip(m, time, fleet.state === 'travel' ? 1 : 0.3);
+      v.marker.position.copy(v.holder.position);
+      v.marker.scale.setScalar(scale * 3.4 * (1 + Math.sin(time * 4) * 0.08));
+      v.marker.material.rotation += dt * 0.8;
+    }
+  }
+
+  // Combats : tirs en traits lumineux et éclairs, entre les deux camps d'un système en bataille.
+  const shots = [];
+  const shotMaterial = (color) => new THREE.LineBasicMaterial({ color, transparent: true, opacity: 1, blending: THREE.AdditiveBlending, depthWrite: false });
+  const flashMaterial = new THREE.SpriteMaterial({ map: glow, color: '#ffd9a0', transparent: true, blending: THREE.AdditiveBlending, depthWrite: false });
+  let shotTimer = 0;
+  function updateBattles(dt) {
+    shotTimer -= dt;
+    if (shotTimer <= 0 && (game.battles ?? []).length) {
+      shotTimer = 0.12;
+      for (const starId of game.battles) {
+        if (game.stars[starId].level < 2) continue;
+        const enemies = [...fleetViews.values()].filter((v) => v.fleet.starId === starId && v.fleet.state === 'idle' && v.holder.visible);
+        const friends = [...shipViews.values()].filter((v) => v.ship.starId === starId && v.ship.state !== 'travel');
+        const ours = friends.length ? friends[Math.floor(Math.random() * friends.length)].holder.position : toVec(game.stars[starId].pos);
+        const theirs = enemies.length ? enemies[Math.floor(Math.random() * enemies.length)].holder.position : toVec(game.stars[starId].pos);
+        const fromUs = Math.random() < 0.5;
+        const a = (fromUs ? ours : theirs).clone();
+        const b = (fromUs ? theirs : ours).clone().add(new THREE.Vector3((Math.random() - 0.5) * 0.8, (Math.random() - 0.5) * 0.8, (Math.random() - 0.5) * 0.8));
+        const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints([a, b]), shotMaterial(fromUs ? '#7cff9e' : '#ff5a4a'));
+        const flash = new THREE.Sprite(flashMaterial.clone());
+        flash.position.copy(b);
+        flash.scale.setScalar(1.6);
+        scene.add(line, flash);
+        shots.push({ line, flash, life: 0.35 });
+      }
+    }
+    for (const s of [...shots]) {
+      s.life -= dt;
+      s.line.material.opacity = Math.max(0, s.life / 0.35);
+      s.flash.material.opacity = Math.max(0, s.life / 0.35);
+      s.flash.scale.setScalar(1.6 + (0.35 - s.life) * 4);
+      if (s.life > 0) continue;
+      scene.remove(s.line, s.flash);
+      s.line.geometry.dispose();
+      s.line.material.dispose();
+      s.flash.material.dispose();
+      shots.splice(shots.indexOf(s), 1);
     }
   }
 
@@ -201,6 +299,7 @@ export function createGalaxyView(container, game, callbacks) {
   // Synchronise l'affichage avec l'état de la partie.
   function update() {
     syncConvoys();
+    syncFleets();
     for (const v of starViews) {
       const { star, sprite, el } = v;
       const size = STAR_TYPES[star.type].size;
@@ -424,6 +523,8 @@ export function createGalaxyView(container, game, callbacks) {
     }
 
     updateConvoys(dt, time);
+    updateFleets(dt, time);
+    updateBattles(dt);
     ring.material.rotation += dt * 0.4;
     renderer.render(scene, camera);
     labelRenderer.render(scene, camera);

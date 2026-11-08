@@ -9,6 +9,8 @@ import { TECHS, techCost } from './research.js';
 import { createAdvisor } from './advisor.js';
 import { currentSpecies, speciesHabitat, rivalInfo } from './species.js';
 import { treatyConflicts } from './diplomacy.js';
+import { shipHealth, warReport } from './combat.js';
+import { COMBAT } from './config.js';
 // Accès tolérant aux règles écrites en parallèle (SIZE_LABELS, shipStats peuvent manquer).
 import * as rules from './game.js';
 
@@ -149,9 +151,32 @@ export function createUI(root, game, actions) {
   }
 
   function shipStatus(ship) {
-    if (ship.state === 'travel') return `En route vers ${starLabel(game.stars[ship.toId])} · ${plural(daysLeft(ship), 'jour')}`;
-    if (ship.state === 'analyse') return `Analyse de ${game.stars[ship.starId].name} · ${plural(daysLeft(ship), 'jour')}`;
-    return `En attente à ${game.stars[ship.starId].name}`;
+    const health = shipHealth(game, ship);
+    const hurt = health < 1 ? ` · coque ${Math.round(health * 100)} %` : '';
+    if (ship.state === 'travel') return `En route vers ${starLabel(game.stars[ship.toId])} · ${plural(daysLeft(ship), 'jour')}${hurt}`;
+    if (ship.state === 'analyse') return `Analyse de ${game.stars[ship.starId].name} · ${plural(daysLeft(ship), 'jour')}${hurt}`;
+    if ((game.battles ?? []).includes(ship.starId)) return `Au combat à ${game.stars[ship.starId].name}${hurt}`;
+    return `En attente à ${game.stars[ship.starId].name}${hurt}`;
+  }
+
+  // Encadré de guerre d'un système : flottes ennemies, combat, siège de la colonie.
+  function warBox(star) {
+    if (star.level < 2) return '';
+    const report = warReport(game, star.id);
+    if (!report.fleets.length && !report.battle) return '';
+    const fleets = report.fleets
+      .map((f) => {
+        const kinds = {};
+        for (const s of f.ships) kinds[s.kind] = (kinds[s.kind] ?? 0) + 1;
+        const list = Object.entries(kinds).map(([k, n]) => `${n} ${SHIP_KINDS[k].label.toLowerCase()}${n > 1 ? 's' : ''}`).join(', ');
+        return `<li style="--empire:${rivalInfo(f.species).accent}"><b>Flotte des ${rivalInfo(f.species).label}</b> : ${list}</li>`;
+      })
+      .join('');
+    const defended = game.ships.some((s) => s.starId === star.id && s.state !== 'travel' && SHIP_KINDS[s.kind].warship);
+    const siege = report.siege && !defended
+      ? `<p>Siège de ${report.siege.colony.name} : ${report.siege.defenseLeft === null ? `sans défense, elle tombera dans ${Math.max(0, COMBAT.captureDays - report.siege.days)} jours` : `défense ${Math.round(report.siege.defenseLeft * 100)} %`}.</p>`
+      : '';
+    return `<div class="war-box">${report.battle ? '<p class="war-title">⚔ Combat en cours</p>' : '<p class="war-title">Flottes ennemies</p>'}<ul>${fleets}</ul>${siege}</div>`;
   }
 
   // La liste n'est reconstruite que lorsqu'un vaisseau apparaît ou disparaît ; sinon elle est
@@ -384,7 +409,7 @@ export function createUI(root, game, actions) {
         body += '<p class="muted small">D\'autres planètes, plus petites, peuvent échapper au premier survol. Une analyse révèle toutes les planètes et leurs gisements.</p>';
       }
     }
-    $('info').innerHTML = header + renderActions(star) + body;
+    $('info').innerHTML = header + warBox(star) + renderActions(star) + body;
   }
 
   const advisor = createAdvisor($('advisor'), game, game.species);

@@ -9,8 +9,8 @@
 | 3 | Flottes rivales | ✅ faite (commitée, non publiée) |
 | 4 | Sièges et capture des colonies | ✅ faite (commitée, non publiée) |
 | 5 | Pillage des convois | ✅ faite (commitée, non publiée) |
-| 6 | Affichage : flottes, combats animés | ⏳ en cours |
-| 7 | Annonces et répliques de guerre | à faire |
+| 6 | Affichage : flottes, combats animés | ✅ faite (commitée, non publiée) |
+| 7 | Annonces et répliques de guerre | ⏳ en cours |
 
 ## 1. Point de départ
 
@@ -99,3 +99,11 @@ Lecture : le hasard compte surtout entre forces proches ; une flotte nettement s
 - En guerre, un empire d'au moins deux colonies envoie tous les 40 jours un **convoi de ravitaillement** (jusqu'à 40 alliages et 60 minerais, pris dans ses stocks), de son monde natal vers sa colonie la plus proche de chez toi. Arrivé, il remplit les stocks de l'empire.
 - Un de tes **vaisseaux de guerre** au repos dans un système à moins de 10 al de la route **l'intercepte** : tu récupères 60 % de la cargaison, l'empire perd 10 de note envers toi.
 - Les convois de tes propres échanges ne se pillent pas (ils t'appartiennent).
+
+## 8. Étape 6 : affichage (08/11/2026)
+
+- Flottes ennemies sur la carte : jusqu'à 3 vaisseaux au style de l'empire, entourés d'un anneau rouge ; visibles seulement près des systèmes déjà repérés (comme le ravitaillement ennemi).
+- Combats : tirs (verts pour toi, rouges pour l'ennemi) et éclairs entre les deux camps.
+- Fiche du système : encadré « Combat en cours » ou « Flottes ennemies », composition des flottes, état du siège.
+- Flotte : statut « Au combat » et état de la coque d'un vaisseau abîmé.
+- Correction trouvée en regardant le jeu : une colonie ne tombe pas tant que tes vaisseaux de guerre défendent le système.
