@@ -297,6 +297,18 @@ const addWarship = (game, kind, starId) => {
   check(restore(old).fleets.length === 0, 'sauvegarde sans flottes : aucune');
 }
 
+{
+  // Des vaisseaux de guerre qui tiennent le système empêchent la colonie de tomber.
+  const { game, home, colony } = warGame(42);
+  for (let i = 0; i < 2; i++) addWarship(game, 'cuirasse', home.id);
+  let lost = false;
+  for (let d = 0; d < 300; d++) {
+    G.tick(game, 1);
+    if (!game.colonies.includes(colony)) lost = true;
+  }
+  check(!lost, "colonie défendue par des vaisseaux de guerre : pas de prise tant qu'ils tiennent");
+}
+
 // Étape 5 : ravitaillement et pillage.
 function supplyGame() {
   const { game, empire, home, colony } = warGame(42);
