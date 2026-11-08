@@ -1,6 +1,16 @@
 # Plan : combat (première version)
 
-État : **plan validé le 08/11/2026** (décisions au § 3). Étape 1 (guerre et paix) codée et testée, en attente de validation.
+État : **plan validé le 08/11/2026.** 7 étapes, détail au § 4.
+
+| Étape | Contenu | Où on en est |
+|---|---|---|
+| 1 | Guerre et paix | ✅ faite (commitée, non publiée) |
+| 2 | Résolution d'un combat | ⏳ prochaine |
+| 3 | Flottes rivales | à faire |
+| 4 | Sièges et capture des colonies | à faire |
+| 5 | Pillage des convois | à faire |
+| 6 | Affichage : flottes, combats animés | à faire |
+| 7 | Annonces et répliques de guerre | à faire |
 
 ## 1. Point de départ
 
@@ -47,7 +57,7 @@ Fidèle à ce que tu aimes (construire, découvrir), le combat reste **simple et
 
 Précisions de l'étape 1 : bouton de déclaration à confirmer (deux clics) ; la paix s'achète (prix selon la puissance de l'empire) et ouvre une trêve de 300 jours ; les Kel-Tirr et les Thrennes déclarent la guerre plus volontiers, les Ondésiens et les Ashkari moins. Le jeu n'a pas encore d'alliances : « ses alliés n'apprécient pas » attendra qu'elles existent.
 
-## 4. Étapes testables (à préciser après tes réponses)
+## 4. Étapes testables
 
 1. **Guerre et paix** : déclaration, rupture des traités, arrêt du commerce, négociation de la paix. *Test* : Node.
 2. **Résolution d'un combat** : forces, aléatoire, pertes, usure. *Test* : Node, des milliers de combats simulés, avec un tableau des chances de victoire selon les forces.

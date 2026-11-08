@@ -11,10 +11,17 @@
 - Outils : hook de fin de réponse qui lance `npm run build` (`.claude/settings.json`), agent `relecteur` (`.claude/agents/relecteur.md`), serveur lancé au démarrage de Windows.
 
 ## En cours
-- Combat (`docs/plan-combat.md`, plan validé le 08/11/2026) : étape 1 (guerre et paix) faite et commitée, non publiée.
+- **Combat** (`docs/plan-combat.md`, plan validé le 08/11/2026), 7 étapes :
+  1. Guerre et paix : ✅ faite (commitée, non publiée)
+  2. Résolution d'un combat : ⏳ prochaine
+  3. Flottes rivales : à faire
+  4. Sièges et capture des colonies : à faire
+  5. Pillage des convois : à faire
+  6. Affichage (flottes, combats animés) : à faire
+  7. Annonces et répliques de guerre : à faire
 
 ## Prochaine étape
-- Étape 2 du combat : résolution d'un combat (forces, aléatoire, pertes), puis flottes rivales, sièges, pillage, affichage, répliques.
+- Étape 2 du combat.
 - À relire ensemble quand tu veux : les 80 répliques (`docs/dialogues-especes.md`).
 
 ## Questions ouvertes
