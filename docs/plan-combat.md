@@ -6,9 +6,9 @@
 |---|---|---|
 | 1 | Guerre et paix | ✅ faite (commitée, non publiée) |
 | 2 | Résolution d'un combat | ✅ faite (commitée, non publiée) |
-| 3 | Flottes rivales | ⏳ en cours |
-| 4 | Sièges et capture des colonies | à faire |
-| 5 | Pillage des convois | à faire |
+| 3 | Flottes rivales | ✅ faite (commitée, non publiée) |
+| 4 | Sièges et capture des colonies | ✅ faite (commitée, non publiée) |
+| 5 | Pillage des convois | ⏳ en cours |
 | 6 | Affichage : flottes, combats animés | à faire |
 | 7 | Annonces et répliques de guerre | à faire |
 
@@ -84,3 +84,12 @@ Règles : chaque jour, chaque camp inflige la somme de ses attaques (± 25 % de 
 | 3 frégates | 1 croiseur + 1 frégate | 0.88 | 3 % | 87 % | 11 % | 4.2 | 2.98 |
 
 Lecture : le hasard compte surtout entre forces proches ; une flotte nettement supérieure gagne presque toujours, en 2 à 4 jours. « Sans vainqueur » : les deux camps tombent le même jour.
+
+## 6. Étapes 3 et 4 : règles retenues (08/11/2026)
+
+- En guerre, un empire lance une flotte tous les 60 jours (3 au plus en même temps), depuis sa colonie la plus proche des tiennes, payée en alliages sur ses stocks. Type de vaisseau selon sa puissance (corvettes, puis frégates, croiseurs, cuirassés), 2 à 6 vaisseaux.
+- La flotte vise ta colonie la plus proche (1,5 al par jour). Arrivée, elle combat tout ce qui s'y trouve : tes vaisseaux (même civils) et la défense de la colonie (anneaux, batteries).
+- Une colonie sans défense tombe après 10 jours de siège ; une colonie défendue tombe quand sa défense est détruite. Elle passe à l'empire **avec ses bâtiments**, et tu peux la reprendre.
+- Tes vaisseaux de guerre dans un système rival attaquent ses colonies ; une colonie rivale prise devient une petite colonie à toi (2 colons). **Les mondes natals ne se prennent pas** dans cette version.
+- Hors combat, colonies et vaisseaux (en orbite d'une de tes colonies) se réparent. La paix renvoie les flottes chez elles.
+- Pas encore traité : la partie perdue quand tu n'as plus de colonie.

@@ -4,6 +4,7 @@ import { createGame, getSurface, currentDay, STARTING_RESOURCES } from './game.j
 import { bindResearch, TECHS } from './research.js';
 import { applyKnownColonies, newContacts, validEmpires } from './empires.js';
 import { validConvoys, validProposals } from './diplomacy.js';
+import { validFleets } from './combat.js';
 import { DEFAULT_SPECIES, RIVALS } from './config.js';
 
 const VERSION = 1;
@@ -34,6 +35,8 @@ export function serialize(game) {
     empires: game.empires,
     convoys: game.convoys,
     proposals: game.proposals,
+    fleets: game.fleets,
+    nextFleetId: game.nextFleetId,
     nextConvoyId: game.nextConvoyId,
     surfaces: [...game.surfaces].map(([key, surface]) => [
       key,
@@ -69,6 +72,8 @@ export function restore(data) {
   // Une partie d'avant les convois n'en a aucun en route.
   game.convoys = validConvoys(game, data.convoys);
   game.proposals = validProposals(game, data.proposals);
+  game.fleets = validFleets(game, data.fleets);
+  game.nextFleetId = Math.max(Number.isInteger(data.nextFleetId) ? data.nextFleetId : 0, ...game.fleets.map((f) => f.id + 1));
   game.nextConvoyId = Math.max(Number.isInteger(data.nextConvoyId) ? data.nextConvoyId : 0, ...game.convoys.map((c) => c.id + 1));
   data.stars.forEach((level, i) => (game.stars[i].level = level));
   data.currents.forEach((known, i) => (game.currents[i].known = known));

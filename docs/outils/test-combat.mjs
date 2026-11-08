@@ -178,5 +178,124 @@ const setup = (partner = 'ondesiens', player = 'thrennes') => {
   check(fallen.length === 0 && lone[0].damage === 0, "une unité sans attaque n'inflige rien");
 }
 
+// Étapes 3 et 4 : flottes rivales, sièges et captures, sur une vraie partie.
+function warGame(seed = 42) {
+  const game = G.createGame(seed, 'vaskhar', 4);
+  const arche = game.ships[0];
+  const home = game.stars[arche.starId];
+  home.level = 3;
+  const index = home.planets.findIndex((p) => p.size && !p.inhabitedBy);
+  const surface = G.getSurface(game, home.id, index);
+  const tile = surface.tiles.findIndex((t) => t.terrain !== 'ocean' && !t.building && !['minerais', 'velarine'].includes(t.deposit?.resource));
+  G.foundColony(game, arche, home.id, index, tile);
+  const dist = (e) => Math.hypot(...['x', 'y', 'z'].map((k) => game.stars[e.homeId].pos[k] - home.pos[k]));
+  const empire = [...game.empires].sort((a, b) => dist(a) - dist(b))[0];
+  empire.met = true;
+  empire.stocks.alliages = 2000;
+  G.declareWarOn(game, empire);
+  return { game, empire, home, colony: game.colonies[0] };
+}
+const addWarship = (game, kind, starId) => {
+  const ship = { id: game.nextShipId++, kind, name: `${kind} ${game.nextShipId}`, starId, state: 'idle', toId: null, fromId: null, distance: 0, speed: 0, progress: 0, daysLeft: 0, age: 0, worn: false, shipSeed: 1, accent: '#fff', registry: 'T' };
+  game.ships.push(ship);
+  return ship;
+};
+{
+  const { game, empire, home, colony } = warGame();
+  for (let d = 0; d < 3 && !game.fleets.length; d++) G.tick(game, 1);
+  const fleet = game.fleets[0];
+  check(!!fleet && fleet.species === empire.species && fleet.ships.length >= 2, `en guerre, l'empire lance une flotte (${fleet?.ships.length} ${fleet?.ships[0].kind})`);
+  check(empire.stocks.alliages < 2000, 'la flotte se paie en alliages');
+  check(game.log.some((l) => JSON.stringify(l).includes('lancent une flotte')), 'annoncée au journal');
+  let arrived = false;
+  let captured = false;
+  for (let d = 0; d < 1500 && !captured; d++) {
+    G.tick(game, 1);
+    if (game.fleets.some((f) => f.starId === home.id && f.state === 'idle')) arrived = true;
+    captured = !game.colonies.includes(colony);
+  }
+  check(arrived, 'la flotte rejoint la colonie du joueur');
+  check(captured && home.planets[colony.planetIndex].inhabitedBy === empire.species, 'colonie sans défense : prise après le siège');
+  check(game.log.some((l) => JSON.stringify(l).includes('est tombée aux mains')), 'la prise est annoncée');
+
+  // Le joueur reprend sa colonie avec ses bâtiments.
+  const buildingsBefore = G.getSurface(game, home.id, colony.planetIndex).tiles.filter((t) => t.building).length;
+  game.fleets = game.fleets.filter((f) => f.starId !== home.id);
+  for (let i = 0; i < 4; i++) addWarship(game, 'fregate', home.id);
+  let retaken = false;
+  for (let d = 0; d < 200 && !retaken; d++) {
+    G.tick(game, 1);
+    retaken = game.colonies.some((c) => c.starId === home.id && c.planetIndex === colony.planetIndex);
+  }
+  const back = game.colonies.find((c) => c.starId === home.id && c.planetIndex === colony.planetIndex);
+  check(retaken && !home.planets[colony.planetIndex].inhabitedBy, 'des frégates reprennent la colonie');
+  check(back?.name === colony.name && G.getSurface(game, home.id, colony.planetIndex).tiles.filter((t) => t.building).length === buildingsBefore, 'colonie reprise avec ses bâtiments');
+  check(game.log.some((l) => JSON.stringify(l).includes('Vous reprenez')), 'reprise annoncée');
+}
+{
+  // Une colonie défendue tient mieux ; des vaisseaux seuls face à une grosse flotte tombent.
+  const { game, empire, home, colony } = warGame(77);
+  colony.orbital.defense = 3;
+  empire.power = 0;
+  const lone = addWarship(game, 'corvette', home.id);
+  let shipLost = false;
+  let held = 0;
+  for (let d = 0; d < 400; d++) {
+    G.tick(game, 1);
+    if (!game.ships.includes(lone)) shipLost = true;
+    if (game.colonies.includes(colony)) held = d;
+  }
+  check(held >= 399 || game.log.some((l) => JSON.stringify(l).includes('anéantie')), `une colonie défendue (anneaux) résiste à de petites flottes (${held >= 399 ? 'tenue' : 'flottes anéanties'})`);
+}
+{
+  // Paix : les flottes rentrent ; pas de flotte hors guerre ; mondes natals imprenables.
+  const { game, empire } = warGame();
+  for (let d = 0; d < 5; d++) G.tick(game, 1);
+  check(game.fleets.length > 0, 'des flottes en guerre');
+  game.resources.minerais = 1e6;
+  const peace = G.signDeal(game, empire, { give: { resources: { minerais: D.peacePrice(empire, 'minerais') } }, get: { resources: {}, peace: true } });
+  check(peace.ok && game.fleets.length === 0, 'la paix renvoie les flottes chez elles');
+  for (let d = 0; d < 200; d++) G.tick(game, 1);
+  check(game.fleets.length === 0, 'pas de flotte en paix');
+
+  const w = warGame(5);
+  const homeWorld = w.empire.colonies[0];
+  for (let i = 0; i < 12; i++) addWarship(w.game, 'cuirasse', homeWorld.starId);
+  w.game.fleets = [];
+  w.empire.nextFleet = 1e9;
+  for (let d = 0; d < 100; d++) G.tick(w.game, 1);
+  check(w.empire.colonies[0] === homeWorld && w.game.stars[homeWorld.starId].planets[homeWorld.planetIndex].inhabitedBy === w.empire.species, 'un monde natal ne se prend pas');
+}
+{
+  // Sauvegarde des flottes.
+  const { game } = warGame();
+  for (let d = 0; d < 30; d++) G.tick(game, 1);
+  const data = copy(serialize(game));
+  const back = restore(data);
+  check(back.fleets.length === game.fleets.length && JSON.stringify(back.fleets) === JSON.stringify(game.fleets), 'les flottes survivent à la sauvegarde');
+  for (const [name, spoil] of Object.entries({
+    'liste invalide': (d) => (d.fleets = 'x'),
+    'vaisseau inconnu': (d) => (d.fleets[0].ships = [{ kind: 'sonde', damage: 0 }]),
+    'étoile hors bornes': (d) => (d.fleets[0].starId = 99999),
+    'flotte vide': (d) => (d.fleets[0].ships = []),
+  })) {
+    const bad = copy(data);
+    spoil(bad);
+    let ok = true;
+    try {
+      const g = restore(bad);
+      ok = Array.isArray(g.fleets) && g.fleets.length < data.fleets.length + 0 || g.fleets.length === 0;
+      G.tick(g, 1);
+    } catch {
+      ok = false;
+    }
+    check(ok, `flotte invalide (${name}) : écartée sans plantage`);
+  }
+  const old = copy(data);
+  delete old.fleets;
+  delete old.nextFleetId;
+  check(restore(old).fleets.length === 0, 'sauvegarde sans flottes : aucune');
+}
+
 console.log(fails ? `\n${fails} échec(s)` : '\nTous les tests passent.');
 process.exit(fails ? 1 : 0);

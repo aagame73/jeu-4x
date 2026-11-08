@@ -15,6 +15,7 @@ import { generateSurface, hexDistance } from './surface.js';
 import { tickColony, colonyReport, SHIPYARD, canAfford, RESOURCE_LABELS } from './economy.js';
 import { TECHS, hasTech, bindResearch, markTech, techCost } from './research.js';
 import { SPECIES, DEFAULT_SPECIES, RIVALS, DIPLOMACY } from './config.js';
+import { tickCombat } from './combat.js';
 import { applyDeal, breakTreaties, declareWar, describeOffer, evaluateDeal, tickConvoys, tickDiplomacy } from './diplomacy.js';
 import { line } from './dialogues.js';
 import { createEmpires, tickEmpires, revealEmpires, rivalColonyAt, newContacts } from './empires.js';
@@ -89,6 +90,8 @@ export function createGame(seed, species = DEFAULT_SPECIES, rivals = RIVALS.defa
     empires: createEmpires(galaxy.stars),
     contacts: [], // espèces à présenter à l'écran (premier contact), non enregistré
     convoys: [], // matières reçues par échange, en route
+    fleets: [], // flottes de guerre des rivaux
+    nextFleetId: 0,
     proposals: [], // propositions des rivaux en attente de réponse
     nextConvoyId: 0,
   };
@@ -138,7 +141,7 @@ function addShip(game, kind, starId) {
   return ship;
 }
 
-function removeShip(game, ship) {
+export function removeShip(game, ship) {
   game.ships = game.ships.filter((s) => s !== ship);
   if (game.selectedShipId === ship.id) game.selectedShipId = game.ships[0]?.id ?? null;
 }
@@ -533,6 +536,10 @@ export function tick(game, days) {
       addLog(game, `Les ${label} proposent ${describeOffer(event.proposal.offer)}. « ${line(empire.species, 'proposition')} » Répondez dans la diplomatie (D).`, 'alert');
     } else if (event.type === 'expired') addLog(game, `La proposition des ${label} a expiré.`, 'info');
     else if (event.type === 'war') addLog(game, `Les ${label} vous déclarent la guerre !`, 'alert');
+    changed = true;
+  }
+  for (const event of tickCombat(game, days)) {
+    addLog(game, event.text, event.kind ?? 'alert');
     changed = true;
   }
   const logLength = game.log.length;

@@ -247,6 +247,22 @@ export const COMBAT = {
   hpPerDefense: 3, // une unité tombe quand ses dégâts atteignent 3 × sa défense
   spread: 0.25, // part de hasard sur les dégâts d'une journée (± 25 %)
   maxBattleDays: 60, // au-delà, les deux camps se séparent (simulation seulement)
+  // Flottes rivales, seulement en guerre contre le joueur.
+  fleetEvery: 60, // jours entre deux flottes d'un même empire
+  maxFleets: 3, // flottes en même temps par empire
+  fleetSpeed: 1.5, // al par jour
+  fleetSize: { base: 2, perPower: 0.05, max: 6 }, // vaisseaux par flotte selon la puissance de l'empire
+  fleetKinds: [[60, 'cuirasse'], [30, 'croiseur'], [10, 'fregate'], [0, 'corvette']], // puissance minimale → type
+  shipCost: { corvette: 20, fregate: 45, croiseur: 90, cuirasse: 180 }, // alliages pris dans les stocks de l'empire
+  powerBonus: 0.005, // attaque et défense des vaisseaux rivaux : × (1 + puissance × powerBonus)
+  // Colonies : la défense combat aussi (attaque = défense × colonyAttack) ; sans défense, elle tombe après captureDays de siège.
+  colonyAttack: 0.5,
+  captureDays: 10,
+  capturePopulation: 2, // colons d'une colonie rivale prise par le joueur
+  rivalColonyDefense: { base: 8, perPower: 0.4, home: 3 }, // monde natal : × home ; les mondes natals ne se prennent pas
+  regenPerDay: 0.05, // part de sa résistance qu'une colonie répare chaque jour sans combat
+  repairPerDay: 0.1, // idem pour un vaisseau en orbite d'une colonie du joueur
+  wearPerBattleDay: 5, // jours d'usure ajoutés à un vaisseau à chaque jour de combat
 };
 
 // Expansion des empires rivaux (empires.js). Un niveau de difficulté pourra agir sur ces réglages.
