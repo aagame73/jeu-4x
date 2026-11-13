@@ -45,6 +45,18 @@ export function endState(game) {
   return null;
 }
 
+// Étapes de l'expansion franchies pour la première fois (le conseiller les annonce une seule fois).
+export function newMilestones(game) {
+  if (!game.colonies.length || game.milestones.length >= VICTORY.milestones.length) return [];
+  const { share } = progress(game);
+  const reached = VICTORY.milestones.filter((m) => share >= m && !game.milestones.includes(m));
+  game.milestones.push(...reached);
+  return reached;
+}
+
+// Étapes lues dans une sauvegarde : seulement celles de config.js.
+export const validMilestones = (saved) => (Array.isArray(saved) ? VICTORY.milestones.filter((m) => saved.includes(m)) : []);
+
 // Appelé après chaque avancée du temps : fige la fin de partie une seule fois.
 export function checkEnd(game) {
   if (game.ended) return null;

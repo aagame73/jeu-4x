@@ -6,7 +6,7 @@
 |---|---|---|
 | 1 | Calcul des conditions (victoire, défaite), sans affichage, avec tests Node | fait (`src/victory.js`, `test-victoire.mjs`) |
 | 2 | Mondes natals rivaux prenables par un long siège ; un empire qui perd le sien disparaît | fait : défense × 6, 30 jours de siège au moins (`COMBAT.homeSiegeDays`) ; colonies prises au joueur rendues, autres abandonnées |
-| 3 | Compteur d'objectifs dans le bandeau, détail au clic, annonces du conseiller | à faire |
+| 3 | Compteur d'objectifs dans le bandeau, détail au clic, annonces du conseiller | fait (étapes de 50 et 70 % annoncées une fois) |
 | 4 | Écran de fin : bilan, « Nouvelle partie » ; la partie est terminée (bouton Pause verrouillé) | à faire |
 | 5 | Animations de victoire et de défaite, différentes pour chaque espèce (§ 5) | à faire |
 
@@ -47,7 +47,7 @@ Un bouton « Nouvelle partie » (et le retour au menu) : la partie est terminée
 ## 3. Décisions (13/11/2026)
 
 1. Les 80 % se comptent sur les **systèmes colonisables** (au moins une planète où une colonie est possible).
-2. Les **mondes natals deviennent prenables** par un long siège, avec une défense très forte. Un empire qui perd le sien disparaît, les colonies qu'il t'avait prises te reviennent, et ses autres colonies sont abandonnées (planètes de nouveau libres).
+2. Les **mondes natals deviennent prenables** par un long siège, avec une défense très forte. Un empire qui perd le sien disparaît, les colonies qu'il t'avait prises te reviennent, et ses autres colonies sont abandonnées (planètes de nouveau libres ; confirmé le 13/11/2026).
 3. **Aucun rival ne gagne** pour l'instant. À revoir avec le niveau de difficulté.
 4. **Pas de « continuer » après la victoire** : la partie se termine. L'écran de fin ne propose que « Nouvelle partie » (et le retour au menu). La sauvegarde garde la partie marquée comme finie : la recharger rouvre l'écran de fin.
 5. Compteur d'objectifs **dans le bandeau**, détail au clic.

@@ -10,6 +10,7 @@ import { createAdvisor } from './advisor.js';
 import { currentSpecies, speciesHabitat, rivalInfo } from './species.js';
 import { treatyConflicts } from './diplomacy.js';
 import { shipHealth, warReport } from './combat.js';
+import { progress } from './victory.js';
 import { COMBAT } from './config.js';
 // Accès tolérant aux règles écrites en parallèle (SIZE_LABELS, shipStats peuvent manquer).
 import * as rules from './game.js';
@@ -50,6 +51,7 @@ export function createUI(root, game, actions) {
         ${CONFIG.speeds.map((x, i) => `<button class="speed" data-action="speed" data-id="${i}" title="Vitesse x${x}">${ICONS[`vitesse${x}`] ?? ''}x${x}</button>`).join('')}
       </div>
     </header>
+    <aside class="objectives panel" id="objectives" hidden></aside>
     <aside class="probes panel"><h2>Flotte</h2><div id="probes"></div></aside>
     <aside class="info panel" id="info"></aside>
     <section class="advisor panel" id="advisor">
@@ -84,6 +86,11 @@ export function createUI(root, game, actions) {
     else if (action === 'diplomacy') actions.onOpenDiplomacy?.();
     else if (action === 'fullscreen') actions.onToggleFullscreen();
     else if (action === 'journal') $('journal').hidden = !$('journal').hidden;
+    else if (action === 'objectives') {
+      $('objectives').hidden = !$('objectives').hidden;
+      el.setAttribute('aria-expanded', String(!$('objectives').hidden));
+      renderObjectives();
+    }
     else if (action === 'rename') startRename(Number(id));
     else if (action === 'focus-ship') actions.onFocusShip(Number(id));
     else if (action === 'found') actions.onOpenPlanet(Number(el.dataset.star), Number(el.dataset.planet), true);
@@ -130,8 +137,54 @@ export function createUI(root, game, actions) {
       <span class="sep"></span>
       ${counter('day', 'calendrier', String(currentDay(game)).padStart(3, '0'), 'Jour de la partie')}
       ${counter('systems', 'systemes', `${s.explored}<small>/${s.total}</small>`, `Systèmes visités (dont analysés : ${s.analysed})`, gauge(s.explored / Math.max(1, s.total)))}
-      ${counter('glows', 'lueurs', s.seen - s.explored, 'Lueurs repérées mais pas encore visitées')}`;
+      ${counter('glows', 'lueurs', s.seen - s.explored, 'Lueurs repérées mais pas encore visitées')}
+      <span class="sep"></span>
+      ${goalCounter(gauge)}`;
     renderResearchButton();
+    renderObjectives();
+  }
+
+  // Compteur d'objectifs : part des systèmes colonisables tenus, objectif et rivaux encore en vie.
+  function goalCounter(gauge) {
+    const p = progress(game);
+    const pct = Math.floor(p.share * 100);
+    const title = `Objectifs : ${pct} % des systèmes colonisables (victoire à ${Math.round(p.goal * 100)} %), ${p.rivalsLeft} empire${p.rivalsLeft > 1 ? 's' : ''} ${p.rivalsLeft > 1 ? 'rivaux' : 'rival'} en vie. Clic : détail`;
+    return `<button class="counter goal" data-action="objectives" title="${title}" aria-label="${title}" aria-controls="objectives" aria-expanded="${!$('objectives').hidden}">${ICONS.objectifs}<span class="counter-body"><b>${pct}<small> %/${Math.round(p.goal * 100)}</small></b>${gauge(p.share / p.goal)}</span><span class="goal-rivals">${p.rivalsLeft}<small>/${p.rivalsTotal}</small></span></button>`;
+  }
+
+  // Détail des objectifs (ouvert par le compteur) : expansion, élimination, défaite.
+  function renderObjectives() {
+    const box = $('objectives');
+    if (box.hidden) return;
+    const p = progress(game);
+    const need = Math.max(0, Math.ceil(p.goal * p.total) - p.owned);
+    const goal = Math.round(p.goal * 100);
+    const met = game.empires.filter((e) => e.met);
+    const unknown = game.empires.length - met.length;
+    const empires = met
+      .map((e) => {
+        const r = rivalInfo(e.species);
+        return `<li style="--empire:${r.accent}" class="${e.eliminated ? 'gone' : ''}">${r.empire}<span>${e.eliminated ? 'disparu' : e.war ? 'en guerre' : 'en vie'}</span></li>`;
+      })
+      .join('');
+    box.innerHTML = `
+      <h3>Objectifs</h3>
+      <section>
+        <h4>Expansion</h4>
+        <p>Vos colonies occupent <b>${p.owned}</b> système${p.owned > 1 ? 's' : ''} sur ${p.total} colonisables (${Math.floor(p.share * 100)} %).</p>
+        <p class="muted">Victoire à ${goal} % : ${need ? `encore ${need} système${need > 1 ? 's' : ''}` : 'atteinte'}. Un système partagé avec un rival compte pour vous.</p>
+      </section>
+      <section>
+        <h4>Élimination</h4>
+        <p><b>${p.rivalsLeft}</b> empire${p.rivalsLeft > 1 ? 's' : ''} ${p.rivalsLeft > 1 ? 'rivaux' : 'rival'} sur ${p.rivalsTotal} encore en vie.</p>
+        ${empires ? `<ul>${empires}</ul>` : ''}
+        ${unknown ? `<p class="muted">${unknown} empire${unknown > 1 ? 's' : ''} pas encore rencontré${unknown > 1 ? 's' : ''}.</p>` : ''}
+        <p class="muted">Prenez le monde natal d'un empire (au moins ${COMBAT.homeSiegeDays} jours de siège) pour le faire disparaître.</p>
+      </section>
+      <section>
+        <h4>Défaite</h4>
+        <p class="muted">Si vous perdez toutes vos colonies sans vaisseau pour en fonder une autre.</p>
+      </section>`;
   }
 
   // Bouton « Recherche » : barre fine du projet en cours, ou point or s'il n'y en a pas.
