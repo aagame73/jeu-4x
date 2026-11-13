@@ -5,6 +5,7 @@ import { bindResearch, TECHS } from './research.js';
 import { applyKnownColonies, newContacts, validEmpires } from './empires.js';
 import { validConvoys, validProposals } from './diplomacy.js';
 import { validFleets } from './combat.js';
+import { validEnded } from './victory.js';
 import { DEFAULT_SPECIES, RIVALS } from './config.js';
 
 const VERSION = 1;
@@ -43,6 +44,7 @@ export function serialize(game) {
       surface.tiles.map(({ terrain, deposit, building, yield: y }) => ({ terrain, deposit, building, yield: y })),
     ]),
     log: game.log.slice(-200),
+    ended: game.ended ?? null,
   };
 }
 
@@ -85,6 +87,8 @@ export function restore(data) {
     const surface = getSurface(game, starId, planetIndex);
     tiles.forEach((tile, i) => Object.assign(surface.tiles[i], tile));
   }
+  // Une partie finie le reste (l'écran de fin se rouvre) ; une ancienne sauvegarde n'est pas finie.
+  game.ended = validEnded(data.ended);
   game.research = data.research ?? { current: null, progress: 0, done: impliedTechs(game), bank: 0, partial: {}, paid: [] };
   // L'arbre a grandi : une technologie acquise reçoit aussi ses nouveaux prérequis.
   game.research.done = withRequirements(game.research.done.filter((k) => TECHS[k]));

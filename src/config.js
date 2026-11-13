@@ -242,6 +242,11 @@ export const DIPLOMACY = {
   },
 };
 
+// Victoire et fin de partie (docs/plan-victoire.md).
+export const VICTORY = {
+  share: 0.8, // part des systèmes colonisables à occuper pour gagner par l'expansion
+};
+
 // Combat (combat.js, docs/plan-combat.md). Résolution automatique, une journée à la fois.
 export const COMBAT = {
   hpPerDefense: 3, // une unité tombe quand ses dégâts atteignent 3 × sa défense
