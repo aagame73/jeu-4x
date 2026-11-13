@@ -32,5 +32,5 @@
 - Victoire (idée, non codée, `docs/plan-rivaux-ia.md` § 6) : 80 % des systèmes occupés, ou plus d'ennemis. Un système partagé compte pour le joueur ; un rival ne gagne pas ainsi pour l'instant.
 - Voix des espèces, décidé le 07/11/2026, à faire plus tard : voix alien générée par le jeu (Web Audio, sans fichier, unique par espèce), avec volume et bouton pour couper. Plan à écrire avant de coder.
 - Niveau de difficulté : à traiter plus tard, avec l'IA.
-- Fluidité : dans le Chrome piloté pour les tests, le jeu tourne à 1 image/s partout (même la carte) ; probablement dû à la fenêtre de test, à vérifier sur ton navigateur.
+- Fluidité : dans le Chrome piloté pour les tests, 11 à 15 images/s, avec l'ancien code comme avec le nouveau (mesuré le 13/11) : limite de la fenêtre de test, pas une régression. À juger sur ton navigateur.
 - Avertissement `WebGL context was lost` vu dans Firefox : sans effet visible pour l'instant, à surveiller.
