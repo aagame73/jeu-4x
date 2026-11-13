@@ -525,3 +525,24 @@ body.system-open .advisor-portrait {
     grid-template-columns: 1fr;
   }
 }
+
+.ending-quote {
+  margin: 2px 0 4px;
+  padding-left: 12px;
+  border-left: 2px solid var(--sp);
+  font-size: 15px;
+  font-style: italic;
+  line-height: 1.5;
+  color: #e6ecfa;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ending,
+  .ending .ending-portrait,
+  .ending .ending-text {
+    transition: none;
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+}

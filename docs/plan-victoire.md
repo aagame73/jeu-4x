@@ -1,6 +1,6 @@
 # Plan : victoire et fin de partie
 
-État : **décisions prises le 13/11/2026 (§ 3) ; animations validées.** Étape 1 faite.
+État : **décisions prises le 13/11/2026 (§ 3) ; animations validées.** Étapes 1 à 5 faites.
 
 | Étape | Contenu | Où on en est |
 |---|---|---|
@@ -8,7 +8,7 @@
 | 2 | Mondes natals rivaux prenables par un long siège ; un empire qui perd le sien disparaît | fait : défense × 6, 30 jours de siège au moins (`COMBAT.homeSiegeDays`) ; colonies prises au joueur rendues, autres abandonnées |
 | 3 | Compteur d'objectifs dans le bandeau, détail au clic, annonces du conseiller | fait (étapes de 50 et 70 % annoncées une fois) |
 | 4 | Écran de fin : bilan, « Nouvelle partie » ; la partie est terminée (bouton Pause verrouillé) | fait (`endView.js`, fond provisoire dans `endingFx.js`) |
-| 5 | Animations de victoire et de défaite, différentes pour chaque espèce (§ 5) | à faire |
+| 5 | Animations de victoire et de défaite, différentes pour chaque espèce (§ 5) | fait (`endingFx.js`, répliques `ENDINGS` dans `dialogues.js`) ; à voir en jeu |
 
 ## 1. Point de départ
 

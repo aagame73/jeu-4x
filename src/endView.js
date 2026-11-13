@@ -2,6 +2,7 @@
 // « Nouvelle partie » ou le menu (charger une autre sauvegarde). La partie finie ne reprend pas :
 // l'écran revient tant qu'elle est chargée. L'animation de fond vient de endingFx.js.
 import { createAlienPortrait } from './aliens.js';
+import { ENDINGS } from './dialogues.js';
 import { startEndingFx } from './endingFx.js';
 import { currentSpecies } from './species.js';
 import { progress } from './victory.js';
@@ -38,6 +39,7 @@ export function createEndView(game, { onNewGame, onMenu, isBusy }) {
 
   function close() {
     if (!current) return;
+    current.timers.forEach(clearTimeout);
     current.stopFx();
     current.portrait.destroy();
     current.el.remove();
@@ -83,6 +85,7 @@ export function createEndView(game, { onNewGame, onMenu, isBusy }) {
           <span class="ending-kicker">${won ? 'Victoire' : 'Défaite'}</span>
           <strong>${species.label}</strong>
           <p class="ending-reason">${REASONS[reason]}</p>
+          <blockquote class="ending-quote">« ${ENDINGS[game.species]?.[result] ?? ENDINGS['sans-espece'][result]} »</blockquote>
           <dl class="ending-summary">${endSummary(game)
             .map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`)
             .join('')}</dl>
@@ -104,7 +107,9 @@ export function createEndView(game, { onNewGame, onMenu, isBusy }) {
       }
     });
     window.addEventListener('keydown', onKey, true);
-    current = { el, portrait, stopFx };
+    // Le portrait parle le temps de sa réplique.
+    const timers = [setTimeout(() => portrait.setSpeaking(true), 2200), setTimeout(() => portrait.setSpeaking(false), 7000)];
+    current = { el, portrait, stopFx, timers };
     requestAnimationFrame(() => el.classList.add('visible'));
     // Le focus va sur « Menu » : un appui sur Entrée au moment de la fin ne relance pas de partie.
     el.querySelector('[data-end="menu"]').focus();
