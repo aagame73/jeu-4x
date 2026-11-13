@@ -2827,8 +2827,12 @@ function createStyledShip(seed, accent, registry, kind, style) {
 
 // Vignettes des vaisseaux pour l'interface, rendues une seule fois.
 // style : style d'espèce commun à toutes les vignettes (chaque spec peut aussi porter le sien).
+// Un seul moteur de rendu pour toutes les vignettes : en créer un par appel rechargeait toutes les
+// textures (une demi-seconde par vaisseau) et faisait perdre des contextes WebGL au navigateur.
+let thumbRenderer = null;
 export function renderShipThumbnails(specs, width = 120, height = 72, style = null) {
-  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+  thumbRenderer ??= new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+  const renderer = thumbRenderer;
   renderer.setPixelRatio(2);
   renderer.setSize(width, height);
   const camera = new THREE.PerspectiveCamera(30, width / height, 0.1, 50);
@@ -2854,10 +2858,9 @@ export function renderShipThumbnails(specs, width = 120, height = 72, style = nu
     ship.position.copy(box.getCenter(new THREE.Vector3())).multiplyScalar(-1.6 / extent);
     animateShip(ship, seed * 0.37, 0.5);
     scene.add(ship);
+    renderer.clear();
     renderer.render(scene, camera);
     return renderer.domElement.toDataURL();
   });
-  renderer.dispose();
-  renderer.forceContextLoss();
   return urls;
 }

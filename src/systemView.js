@@ -11,6 +11,10 @@ import { canvasTexture, glowTexture } from './textures.js';
 import { createSky } from './skybox.js';
 import { icon } from './icons.js';
 import { knownRival, rivalInfo } from './species.js';
+import { createSystemFleets } from './systemFleets.js';
+import { besiegedHere, fleetShipHealth, rivalColonyHealth, shipHealth, warReport } from './combat.js';
+import { SHIP_KINDS } from './game.js';
+import { COMBAT } from './config.js';
 import { treatyConflicts } from './diplomacy.js';
 
 // --- Réglages du décor --------------------------------------------------------------
@@ -333,12 +337,15 @@ export function createSystemView(root, game, actions) {
     <div class="sv-canvas"></div>
     <aside class="panel sv-panel" id="sv-info"></aside>
     <aside class="panel sv-panel" id="sv-planet" hidden></aside>
+    <aside class="panel sv-battle" id="sv-battle" hidden></aside>
     <button class="sv-back" data-sv="close">← Retour à l'amas <kbd>Échap</kbd></button>
     <div class="tooltip sv-tooltip"></div>`;
   const host = root.querySelector('.sv-canvas');
   const tooltip = root.querySelector('.sv-tooltip');
   const infoPanel = root.querySelector('#sv-info');
   const planetPanel = root.querySelector('#sv-planet');
+  const battlePanel = root.querySelector('#sv-battle');
+  const fleets = createSystemFleets(game);
 
   let renderer = null;
   let labelRenderer;
@@ -521,6 +528,7 @@ export function createSystemView(root, game, actions) {
 
   // Libère la scène précédente (sauf le ciel et les ressources partagées).
   function disposeScene(old) {
+    fleets.detach(); // les modèles des vaisseaux sont gardés pour la prochaine fois
     old.remove(sky);
     // Les étiquettes CSS2D d'une scène abandonnée resteraient dans le conteneur.
     labelRenderer.domElement.replaceChildren();
@@ -674,6 +682,46 @@ export function createSystemView(root, game, actions) {
     controls.maxDistance = Math.max(30, edge * 2.6);
     state.key = sceneKey(star);
     placeBodies(clock.getElapsedTime());
+    fleets.attach(scene, star, bodies, edge, state.starView.radius);
+  }
+
+  // --- Panneau de bataille ---------------------------------------------------------------
+  const bar = (part) => `<i class="sv-hp"><b style="width:${Math.round(part * 100)}%"></b></i>`;
+  function renderBattle() {
+    if (!state) return;
+    const starId = state.star.id;
+    const report = warReport(game, starId);
+    const besieged = besiegedHere(game, starId);
+    const mine = game.ships.filter((s) => s.starId === starId && s.state !== 'travel');
+    const active = report.battle || report.fleets.length || (besieged.length && mine.some((s) => SHIP_KINDS[s.kind].warship));
+    battlePanel.hidden = !active;
+    if (!active) return;
+    const colony = game.colonies.find((c) => c.starId === starId);
+    const ours = mine.map((s) => `<li>${s.name}${bar(shipHealth(game, s))}</li>`);
+    if (colony) {
+      const siege = report.siege;
+      ours.push(
+        siege && siege.defenseLeft === null
+          ? `<li>${colony.name} : sans défense${siege.days ? `, tombe dans ${Math.max(0, COMBAT.captureDays - siege.days)} jours` : ''}</li>`
+          : `<li>Défense de ${colony.name}${bar(siege?.defenseLeft ?? 1)}</li>`,
+      );
+    }
+    const theirs = report.fleets.flatMap((f) => [
+      `<li class="sv-hp-head" style="--empire:${rivalInfo(f.species).accent}">Flotte des ${rivalInfo(f.species).label}</li>`,
+      ...f.ships.map((s) => `<li>${SHIP_KINDS[s.kind].label}${bar(fleetShipHealth(game, f, s))}</li>`),
+    ]);
+    for (const { empire, colony: c } of besieged) {
+      theirs.push(`<li style="--empire:${rivalInfo(empire.species).accent}">Colonie des ${rivalInfo(empire.species).label} (${state.star.planets[c.planetIndex].name})${bar(rivalColonyHealth(game, empire, c))}</li>`);
+    }
+    const scrolls = [...battlePanel.querySelectorAll('ul')].map((ul) => ul.scrollTop); // gardés d'un rafraîchissement à l'autre
+    battlePanel.innerHTML = `
+      <h3>${report.battle ? '⚔ Bataille' : 'Flottes en présence'}</h3>
+      <div class="sv-sides">
+        <section><h4>Vos forces</h4><ul>${ours.join('') || '<li class="muted">Aucune</li>'}</ul></section>
+        <section><h4>Ennemis</h4><ul>${theirs.join('') || '<li class="muted">Aucun</li>'}</ul></section>
+      </div>
+      ${report.battle ? '<p class="muted small">Le temps est ralenti pendant le combat. Espace : pause.</p>' : ''}`;
+    battlePanel.querySelectorAll('ul').forEach((ul, i) => (ul.scrollTop = scrolls[i] ?? 0));
   }
 
   // --- Animation -----------------------------------------------------------------------
@@ -722,6 +770,12 @@ export function createSystemView(root, game, actions) {
     hoverRing.quaternion.copy(q);
     selectRing.quaternion.copy(q);
     if (selectRing.visible) selectRing.material.opacity = 0.65 + Math.sin(time * 4) * 0.25;
+    fleets.update(dt, time);
+    state.battleTimer = (state.battleTimer ?? 0) - dt;
+    if (state.battleTimer <= 0) {
+      state.battleTimer = 0.5; // panneau de bataille rafraîchi deux fois par seconde
+      renderBattle();
+    }
     renderer.render(scene, camera);
     labelRenderer.render(scene, camera);
   }
@@ -996,6 +1050,7 @@ export function createSystemView(root, game, actions) {
       labelRenderer?.domElement.replaceChildren();
       tooltip.style.display = 'none';
       renderer?.setAnimationLoop(null);
+      battlePanel.hidden = true;
     },
     // Après un événement : analyse terminée, colonie fondée… on reconstruit si besoin.
     update() {

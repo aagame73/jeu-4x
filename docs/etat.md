@@ -1,4 +1,4 @@
-# État du projet (07/11/2026, fin de session)
+# État du projet (13/11/2026)
 
 ## Fait
 - Prototype jouable : amas 3D, sondes, Arche, colonies sur hexagones, économie, recherche (46 technologies), sauvegardes, temps réel avec pause.
@@ -11,10 +11,9 @@
 - Outils : hook de fin de réponse qui lance `npm run build` (`.claude/settings.json`), agent `relecteur` (`.claude/agents/relecteur.md`), serveur lancé au démarrage de Windows.
 
 ## En cours
-- Rien. **Combat** (`docs/plan-combat.md`) : les 7 étapes sont faites, relues et publiées le 08/11/2026.
+- Rien. **Combat** publié le 08/11/2026. **Vue du système en guerre** (`docs/plan-systeme-guerre.md`) faite le 13/11/2026 : vaisseaux visibles, tirs, explosions, panneau de bataille, ouverture automatique, temps ralenti. Pas encore publiée.
 
 ## Prochaine étape (décisions du 08/11/2026)
-- **Flottes ennemies et combats dans la vue 3D du système** : à ajouter (pour l'instant, ils ne se voient que sur la carte de l'amas).
 - **Conditions de victoire et fin de partie** : plus tard. D'ici là, perdre toutes ses colonies ou ne pas pouvoir prendre les mondes natals ne termine pas la partie.
 - **Équilibrage** : une fois le jeu terminé, par simulations (flottes, prix de la paix, pillage, espèces, rivaux, échanges).
 - À relire ensemble quand tu veux : les 120 répliques (`docs/dialogues-especes.md`).
@@ -33,4 +32,5 @@
 - Victoire (idée, non codée, `docs/plan-rivaux-ia.md` § 6) : 80 % des systèmes occupés, ou plus d'ennemis. Un système partagé compte pour le joueur ; un rival ne gagne pas ainsi pour l'instant.
 - Voix des espèces, décidé le 07/11/2026, à faire plus tard : voix alien générée par le jeu (Web Audio, sans fichier, unique par espèce), avec volume et bouton pour couper. Plan à écrire avant de coder.
 - Niveau de difficulté : à traiter plus tard, avec l'IA.
+- Fluidité : dans le Chrome piloté pour les tests, le jeu tourne à 1 image/s partout (même la carte) ; probablement dû à la fenêtre de test, à vérifier sur ton navigateur.
 - Avertissement `WebGL context was lost` vu dans Firefox : sans effet visible pour l'instant, à surveiller.

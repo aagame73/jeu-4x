@@ -408,3 +408,73 @@ body.system-open .help {
   letter-spacing: 0;
   text-transform: none;
 }
+
+/* Panneau de bataille, en bas au centre de la vue du système */
+.sv-battle {
+  position: absolute;
+  left: 50%;
+  bottom: 64px;
+  transform: translateX(-50%);
+  width: min(560px, calc(100% - 24px));
+  padding: 8px 12px;
+  border-color: rgba(255, 90, 74, 0.55);
+  font-size: 12px;
+  z-index: 3;
+}
+.sv-battle[hidden] {
+  display: none;
+}
+.sv-battle h3 {
+  margin: 0 0 6px;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #ff8a7a;
+}
+.sv-battle h4 {
+  margin: 0 0 4px;
+  font-size: 11px;
+  opacity: 0.8;
+}
+.sv-sides {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.sv-battle ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-height: 150px;
+  overflow-y: auto;
+}
+.sv-battle li {
+  display: grid;
+  grid-template-columns: 1fr 70px;
+  align-items: center;
+  gap: 6px;
+  padding: 1px 0;
+}
+.sv-battle li.sv-hp-head {
+  display: block;
+  margin-top: 4px;
+  font-weight: 600;
+  color: var(--empire);
+}
+.sv-battle p {
+  margin: 6px 0 0;
+}
+.sv-hp {
+  display: block;
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+}
+.sv-hp b {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #ff5a4a, #ffd166 50%, #7cff9e);
+  background-size: 140px 100%;
+}
