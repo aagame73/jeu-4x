@@ -203,10 +203,30 @@ export function createUI(root, game, actions) {
   }
   const statText = (x) => (Math.round(x * 10) / 10).toLocaleString('fr-FR');
 
-  function buildFleet() {
-    for (const ship of game.ships) {
+  // Les vignettes se dessinent une par une, en arrière-plan : chacune demande un rendu 3D, et les
+  // dessiner toutes d'un coup figeait l'interface quand plusieurs vaisseaux arrivaient.
+  const thumbQueue = [];
+  function queueThumbnail(ship) {
+    if (ship.thumbnail || thumbQueue.includes(ship)) return;
+    thumbQueue.push(ship);
+    if (thumbQueue.length === 1) setTimeout(drawNextThumbnail, 30);
+  }
+  function drawNextThumbnail() {
+    const ship = thumbQueue[0];
+    if (!ship) return;
+    try {
       ship.thumbnail ??= renderShipThumbnails([{ seed: ship.shipSeed, accent: ship.accent, registry: ship.registry, kind: ship.kind }], 120, 72, currentSpecies().shipStyle)[0];
+      const img = root.querySelector(`.probe[data-id="${ship.id}"] .ship-thumb`);
+      if (img) img.src = ship.thumbnail;
+    } finally {
+      // Même en cas d'erreur, la file continue avec les vignettes suivantes.
+      thumbQueue.shift();
+      if (thumbQueue.length) setTimeout(drawNextThumbnail, 30);
     }
+  }
+
+  function buildFleet() {
+    for (const ship of game.ships) queueThumbnail(ship);
     if (!game.ships.length) {
       $('probes').innerHTML = '<p class="muted small">Aucun vaisseau. Construisez un spatioport sur une colonie pour lancer des sondes.</p>';
       return;
@@ -215,7 +235,7 @@ export function createUI(root, game, actions) {
       .map(
         (ship, i) => `
       <div class="probe" role="button" tabindex="0" data-action="select-ship" data-id="${ship.id}" style="--ship-accent:${ship.accent}">
-        <img class="ship-thumb" src="${ship.thumbnail}" alt="" />
+        <img class="ship-thumb" src="${ship.thumbnail ?? 'data:image/gif;base64,R0lGODlhAQABAAAAACw='}" alt="" />
         <span class="probe-text">
           <span class="probe-name">
             <span class="name-text"></span>

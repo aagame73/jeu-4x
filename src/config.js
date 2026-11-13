@@ -247,6 +247,7 @@ export const COMBAT = {
   hpPerDefense: 3, // une unité tombe quand ses dégâts atteignent 3 × sa défense
   spread: 0.25, // part de hasard sur les dégâts d'une journée (± 25 %)
   maxBattleDays: 60, // au-delà, les deux camps se séparent (simulation seulement)
+  battleSpeed: 0.5, // jours par seconde pendant un combat chez le joueur (la vitesse x1 en fait 1)
   // Flottes rivales, seulement en guerre contre le joueur.
   fleetEvery: 60, // jours entre deux flottes d'un même empire
   maxFleets: 3, // flottes en même temps par empire

@@ -422,3 +422,17 @@ body {
 .ship-tag.size-gigantesque { --tag: #c77dff; }
 .ship-tag.atk { --tag: #ff7a8a; }
 .ship-tag.def { --tag: #5fe3ff; }
+
+/* Combat chez le joueur : le temps est ralenti */
+body.battle-slow .topbar .clock::after {
+  content: '⚔ ralenti';
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 8px;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: #fff;
+  background: rgba(232, 72, 60, 0.7);
+  align-self: center;
+}

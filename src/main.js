@@ -6,7 +6,7 @@ import './styles/recherche.css';
 import './styles/systeme.css';
 import './styles/especes.css';
 import './styles/diplomatie.css';
-import { CONFIG, SPECIES, DEFAULT_SPECIES } from './config.js';
+import { CONFIG, COMBAT, SPECIES, DEFAULT_SPECIES } from './config.js';
 import { createSpeciesView } from './speciesView.js';
 import { createGame, tick, currentDay, sendShip, startAnalysis, selectedShip, foundColony, startShipyard, startResearch } from './game.js';
 import { createResearchView } from './researchView.js';
@@ -15,6 +15,7 @@ import { createSystemView } from './systemView.js';
 import { createGalaxyView } from './scene.js';
 import { createUI } from './ui.js';
 import { createContactView } from './contactView.js';
+import { playerBattles } from './combat.js';
 import { createPlanetView } from './planetView.js';
 import { startConstruction, demolish, startUpgrade } from './economy.js';
 import { restore, readSlot, writeSlot, takePendingLoad, takeNewGameRequest, takeRivalsRequest, newGameAndRestart } from './save.js';
@@ -72,10 +73,13 @@ function refresh() {
 // Le temps avance à chaque image, sauf en pause. L'interface n'est redessinée en entier
 // que lorsqu'un événement survient (une entrée de journal) ; sinon, chaque nouveau jour.
 function advanceTime(dt) {
+  watchBattles();
   if (game.paused) return;
   const day = currentDay(game);
   const logLength = game.log.length;
-  tick(game, (dt * CONFIG.speeds[game.speedIndex]) / CONFIG.secondsPerDay);
+  // Pendant un combat chez le joueur, le temps est ralenti, quelle que soit la vitesse choisie.
+  const speed = slowedByBattle ? COMBAT.battleSpeed : CONFIG.speeds[game.speedIndex];
+  tick(game, (dt * speed) / CONFIG.secondsPerDay);
   if (game.log.length !== logLength) {
     refresh();
   } else if (currentDay(game) !== day) {
@@ -243,6 +247,28 @@ const researchView = createResearchView(document.getElementById('research'), gam
 const diplomacyView = createDiplomacyView(document.getElementById('diplomacy'), game, actions);
 const systemView = createSystemView(document.getElementById('system-view'), game, actions);
 let returnToSystem = null; // système à rouvrir en quittant la vue d'une planète
+
+// Combats chez le joueur : ralenti, et ouverture de la vue du système au début de chaque bataille.
+// Si un écran est ouvert (menu, recherche, diplomatie, cinématique), l'ouverture attend qu'il se ferme.
+let slowedByBattle = false;
+let knownBattles = new Set();
+const pendingBattles = new Set();
+function watchBattles() {
+  const battles = playerBattles(game);
+  slowedByBattle = battles.length > 0;
+  document.body.classList.toggle('battle-slow', slowedByBattle);
+  for (const id of battles) if (!knownBattles.has(id)) pendingBattles.add(id);
+  knownBattles = new Set(battles);
+  for (const id of pendingBattles) if (!knownBattles.has(id)) pendingBattles.delete(id);
+  if (!pendingBattles.size) return;
+  // La vue d'une planète compte aussi : on ne coupe pas, par exemple, le choix de la case d'une colonie.
+  const busy = menu.isOpen || researchView.isOpen || diplomacyView.isOpen || speciesView.isOpen || planetView.isOpen || document.querySelector('.contact');
+  if (busy) return;
+  const starId = pendingBattles.values().next().value;
+  pendingBattles.clear();
+  if (systemView.isOpen && game.selectedStarId === starId) return;
+  actions.onOpenSystem(starId);
+}
 let pausedBeforeResearch = true;
 let pausedBeforeDiplomacy = true;
 

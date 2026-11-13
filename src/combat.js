@@ -374,6 +374,26 @@ export function warReport(game, starId) {
   };
 }
 
+// Systèmes en combat où le joueur a une colonie ou des vaisseaux : le temps y est ralenti et la
+// vue du système s'ouvre d'elle-même au début de la bataille.
+export function playerBattles(game) {
+  return (game.battles ?? []).filter((id) => game.colonies.some((c) => c.starId === id) || game.ships.some((s) => s.starId === id && s.state !== 'travel'));
+}
+
+// Part de résistance qui reste à un vaisseau ennemi, ou à une colonie rivale (1 : intact).
+export function fleetShipHealth(game, fleet, ship) {
+  const unit = rivalShipUnit(game, fleet, ship);
+  return Math.max(0, 1 - unit.damage / toughness(unit));
+}
+
+export function rivalColonyHealth(game, empire, colony) {
+  const unit = rivalColonyUnit(game, empire, colony);
+  return Math.max(0, 1 - unit.damage / toughness(unit));
+}
+
+// Colonies rivales assiégées par le joueur dans ce système (mêmes règles que le combat).
+export const besiegedHere = (game, starId) => besiegeable(game, starId);
+
 // Part de résistance qui reste à un vaisseau du joueur (1 : intact).
 export function shipHealth(game, ship) {
   if (!ship.damage) return 1;
