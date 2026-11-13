@@ -114,6 +114,30 @@ const fakeColony = (game, star) => game.colonies.push({ starId: star.id, planetI
   check(!game.ended, '300 jours de jeu normal : pas de fin');
 }
 
+// Étapes annoncées par le conseiller, une seule fois chacune.
+{
+  const game = setup();
+  const stars = V.colonizableStars(game);
+  const mine = V.playerStars(game);
+  for (const star of stars) {
+    if (mine.size >= Math.ceil(stars.length * 0.55)) break;
+    if (!mine.has(star.id)) {
+      fakeColony(game, star);
+      mine.add(star.id);
+    }
+  }
+  const first = V.newMilestones(game);
+  check(first.length === 1 && first[0] === VICTORY.milestones[0], `étape de ${Math.round(VICTORY.milestones[0] * 100)} % franchie`);
+  check(V.newMilestones(game).length === 0, "une étape ne s'annonce qu'une fois");
+  const back = restore(copy(serialize(game)));
+  check(back.milestones.length === 1 && back.milestones[0] === VICTORY.milestones[0], 'étapes gardées dans la sauvegarde');
+  const data = copy(serialize(game));
+  data.milestones = [0.33, 'x', VICTORY.milestones[1]];
+  check(restore(data).milestones.length === 1 && restore(data).milestones[0] === VICTORY.milestones[1], 'étapes inconnues ignorées au chargement');
+  delete data.milestones;
+  check(restore(data).milestones.length === 0, 'ancienne sauvegarde : aucune étape');
+}
+
 // Sauvegardes.
 {
   const game = setup();

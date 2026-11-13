@@ -322,7 +322,9 @@ window.addEventListener('keydown', (e) => {
   if (researchView.isOpen && (e.key === 'Escape' || e.code === 'KeyR')) {
     actions.onCloseResearch();
   } else if (e.key === 'Escape') {
-    if (planetView.isOpen) actions.onClosePlanet();
+    const objectives = document.getElementById('objectives');
+    if (objectives && !objectives.hidden) objectives.hidden = true; // détail des objectifs d'abord
+    else if (planetView.isOpen) actions.onClosePlanet();
     else if (systemView.isOpen) actions.onCloseSystem();
     else menu.open();
   } else if (e.code === 'KeyR' && !e.ctrlKey && !e.metaKey && !e.altKey) {

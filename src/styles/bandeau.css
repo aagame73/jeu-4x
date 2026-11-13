@@ -436,3 +436,95 @@ body.battle-slow .topbar .clock::after {
   background: rgba(232, 72, 60, 0.7);
   align-self: center;
 }
+
+/* Compteur d'objectifs (victory.js) : part des systèmes, rivaux en vie ; clic : détail */
+.topbar .counter.goal {
+  --res: var(--gold);
+  padding: 2px 4px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.topbar .counter.goal:hover,
+.topbar .counter.goal:focus-visible {
+  background: color-mix(in srgb, var(--gold) 14%, transparent);
+}
+.topbar .counter.goal > .icon-svg {
+  color: var(--gold);
+  filter: drop-shadow(0 0 3px var(--gold));
+}
+.topbar .counter.goal b {
+  color: var(--gold);
+}
+.topbar .goal-rivals {
+  margin-left: 4px;
+  padding-left: 6px;
+  border-left: 1px solid var(--border);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--rival, #ff6b6b);
+}
+.topbar .goal-rivals small {
+  font-size: 9.5px;
+  color: var(--muted);
+}
+
+/* Détail des objectifs, sous le bandeau */
+.objectives {
+  position: absolute;
+  top: 64px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(380px, calc(100% - 24px));
+  padding: 10px 14px;
+  z-index: 6;
+  font-size: 12.5px;
+}
+.objectives[hidden] {
+  display: none;
+}
+.objectives h3 {
+  margin: 0 0 6px;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+.objectives h4 {
+  margin: 8px 0 2px;
+  font-size: 12px;
+}
+.objectives p {
+  margin: 2px 0;
+}
+.objectives ul {
+  margin: 4px 0;
+  padding: 0;
+  list-style: none;
+}
+.objectives li {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 1px 0;
+  color: var(--empire);
+}
+.objectives li span {
+  color: var(--muted);
+}
+.objectives li.gone {
+  text-decoration: line-through;
+  opacity: 0.6;
+}
+
+/* Écran étroit : le compteur d'objectifs garde seulement sa part */
+@media (max-width: 1180px) {
+  .topbar .goal-rivals,
+  .topbar .counter.goal .gauge {
+    display: none;
+  }
+}

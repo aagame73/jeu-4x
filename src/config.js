@@ -245,6 +245,7 @@ export const DIPLOMACY = {
 // Victoire et fin de partie (docs/plan-victoire.md).
 export const VICTORY = {
   share: 0.8, // part des systèmes colonisables à occuper pour gagner par l'expansion
+  milestones: [0.5, 0.7], // étapes annoncées par le conseiller
 };
 
 // Combat (combat.js, docs/plan-combat.md). Résolution automatique, une journée à la fois.

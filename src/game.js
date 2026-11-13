@@ -14,9 +14,9 @@ import { SHIP_NAMES, SHIP_ACCENTS } from './ships.js';
 import { generateSurface, hexDistance } from './surface.js';
 import { tickColony, colonyReport, SHIPYARD, canAfford, RESOURCE_LABELS } from './economy.js';
 import { TECHS, hasTech, bindResearch, markTech, techCost } from './research.js';
-import { SPECIES, DEFAULT_SPECIES, RIVALS, DIPLOMACY } from './config.js';
+import { SPECIES, DEFAULT_SPECIES, RIVALS, DIPLOMACY, VICTORY } from './config.js';
 import { tickCombat } from './combat.js';
-import { checkEnd } from './victory.js';
+import { checkEnd, newMilestones } from './victory.js';
 import { applyDeal, breakTreaties, declareWar, describeOffer, evaluateDeal, tickConvoys, tickDiplomacy } from './diplomacy.js';
 import { line } from './dialogues.js';
 import { createEmpires, tickEmpires, revealEmpires, rivalColonyAt, newContacts } from './empires.js';
@@ -93,6 +93,7 @@ export function createGame(seed, species = DEFAULT_SPECIES, rivals = RIVALS.defa
     convoys: [], // matières reçues par échange, en route
     fleets: [], // flottes de guerre des rivaux
     ended: null, // fin de partie : { result, reason, day } (victory.js)
+    milestones: [], // étapes de l'expansion déjà annoncées (VICTORY.milestones)
     nextFleetId: 0,
     proposals: [], // propositions des rivaux en attente de réponse
     nextConvoyId: 0,
@@ -563,6 +564,10 @@ export function tick(game, days) {
         changed = true;
       }
     }
+  }
+  for (const m of newMilestones(game)) {
+    addLog(game, `Vos colonies occupent au moins ${Math.round(m * 100)} % des systèmes colonisables. La victoire est à ${Math.round(VICTORY.share * 100)} %.`, 'discovery');
+    changed = true;
   }
   const end = checkEnd(game);
   if (end) {
