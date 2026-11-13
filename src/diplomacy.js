@@ -491,6 +491,7 @@ export function validProposals(game, saved) {
 function diplomacyDay(game) {
   const ended = [];
   for (const empire of game.empires) {
+    if (empire.eliminated) continue;
     stockDay(game, empire);
     for (const key of Object.keys(DIPLOMACY.treaties)) {
       if (!empire.treaties[key]) continue;

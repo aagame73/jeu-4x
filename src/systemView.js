@@ -711,7 +711,11 @@ export function createSystemView(root, game, actions) {
       ...f.ships.map((s) => `<li>${SHIP_KINDS[s.kind].label}${bar(fleetShipHealth(game, f, s))}</li>`),
     ]);
     for (const { empire, colony: c } of besieged) {
-      theirs.push(`<li style="--empire:${rivalInfo(empire.species).accent}">Colonie des ${rivalInfo(empire.species).label} (${state.star.planets[c.planetIndex].name})${bar(rivalColonyHealth(game, empire, c))}</li>`);
+      const home = c === empire.colonies[0];
+      const left = Math.max(0, COMBAT.homeSiegeDays - (c.siegeDays ?? 0));
+      const when = left === 0 ? 'peut tomber à tout moment' : `tombe dans ${left} jour${left > 1 ? 's' : ''} au plus tôt`;
+      const what = home ? `Monde natal des ${rivalInfo(empire.species).label} (${state.star.planets[c.planetIndex].name}), ${when}` : `Colonie des ${rivalInfo(empire.species).label} (${state.star.planets[c.planetIndex].name})`;
+      theirs.push(`<li style="--empire:${rivalInfo(empire.species).accent}">${what}${bar(rivalColonyHealth(game, empire, c))}</li>`);
     }
     const scrolls = [...battlePanel.querySelectorAll('ul')].map((ul) => ul.scrollTop); // gardés d'un rafraîchissement à l'autre
     battlePanel.innerHTML = `

@@ -31,6 +31,7 @@ export function createEmpires(stars) {
         truceUntil: 0,
         nextFleet: 0,
         nextSupply: 0,
+        eliminated: false, // monde natal perdu : l'empire a disparu (combat.js)
       };
       empire.stocks = startStocks(empire);
       return empire;
@@ -117,7 +118,10 @@ export function validEmpires(game, saved) {
   const fine = saved.every((empire, i) => {
     const fresh = game.empires[i];
     if (!empire || empire.species !== fresh.species || empire.homeId !== fresh.homeId) return false;
-    if (!number(empire.points) || !number(empire.power) || !Array.isArray(empire.colonies) || !empire.colonies.length) return false;
+    if (!number(empire.points) || !number(empire.power) || !Array.isArray(empire.colonies)) return false;
+    // Un empire éliminé n'a plus de colonie ; les autres gardent leur monde natal en tête.
+    if (empire.eliminated === true) return empire.colonies.length === 0;
+    if (!empire.colonies.length) return false;
     if (empire.colonies[0].starId !== fresh.homeId || empire.colonies[0].planetIndex !== fresh.colonies[0].planetIndex) return false;
     return empire.colonies.every((c) => c && typeof c.known === 'boolean' && game.stars[c.starId]?.planets[c.planetIndex]?.size);
   });
@@ -137,6 +141,7 @@ export function validEmpires(game, saved) {
     nextFleet: number(empire.nextFleet) ? empire.nextFleet : 0,
     nextSupply: number(empire.nextSupply) ? empire.nextSupply : 0,
     lastAttitude: DIPLOMACY.attitudes.some((a) => a.key === empire.lastAttitude) ? empire.lastAttitude : undefined,
+    eliminated: empire.eliminated === true,
   }));
 }
 
@@ -163,8 +168,14 @@ export function newContacts(game) {
   return met;
 }
 
-// Une colonie déjà découverte reste connue après un rechargement.
+// Une colonie déjà découverte reste connue après un rechargement. Un monde natal perdu (pris par le
+// joueur, ou empire éliminé) n'est plus habité par son espèce d'origine.
 export function applyKnownColonies(game) {
+  for (const empire of game.empires) {
+    const star = game.stars[empire.homeId];
+    const index = star.planets.findIndex((p) => p.inhabitedBy === star.rival);
+    if (index >= 0 && !empire.colonies.some((c) => c.starId === star.id && c.planetIndex === index)) star.planets[index].inhabitedBy = null;
+  }
   for (const empire of game.empires) {
     for (const colony of empire.colonies) {
       if (colony.known) game.stars[colony.starId].planets[colony.planetIndex].inhabitedBy = empire.species;
@@ -176,6 +187,7 @@ export function applyKnownColonies(game) {
 export function tickEmpires(game, days) {
   const founded = [];
   for (const empire of game.empires) {
+    if (empire.eliminated) continue;
     const style = RIVAL_AI.styles[empire.species];
     empire.points += growthOf(empire, game.time) * days;
     empire.power += style.power * days;

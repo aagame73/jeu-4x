@@ -5,7 +5,7 @@ const root = resolve(process.argv[2] ?? '.');
 const imp = (f) => import(pathToFileURL(`${root}/src/${f}`).href);
 const G = await imp('game.js');
 const D = await imp('diplomacy.js');
-const { DIPLOMACY } = await imp('config.js');
+const { COMBAT, DIPLOMACY } = await imp('config.js');
 const { rivalInfo } = await imp('species.js');
 const { restore, serialize } = await imp('save.js');
 
@@ -254,7 +254,7 @@ const addWarship = (game, kind, starId) => {
   check(held >= 399 || game.log.some((l) => JSON.stringify(l).includes('anéantie')), `une colonie défendue (anneaux) résiste à de petites flottes (${held >= 399 ? 'tenue' : 'flottes anéanties'})`);
 }
 {
-  // Paix : les flottes rentrent ; pas de flotte hors guerre ; mondes natals imprenables.
+  // Paix : les flottes rentrent ; pas de flotte hors guerre ; monde natal pris, empire éliminé.
   const { game, empire } = warGame();
   for (let d = 0; d < 5; d++) G.tick(game, 1);
   check(game.fleets.length > 0, 'des flottes en guerre');
@@ -266,11 +266,39 @@ const addWarship = (game, kind, starId) => {
 
   const w = warGame(5);
   const homeWorld = w.empire.colonies[0];
+  const homePlanet = w.game.stars[homeWorld.starId].planets[homeWorld.planetIndex];
+  // Une colonie prise au joueur, et une autre colonie de l'empire, ailleurs.
+  const lost = { ...w.game.colonies[0] };
+  check(w.empire.colonies.length >= 1, 'empire de départ bien formé');
+  w.empire.colonies.push({ starId: lost.starId, planetIndex: lost.planetIndex, known: true, damage: 0, captured: lost });
+  w.game.colonies = [];
+  addWarship(w.game, 'arche', lost.starId); // sans colonie ni vaisseau fondateur, ce serait la défaite
+  w.game.stars[lost.starId].planets[lost.planetIndex].inhabitedBy = w.empire.species;
+  const free = w.game.stars.find((s) => s.id !== homeWorld.starId && s.id !== lost.starId && s.planets.some((p) => p.size && !p.inhabitedBy));
+  const freeIndex = free.planets.findIndex((p) => p.size && !p.inhabitedBy);
+  w.empire.colonies.push({ starId: free.id, planetIndex: freeIndex, known: true, damage: 0 });
+  free.planets[freeIndex].inhabitedBy = w.empire.species;
+  w.game.proposals.push({ species: w.empire.species, offer: deal({}, {}), expires: 1e9 });
   for (let i = 0; i < 12; i++) addWarship(w.game, 'cuirasse', homeWorld.starId);
   w.game.fleets = [];
   w.empire.nextFleet = 1e9;
-  for (let d = 0; d < 100; d++) G.tick(w.game, 1);
-  check(w.empire.colonies[0] === homeWorld && w.game.stars[homeWorld.starId].planets[homeWorld.planetIndex].inhabitedBy === w.empire.species, 'un monde natal ne se prend pas');
+  let days = 0;
+  for (; days < 400 && !w.empire.eliminated; days++) G.tick(w.game, 1);
+  check(w.empire.eliminated && w.empire.colonies.length === 0 && !w.empire.war, `12 cuirassés prennent le monde natal en ${days} jours : l'empire disparaît`);
+  check(days >= COMBAT.homeSiegeDays, `la prise du monde natal demande un long siège (${COMBAT.homeSiegeDays} jours au moins)`);
+  check(w.game.colonies.some((c) => c.starId === homeWorld.starId && c.planetIndex === homeWorld.planetIndex) && !homePlanet.inhabitedBy, 'le monde natal devient une colonie du joueur');
+  check(w.game.colonies.some((c) => c.starId === lost.starId && c.planetIndex === lost.planetIndex && c.name === lost.name), 'la colonie prise au joueur lui revient');
+  check(!free.planets[freeIndex].inhabitedBy && !w.game.colonies.some((c) => c.starId === free.id), 'les autres colonies de l\'empire sont abandonnées');
+  check(!w.game.proposals.some((p) => p.species === w.empire.species) && !w.game.fleets.some((f) => f.species === w.empire.species), 'plus de proposition ni de flotte de cet empire');
+  check(w.game.log.some((l) => JSON.stringify(l).includes("n'existe plus")), "la chute de l'empire est annoncée");
+  // Un empire éliminé ne se relève pas, et reste éliminé après un rechargement.
+  const points = w.empire.points;
+  for (let d = 0; d < 300; d++) G.tick(w.game, 1);
+  check(w.empire.colonies.length === 0 && w.empire.points === points, "un empire éliminé ne fonde plus de colonie");
+  const back = restore(copy(serialize(w.game)));
+  const again = back.empires.find((e) => e.species === w.empire.species);
+  check(again.eliminated && again.colonies.length === 0 && back.empires.length === w.game.empires.length, 'empire éliminé gardé au chargement (les autres ne sont pas réinitialisés)');
+  check(!back.stars[homeWorld.starId].planets[homeWorld.planetIndex].inhabitedBy, 'au chargement, le monde natal pris n\'est plus habité par son espèce');
 }
 {
   // Sauvegarde des flottes.
@@ -376,14 +404,25 @@ function supplyGame() {
   check(!game.log.some((l) => JSON.stringify(l).includes(`Convoi des ${rivalInfo(empire.species).label} arrivé`)), "l'arrivée d'un ravitaillement ennemi n'est pas annoncée au joueur");
 }
 {
-  // Un monde natal n'est pas assiégé (il ne peut pas tomber) ; une colonie rivale assiégée ne se répare pas.
+  // Une frégate seule ne prend pas un monde natal ; une colonie rivale assiégée ne se répare pas.
   const w = warGame(5);
   const home = w.empire.colonies[0];
   w.game.fleets = [];
   w.empire.nextFleet = 1e9;
-  const ship = addWarship(w.game, 'fregate', home.starId);
-  for (let d = 0; d < 20; d++) G.tick(w.game, 1);
-  check(!(home.damage > 0) && (ship.damage ?? 0) === 0, 'pas de combat sans fin devant un monde natal');
+  addWarship(w.game, 'fregate', home.starId);
+  for (let d = 0; d < 60; d++) G.tick(w.game, 1);
+  check(w.empire.colonies[0] === home && !w.empire.eliminated, 'une frégate seule ne prend pas un monde natal');
+  check(!w.game.ships.some((s) => s.starId === home.starId && s.kind === 'fregate'), 'elle est détruite par sa défense');
+  // Une défense abattue reste à terre pendant le siège : la flotte n'est plus décimée ensuite.
+  const v = warGame(5);
+  v.game.fleets = [];
+  v.empire.nextFleet = 1e9;
+  for (let i = 0; i < 6; i++) addWarship(v.game, 'cuirasse', v.empire.homeId);
+  addWarship(v.game, 'arche', v.game.colonies[0].starId);
+  let n = 0;
+  for (; n < 60 && !v.empire.eliminated; n++) G.tick(v.game, 1);
+  const left = v.game.ships.filter((s) => s.kind === 'cuirasse').length;
+  check(v.empire.eliminated && left >= 5, `6 cuirassés prennent un jeune monde natal en ${n} jours, ${left} survivent`);
   const s2 = supplyGame();
   const target = s2.empire.colonies.slice(1).find((c) => s2.game.stars[c.starId].planets[c.planetIndex].inhabitedBy) ?? s2.empire.colonies[1];
   s2.game.stars[target.starId].planets[target.planetIndex].inhabitedBy = s2.empire.species;
