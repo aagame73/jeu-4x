@@ -142,3 +142,43 @@ export const DIALOGUES = {
 };
 
 export const line = (species, situation) => DIALOGUES[species]?.[situation] ?? '';
+
+// Répliques de fin de partie, dites par le conseiller de ton espèce (endView.js) : victoire et défaite.
+export const ENDINGS = {
+  vaskhar: {
+    victoire: "L'amas entier résonne sous nos galeries. Que chaque monde garde la forme de nos mandibules.",
+    defaite: 'Les voûtes se sont effondrées. Mais la roche se souvient, et un jour elle se refermera sur eux.',
+  },
+  ondesiens: {
+    victoire: 'Nos courants relient chaque étoile. Partout où brille une lueur, nous chantons ensemble.',
+    defaite: 'Nos filaments se taisent un à un. Nous retournons au fond, là où la lumière ne descend plus.',
+  },
+  keltirr: {
+    victoire: "Tout l'amas est à nous ! Chaque vent, chaque nid, chaque étoile ! Plus vite, plus haut, encore !",
+    defaite: "Les nids sont vides… l'essaim s'éparpille. Peut-être qu'un jour, le vent nous ramènera.",
+  },
+  synodes: {
+    victoire: "Mille mondes, une seule pensée. L'amas est devenu notre réseau, et il ne se tait jamais.",
+    defaite: 'Les liens se rompent. Chaque corps pense seul, maintenant, et le silence est immense.',
+  },
+  orrhaides: {
+    victoire: "Chaque étoile qui se lève éclaire l'un de nos mondes. Écoutez : l'amas tout entier chante.",
+    defaite: "Notre éclat s'est terni. Il ne reste qu'une note, très basse, qui s'éteint lentement.",
+  },
+  thrennes: {
+    victoire: "Il n'y a plus de place sur nos coques pour graver une seule victoire de plus. L'amas est conquis.",
+    defaite: 'Nos gravures sont effacées. Nous sommes tombés debout ; que nos ennemis s\'en souviennent.',
+  },
+  liseurs: {
+    victoire: 'Les glyphes sont réunis. Nous lisons enfin la grande figure des Veilleurs, et elle porte notre nom.',
+    defaite: 'Les glyphes retombent en poussière, illisibles. Le dernier Liseur ferme les yeux.',
+  },
+  ashkari: {
+    victoire: "Toutes les routes de l'amas passent par nos caravanes. Le soleil se lève sur nos voiles.",
+    defaite: 'Nos voiles sont déchirées, nos lanternes éteintes. La caravane dérive dans la nuit.',
+  },
+  'sans-espece': {
+    victoire: "L'Arche est réparée, et l'amas est notre foyer. Le long voyage a enfin trouvé son but.",
+    defaite: "L'Arche dérive, ses lumières s'éteignent. Personne ne racontera notre voyage.",
+  },
+};

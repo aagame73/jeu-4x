@@ -171,5 +171,37 @@ const fakeColony = (game, star) => game.colonies.push({ starId: star.id, planetI
   }
 }
 
+// Animations et répliques de fin : une par espèce (8 jouables et le profil neutre), victoire et défaite.
+{
+  const { ENDING_SCENES } = await imp('endingFx.js');
+  const { ENDINGS } = await imp('dialogues.js');
+  const { SPECIES } = await imp('config.js');
+  const keys = Object.keys(SPECIES);
+  check(keys.every((k) => ENDING_SCENES[k]) && Object.keys(ENDING_SCENES).length === keys.length, `une scène de fin par espèce (${keys.length})`);
+  const lines = keys.flatMap((k) => [ENDINGS[k]?.victoire, ENDINGS[k]?.defaite]);
+  check(lines.every((l) => typeof l === 'string' && l.length > 20) && new Set(lines).size === lines.length, `${lines.length} répliques de fin, toutes différentes`);
+  // Faux canvas : chaque appel de dessin est compté ; on joue 30 secondes de chaque scène.
+  let calls = 0;
+  const gradient = { addColorStop() {} };
+  const ctx = new Proxy({}, { get: (o, k) => (k in o ? o[k] : String(k).startsWith('create') ? () => gradient : () => calls++), set: (o, k, v) => ((o[k] = v), true) });
+  let worst = 0;
+  let errors = 0;
+  for (const [key, scene] of Object.entries(ENDING_SCENES)) {
+    for (const won of [true, false]) {
+      const s = {};
+      calls = 0;
+      try {
+        for (let t = 0; t <= 30; t += 1 / 30) scene({ ctx, w: 1280, h: 720, t, dt: 1 / 30, won, color: SPECIES[key].accent, s });
+      } catch (e) {
+        errors++;
+        console.log(`   ${key} ${won ? 'victoire' : 'défaite'} : ${e.message}`);
+      }
+      worst = Math.max(worst, calls / 900);
+    }
+  }
+  check(errors === 0, '18 scènes jouées 30 secondes sans erreur');
+  check(worst < 3000, `dessin raisonnable (au plus ${Math.round(worst)} appels par image)`);
+}
+
 console.log(fails ? `\n${fails} échec(s).` : '\nTous les tests passent.');
 process.exit(fails ? 1 : 0);
