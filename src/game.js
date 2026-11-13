@@ -16,6 +16,7 @@ import { tickColony, colonyReport, SHIPYARD, canAfford, RESOURCE_LABELS } from '
 import { TECHS, hasTech, bindResearch, markTech, techCost } from './research.js';
 import { SPECIES, DEFAULT_SPECIES, RIVALS, DIPLOMACY } from './config.js';
 import { tickCombat } from './combat.js';
+import { checkEnd } from './victory.js';
 import { applyDeal, breakTreaties, declareWar, describeOffer, evaluateDeal, tickConvoys, tickDiplomacy } from './diplomacy.js';
 import { line } from './dialogues.js';
 import { createEmpires, tickEmpires, revealEmpires, rivalColonyAt, newContacts } from './empires.js';
@@ -91,6 +92,7 @@ export function createGame(seed, species = DEFAULT_SPECIES, rivals = RIVALS.defa
     contacts: [], // espèces à présenter à l'écran (premier contact), non enregistré
     convoys: [], // matières reçues par échange, en route
     fleets: [], // flottes de guerre des rivaux
+    ended: null, // fin de partie : { result, reason, day } (victory.js)
     nextFleetId: 0,
     proposals: [], // propositions des rivaux en attente de réponse
     nextConvoyId: 0,
@@ -485,6 +487,7 @@ function completeShipyard(game, colony) {
 
 // Fait avancer le temps de `days` jours. Renvoie true si un événement a eu lieu.
 export function tick(game, days) {
+  if (game.ended) return false; // partie terminée : le temps ne s'écoule plus
   game.time += days;
   let changed = false;
   for (const ship of [...game.ships]) {
@@ -560,6 +563,16 @@ export function tick(game, days) {
         changed = true;
       }
     }
+  }
+  const end = checkEnd(game);
+  if (end) {
+    const text = {
+      expansion: 'Victoire : vos colonies occupent la plus grande partie de l\'amas.',
+      elimination: 'Victoire : plus aucun empire rival ne vous dispute l\'amas.',
+      'tout-perdu': "Défaite : vous n'avez plus aucune colonie, ni de vaisseau pour en fonder une.",
+    }[end.reason];
+    addLog(game, text, end.result === 'victoire' ? 'discovery' : 'alert');
+    changed = true;
   }
   return changed;
 }

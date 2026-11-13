@@ -203,6 +203,11 @@ const addWarship = (game, kind, starId) => {
 };
 {
   const { game, empire, home, colony } = warGame();
+  // Une Arche de réserve, loin du front : sans elle, perdre la seule colonie serait une défaite et
+  // arrêterait le temps (docs/plan-victoire.md), et la reprise ne pourrait pas être testée.
+  const away = (s) => Math.hypot(s.pos.x - home.pos.x, s.pos.y - home.pos.y, s.pos.z - home.pos.z);
+  const far = game.stars.reduce((a, s) => (away(s) > away(a) ? s : a));
+  addWarship(game, 'arche', far.id);
   for (let d = 0; d < 3 && !game.fleets.length; d++) G.tick(game, 1);
   const fleet = game.fleets[0];
   check(!!fleet && fleet.species === empire.species && fleet.ships.length >= 2, `en guerre, l'empire lance une flotte (${fleet?.ships.length} ${fleet?.ships[0].kind})`);
