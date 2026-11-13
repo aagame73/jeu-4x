@@ -15,6 +15,7 @@ import { createSystemView } from './systemView.js';
 import { createGalaxyView } from './scene.js';
 import { createUI } from './ui.js';
 import { createContactView } from './contactView.js';
+import { createEndView } from './endView.js';
 import { playerBattles } from './combat.js';
 import { createPlanetView } from './planetView.js';
 import { startConstruction, demolish, startUpgrade } from './economy.js';
@@ -65,6 +66,7 @@ function refresh() {
   view.update();
   ui.render();
   contactView.update();
+  endView.update();
   planetView.update();
   systemView.update();
   if (researchView.isOpen) researchView.render();
@@ -119,10 +121,12 @@ const actions = {
     refresh();
   },
   onTogglePause() {
+    if (game.ended) return; // partie terminée : le temps ne repart pas
     game.paused = !game.paused;
     ui.renderLive();
   },
   onSetSpeed(index) {
+    if (game.ended) return;
     game.speedIndex = index;
     game.paused = false;
     ui.renderLive();
@@ -242,6 +246,12 @@ const actions = {
 };
 const ui = createUI(document.getElementById('ui'), game, actions);
 const contactView = createContactView(game, () => refresh());
+// Fin de partie : l'écran de fin passe après le menu et les cinématiques ; il revient quand ils se ferment.
+const endView = createEndView(game, {
+  onNewGame: () => newGameAndRestart(),
+  onMenu: () => menu.open(),
+  isBusy: () => menu.isOpen || speciesView.isOpen || !!document.querySelector('.contact'),
+});
 const planetView = createPlanetView(document.getElementById('planet-view'), game, actions);
 const researchView = createResearchView(document.getElementById('research'), game, actions);
 const diplomacyView = createDiplomacyView(document.getElementById('diplomacy'), game, actions);
@@ -281,8 +291,9 @@ const menu = createMenu(document.getElementById('menu'), game, {
     ui.renderLive();
   },
   onClose() {
-    game.paused = pausedBeforeMenu;
+    game.paused = pausedBeforeMenu || !!game.ended;
     ui.renderLive();
+    endView.update();
   },
   onNewGame() {
     menu.close();
@@ -299,6 +310,7 @@ const speciesView = createSpeciesView(document.getElementById('species'), {
 installTooltips();
 if (showStart) menu.open(true);
 else if (needsSpecies) speciesView.open();
+endView.update(); // une partie finie rechargée rouvre son écran de fin
 
 // Dernière sauvegarde automatique quand on quitte ou cache la page.
 const saveOnLeave = () => autosave && writeSlot('auto', game);
