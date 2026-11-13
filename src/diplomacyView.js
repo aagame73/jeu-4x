@@ -31,7 +31,7 @@ const REFUSALS = {
 };
 
 const emptyOffer = () => ({ give: { resources: {}, techs: [], map: false }, get: { resources: {}, techs: [], map: false, treaties: [], peace: false } });
-const metEmpires = (game) => game.empires.filter((e) => e.met);
+const metEmpires = (game) => game.empires.filter((e) => e.met && !e.eliminated);
 
 export function createDiplomacyView(root, game, actions) {
   let selected = null;

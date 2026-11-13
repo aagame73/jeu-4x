@@ -648,6 +648,9 @@ export function visiblePlanets(star) {
   return detected.length || star.planets.length === 0 ? detected : [star.planets[0]];
 }
 
+// Monde natal d'un empire encore en vie dans ce système ?
+const livingHome = (game, star) => star.rival && game.empires.some((e) => e.homeId === star.id && !e.eliminated);
+
 function arrive(game, ship) {
   const star = game.stars[ship.toId];
   Object.assign(ship, { starId: star.id, state: 'idle', fromId: null, toId: null });
@@ -656,7 +659,7 @@ function arrive(game, ship) {
     const n = visiblePlanets(star).length;
     const found = n === 0 ? 'aucune planète détectée' : `${plural(n, 'planète')} ${n > 1 ? 'détectées' : 'détectée'}`;
     addLog(game, `${ship.name} atteint ${star.name} (${STAR_TYPES[star.type].label.toLowerCase()}) : ${found}.`, 'discovery');
-    if (star.rival) addLog(game, `Des signaux artificiels émanent de ${star.name}. Une autre espèce vit ici.`, 'alert');
+    if (livingHome(game, star)) addLog(game, `Des signaux artificiels émanent de ${star.name}. Une autre espèce vit ici.`, 'alert');
   } else {
     addLog(game, `${ship.name} arrive à ${star.name}.`);
   }
@@ -676,7 +679,7 @@ function completeAnalysis(game, ship) {
   const ruins = star.planets.filter((p) => p.ruins);
   const velarine = star.planets.filter((p) => p.deposits.velarine > 0);
   const rich = star.planets.filter((p) => ['minerais', 'energie', 'biomasse'].some((r) => p.deposits[r] === 3));
-  if (star.rival) {
+  if (livingHome(game, star)) {
     const rival = rivalInfo(star.rival);
     parts.push(`C'est le monde natal des ${rival.label} (${rival.empire}).`);
   }

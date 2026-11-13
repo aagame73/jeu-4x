@@ -80,7 +80,10 @@ function rivalShipUnit(game, fleet, ship) {
 function rivalColonyUnit(game, empire, colony) {
   const { base, perPower, home } = COMBAT.rivalColonyDefense;
   const defense = (base + perPower * empire.power) * (colony === empire.colonies[0] ? home : 1);
-  return { attack: defense * COMBAT.colonyAttack, defense, damage: Number.isFinite(colony.damage) ? colony.damage : 0, ref: colony, empire };
+  // Défense abattue pendant ce siège : elle reste à terre (la puissance de l'empire, qui grandit
+  // chaque jour, ne doit pas la relever d'un cheveu).
+  const damage = colony.down ? defense * COMBAT.hpPerDefense : Number.isFinite(colony.damage) ? colony.damage : 0;
+  return { attack: defense * COMBAT.colonyAttack, defense, damage, ref: colony, empire };
 }
 
 function playerColonyUnit(game, colony) {
@@ -177,14 +180,30 @@ function captureFromEmpire(game, empire, entry) {
   return 'captured';
 }
 
-// Colonies rivales que les vaisseaux du joueur peuvent assiéger ici : empire en guerre, colonie connue,
-// et jamais un monde natal (imprenable pour l'instant : l'assiéger ne mènerait à rien).
+// Un empire qui perd son monde natal disparaît (docs/plan-victoire.md) : les colonies qu'il avait
+// prises au joueur lui reviennent, les autres sont abandonnées (planètes de nouveau libres).
+// Ses flottes et ses ravitaillements disparaissent avec la guerre, ses propositions aussi.
+function eliminate(game, empire) {
+  for (const entry of [...empire.colonies]) {
+    if (entry.captured) captureFromEmpire(game, empire, entry);
+    else game.stars[entry.starId].planets[entry.planetIndex].inhabitedBy = null;
+  }
+  empire.colonies = [];
+  empire.war = false;
+  empire.eliminated = true;
+  game.proposals = game.proposals.filter((p) => p.species !== empire.species);
+  game.convoys = game.convoys.filter((c) => !(c.supply && c.species === empire.species));
+  game.fleets = game.fleets.filter((f) => f.species !== empire.species);
+}
+
+// Colonies rivales que les vaisseaux du joueur peuvent assiéger ici : empire en guerre, colonie connue.
+// Le monde natal aussi, mais sa défense est bien plus forte (COMBAT.rivalColonyDefense.home).
 function besiegeable(game, starId) {
   return game.empires
     .filter((e) => e.war)
     .flatMap((e) =>
       e.colonies
-        .filter((c) => c.starId === starId && c !== e.colonies[0] && game.stars[starId].planets[c.planetIndex].inhabitedBy)
+        .filter((c) => c.starId === starId && game.stars[starId].planets[c.planetIndex].inhabitedBy)
         .map((c) => ({ empire: e, colony: c })),
     );
 }
@@ -245,15 +264,23 @@ function battleDay(game, starId, rng) {
       events.push({ text: `${colony.name} est tombée aux mains des ${rivalInfo(besiegers[0].species).label} !`, type: 'colony-lost', species: besiegers[0].species });
     }
   }
-  // Colonies rivales assiégées par le joueur (les mondes natals ne se prennent pas).
+  // Colonies rivales assiégées par le joueur ; la chute du monde natal fait disparaître l'empire.
   const stillWarships = game.ships.some((s) => s.starId === starId && s.state !== 'travel' && SHIP_KINDS[s.kind].warship);
   for (const u of enemy.filter((x) => x.empire)) {
     u.ref.damage = u.damage;
-    if (alive(u) || !stillWarships || u.ref === u.empire.colonies[0]) continue;
+    const home = u.ref === u.empire.colonies[0];
+    u.ref.siegeDays = stillWarships ? (Number.isFinite(u.ref.siegeDays) ? u.ref.siegeDays : 0) + 1 : 0;
+    u.ref.down = stillWarships && !alive(u); // plus de vaisseau de guerre : le siège est levé
+    if (alive(u) || !stillWarships || !u.empire.colonies.includes(u.ref)) continue;
+    if (home && u.ref.siegeDays < COMBAT.homeSiegeDays) continue; // un monde natal résiste longtemps
     const how = captureFromEmpire(game, u.empire, u.ref);
     const name = star.planets[u.ref.planetIndex].name;
-    const label = rivalInfo(u.empire.species).label;
+    const { label, empire: title } = rivalInfo(u.empire.species);
     events.push({ text: how === 'retaken' ? `Vous reprenez ${name} aux ${label} !` : `Vous prenez ${name} aux ${label} !`, kind: 'discovery', type: 'colony-won', species: u.empire.species });
+    if (home) {
+      eliminate(game, u.empire);
+      events.push({ text: `${name}, monde natal des ${label}, est tombé : ${title} n'existe plus.`, kind: 'discovery', type: 'empire-eliminated', species: u.empire.species });
+    }
   }
   return events;
 }
@@ -355,7 +382,10 @@ function warDay(game) {
   }
   for (const empire of game.empires) {
     for (const colony of empire.colonies) {
-      if (!colony.damage || inBattle.has(colony.starId)) continue;
+      if (inBattle.has(colony.starId)) continue;
+      colony.siegeDays = 0; // siège levé : il faudra recommencer
+      colony.down = false;
+      if (!colony.damage) continue;
       colony.damage = Math.max(0, colony.damage - toughness(rivalColonyUnit(game, empire, colony)) * COMBAT.regenPerDay);
     }
   }

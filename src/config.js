@@ -265,7 +265,8 @@ export const COMBAT = {
   colonyAttack: 0.5,
   captureDays: 10,
   capturePopulation: 2, // colons d'une colonie rivale prise par le joueur
-  rivalColonyDefense: { base: 8, perPower: 0.4, home: 3 }, // monde natal : × home ; les mondes natals ne se prennent pas
+  rivalColonyDefense: { base: 8, perPower: 0.4, home: 6 }, // monde natal : × home ; le prendre fait disparaître l'empire
+  homeSiegeDays: 30, // un monde natal ne tombe qu'après ce nombre de jours de siège d'affilée, défense détruite ou non
   regenPerDay: 0.05, // part de sa résistance qu'une colonie répare chaque jour sans combat
   repairPerDay: 0.1, // idem pour un vaisseau en orbite d'une colonie du joueur
   wearPerBattleDay: 5, // jours d'usure ajoutés à un vaisseau à chaque jour de combat
