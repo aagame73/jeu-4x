@@ -7,7 +7,7 @@
 | 1 | Calcul des conditions (victoire, défaite), sans affichage, avec tests Node | fait (`src/victory.js`, `test-victoire.mjs`) |
 | 2 | Mondes natals rivaux prenables par un long siège ; un empire qui perd le sien disparaît | fait : défense × 6, 30 jours de siège au moins (`COMBAT.homeSiegeDays`) ; colonies prises au joueur rendues, autres abandonnées |
 | 3 | Compteur d'objectifs dans le bandeau, détail au clic, annonces du conseiller | fait (étapes de 50 et 70 % annoncées une fois) |
-| 4 | Écran de fin : bilan, « Nouvelle partie » ; la partie est terminée (bouton Pause verrouillé) | à faire |
+| 4 | Écran de fin : bilan, « Nouvelle partie » ; la partie est terminée (bouton Pause verrouillé) | fait (`endView.js`, fond provisoire dans `endingFx.js`) |
 | 5 | Animations de victoire et de défaite, différentes pour chaque espèce (§ 5) | à faire |
 
 ## 1. Point de départ

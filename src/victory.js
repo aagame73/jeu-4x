@@ -67,6 +67,19 @@ export function checkEnd(game) {
   return game.ended;
 }
 
+// Bilan des combats, pour l'écran de fin : compté à partir des événements de combat.js.
+export const emptyRecord = () => ({ fleetsDestroyed: 0, coloniesTaken: 0, coloniesLost: 0, shipsLost: 0 });
+const RECORDED = { 'fleet-lost': 'fleetsDestroyed', 'colony-won': 'coloniesTaken', 'colony-lost': 'coloniesLost', 'ship-lost': 'shipsLost' };
+export function recordEvent(game, event) {
+  const key = RECORDED[event.type];
+  if (key) game.record[key]++;
+}
+export function validRecord(saved) {
+  const record = emptyRecord();
+  for (const key of Object.keys(record)) if (Number.isInteger(saved?.[key]) && saved[key] >= 0) record[key] = saved[key];
+  return record;
+}
+
 // Valeur lue dans une sauvegarde : une fin de partie bien formée, ou null.
 export function validEnded(saved) {
   if (!saved || typeof saved !== 'object') return null;

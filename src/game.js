@@ -16,7 +16,7 @@ import { tickColony, colonyReport, SHIPYARD, canAfford, RESOURCE_LABELS } from '
 import { TECHS, hasTech, bindResearch, markTech, techCost } from './research.js';
 import { SPECIES, DEFAULT_SPECIES, RIVALS, DIPLOMACY, VICTORY } from './config.js';
 import { tickCombat } from './combat.js';
-import { checkEnd, newMilestones } from './victory.js';
+import { checkEnd, emptyRecord, newMilestones, recordEvent } from './victory.js';
 import { applyDeal, breakTreaties, declareWar, describeOffer, evaluateDeal, tickConvoys, tickDiplomacy } from './diplomacy.js';
 import { line } from './dialogues.js';
 import { createEmpires, tickEmpires, revealEmpires, rivalColonyAt, newContacts } from './empires.js';
@@ -94,6 +94,7 @@ export function createGame(seed, species = DEFAULT_SPECIES, rivals = RIVALS.defa
     fleets: [], // flottes de guerre des rivaux
     ended: null, // fin de partie : { result, reason, day } (victory.js)
     milestones: [], // étapes de l'expansion déjà annoncées (VICTORY.milestones)
+    record: emptyRecord(), // bilan des combats, pour l'écran de fin
     nextFleetId: 0,
     proposals: [], // propositions des rivaux en attente de réponse
     nextConvoyId: 0,
@@ -544,6 +545,7 @@ export function tick(game, days) {
     changed = true;
   }
   for (const event of tickCombat(game, days)) {
+    recordEvent(game, event);
     // Réplique de l'empire concerné, selon ce qui vient d'arriver.
     const situation = { 'colony-lost': 'victoire', 'fleet-lost': 'defaite', pillage: 'pillage' }[event.type];
     addLog(game, situation && event.species ? `${event.text} « ${line(event.species, situation)} »` : event.text, event.kind ?? 'alert');

@@ -138,6 +138,22 @@ const fakeColony = (game, star) => game.colonies.push({ starId: star.id, planetI
   check(restore(data).milestones.length === 0, 'ancienne sauvegarde : aucune étape');
 }
 
+// Bilan des combats.
+{
+  const game = setup();
+  for (const type of ['fleet-lost', 'fleet-lost', 'colony-won', 'colony-lost', 'ship-lost', 'pillage']) V.recordEvent(game, { type });
+  const r = game.record;
+  check(r.fleetsDestroyed === 2 && r.coloniesTaken === 1 && r.coloniesLost === 1 && r.shipsLost === 1, 'bilan compté à partir des événements de combat');
+  const back = restore(copy(serialize(game)));
+  check(JSON.stringify(back.record) === JSON.stringify(r), 'bilan gardé dans la sauvegarde');
+  const data = copy(serialize(game));
+  data.record = { fleetsDestroyed: -3, coloniesTaken: 'x', shipsLost: 4 };
+  const fixed = restore(data).record;
+  check(fixed.fleetsDestroyed === 0 && fixed.coloniesTaken === 0 && fixed.coloniesLost === 0 && fixed.shipsLost === 4, 'valeurs du bilan invalides remises à zéro');
+  delete data.record;
+  check(Object.values(restore(data).record).every((n) => n === 0), 'ancienne sauvegarde : bilan vide');
+}
+
 // Sauvegardes.
 {
   const game = setup();

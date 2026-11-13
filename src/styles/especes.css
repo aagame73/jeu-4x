@@ -402,3 +402,126 @@ body.system-open .advisor-portrait {
     animation-delay: 0s;
   }
 }
+
+/* Écran de fin de partie (endView.js) */
+.ending {
+  position: fixed;
+  inset: 0;
+  z-index: 1001;
+  overflow: hidden auto;
+  background: #02030a;
+  color: #eef3ff;
+  opacity: 0;
+  transition: opacity 1.2s ease;
+}
+.ending.visible {
+  opacity: 1;
+}
+.ending-fx {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.ending-stage {
+  position: relative;
+  min-height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5vw;
+  padding: 6vh 6vw;
+  box-sizing: border-box;
+}
+.ending-portrait {
+  flex: none;
+  width: min(52vh, 36vw);
+  height: min(52vh, 36vw);
+  border-radius: 50%;
+  border: 2px solid var(--sp);
+  box-shadow: 0 0 70px color-mix(in srgb, var(--sp) 60%, transparent);
+  opacity: 0;
+  transform: scale(0.6);
+}
+.ending.visible .ending-portrait {
+  animation: contact-arrive 2s 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+.ending.lost .ending-portrait {
+  filter: grayscale(0.6) brightness(0.75);
+  box-shadow: 0 0 40px rgba(120, 40, 40, 0.5);
+}
+.ending-text {
+  max-width: 460px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  opacity: 0;
+}
+.ending.visible .ending-text {
+  animation: contact-text 1.2s 1.6s ease forwards;
+}
+.ending-kicker {
+  font-family: Orbitron, sans-serif;
+  font-size: clamp(30px, 4.5vw, 60px);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--gold, #ffd166);
+  text-shadow: 0 0 26px color-mix(in srgb, var(--gold, #ffd166) 60%, transparent);
+}
+.ending.lost .ending-kicker {
+  color: #ff7a6a;
+  text-shadow: 0 0 26px rgba(255, 90, 74, 0.5);
+}
+.ending-text strong {
+  font-family: Orbitron, sans-serif;
+  font-size: clamp(18px, 2vw, 26px);
+  color: var(--sp);
+}
+.ending-reason {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.5;
+  color: #c8d1e6;
+}
+.ending-summary {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px 18px;
+  margin: 6px 0;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  background: rgba(10, 14, 28, 0.6);
+}
+.ending-summary div {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12.5px;
+}
+.ending-summary dt {
+  color: #8f9bb8;
+}
+.ending-summary dd {
+  margin: 0;
+  font-weight: 600;
+}
+.ending-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 4px;
+}
+@media (max-width: 760px) {
+  .ending-stage {
+    flex-direction: column;
+    gap: 16px;
+  }
+  .ending-portrait {
+    width: min(40vh, 60vw);
+    height: min(40vh, 60vw);
+  }
+  .ending-summary {
+    grid-template-columns: 1fr;
+  }
+}
