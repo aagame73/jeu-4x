@@ -43,9 +43,9 @@ export function createMenu(root, game, { onOpen, onClose, onNewGame }) {
       const auto = readSlot('auto');
       $('menu-body').innerHTML = `
         <h1 class="menu-title">Amas inexploré</h1>
-        <p class="muted">Une partie est en cours sur cet ordinateur.</p>
+        ${auto ? '<p class="muted">Une partie est en cours sur cet ordinateur.</p>' : ''}
         <div class="start-actions">
-          <button class="primary big" data-menu="load" data-slot="auto">Continuer<span class="small">${describe(auto)}</span></button>
+          ${auto ? `<button class="primary big" data-menu="load" data-slot="auto">Continuer<span class="small">${describe(auto)}</span></button>` : ''}
           <button class="big" data-menu="new-start">Nouvelle partie</button>
         </div>
         ${SLOTS.slice(1).some(readSlot) ? `<h3>Autres sauvegardes</h3>${slotRows(false, SLOTS.slice(1).filter(readSlot))}` : ''}
@@ -123,5 +123,6 @@ export function createMenu(root, game, { onOpen, onClose, onNewGame }) {
     },
     open,
     close,
+    notice: status, // message affiché dans le menu (par exemple une sauvegarde illisible)
   };
 }

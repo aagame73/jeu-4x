@@ -20,7 +20,8 @@ import { checkEnd, emptyRecord, newMilestones, recordEvent } from './victory.js'
 import { applyDeal, breakTreaties, declareWar, describeOffer, evaluateDeal, tickConvoys, tickDiplomacy } from './diplomacy.js';
 import { line } from './dialogues.js';
 import { createEmpires, tickEmpires, revealEmpires, rivalColonyAt, newContacts } from './empires.js';
-import { bindSpecies, speciesBonus, speciesHabitat, hostilePenalty, currentSpecies, normalizeRivals, rivalInfo } from './species.js';
+import { bindSpecies, speciesBonus, speciesHabitat, hostilePenalty, currentSpecies, rivalInfo } from './species.js';
+import { gameSettings } from './difficulty.js';
 
 export const LEVEL_LABELS = ['Inconnu', 'Lueur repérée', 'Système survolé', 'Système analysé'];
 
@@ -63,14 +64,21 @@ export function shipStats(game, ship) {
 
 // species : clé dans SPECIES (config.js) ; une clé inconnue retombe sur le profil neutre.
 // rivals : nombre d'empires rivaux (RIVALS dans config.js).
-export function createGame(seed, species = DEFAULT_SPECIES, rivals = RIVALS.default) {
+// options : { difficulty, mapSize, resourceLevel } (DIFFICULTY, MAP_SIZES, RESOURCE_LEVELS) ; une valeur absente ou
+// inconnue prend la valeur par défaut, et le niveau Redoutable impose les siennes (difficulty.js).
+export function createGame(seed, species = DEFAULT_SPECIES, rivals = RIVALS.default, options = {}) {
   const playerSpecies = SPECIES[species] ? species : DEFAULT_SPECIES;
-  const rivalCount = normalizeRivals(rivals);
-  const galaxy = generateCluster(seed, playerSpecies, rivalCount);
+  const settings = gameSettings({ ...options, rivals });
+  const rivalCount = settings.rivals;
+  const galaxy = generateCluster(seed, playerSpecies, rivalCount, settings);
   const game = {
     seed,
     species: playerSpecies,
     rivals: rivalCount,
+    difficulty: settings.difficulty, // fixé au début de la partie
+    mapSize: settings.mapSize,
+    resourceLevel: settings.resourceLevel,
+    clusterRadius: galaxy.clusterRadius, // non enregistré : suit la taille de carte
     time: 0, // en jours
     speedIndex: 0,
     paused: true,

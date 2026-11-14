@@ -34,17 +34,20 @@ const wantsNewGame = newGameRequest !== null;
 const chosenRivals = takeRivalsRequest() ?? Number(params.get('rivaux'));
 const chosenSpecies = [newGameRequest, params.get('espece')].find((key) => key && SPECIES[key] && !SPECIES[key].hidden) ?? null;
 let game = null;
+// Sauvegarde illisible : on revient à l'écran d'accueil avec le message, sans rien écraser.
+let loadError = null;
 if (pending) {
   try {
     game = restore(pending);
-  } catch {
+  } catch (e) {
     game = null;
+    loadError = e.message;
   }
 }
 game ??= createGame(urlSeed || Math.floor(Math.random() * 1e6), chosenSpecies ?? DEFAULT_SPECIES, chosenRivals);
 // L'écran d'accueil propose de continuer la partie enregistrée ; tant que le joueur n'a pas
 // choisi, la sauvegarde automatique est suspendue pour ne pas l'écraser.
-const showStart = !pending && !wantsNewGame && !urlSeed && !!readSlot('auto');
+const showStart = !!loadError || (!pending && !wantsNewGame && !urlSeed && !!readSlot('auto'));
 // Une nouvelle partie sans espèce passe d'abord par l'écran de choix (la page est rechargée ensuite).
 const needsSpecies = !pending && !chosenSpecies && !showStart;
 let autosave = !showStart && !needsSpecies && !urlSeed; // une partie lancée par ?graine= sert aux tests : elle n'écrase pas la sauvegarde
@@ -309,6 +312,7 @@ const speciesView = createSpeciesView(document.getElementById('species'), {
 });
 installTooltips();
 if (showStart) menu.open(true);
+if (loadError) menu.notice(`Chargement impossible : ${loadError}`);
 else if (needsSpecies) speciesView.open();
 endView.update(); // une partie finie rechargée rouvre son écran de fin
 

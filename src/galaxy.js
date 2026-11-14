@@ -3,6 +3,7 @@ import { createRng } from './rng.js';
 import { createNameGenerator } from './names.js';
 import { CONFIG, DEFAULT_SPECIES, NEUTRAL_RIVALS, RIVALS } from './config.js';
 import { playableSpecies } from './species.js';
+import { mapSettings, resourceSettings } from './difficulty.js';
 
 export const STAR_TYPES = {
   rouge: { label: 'Naine rouge', color: 0xff7a59, size: 0.8 },
@@ -48,22 +49,26 @@ export function starDistance(a, b) {
   return dist3(a.pos, b.pos);
 }
 
-export function generateCluster(seed, playerSpecies = DEFAULT_SPECIES, rivals = RIVALS.default) {
+// mapSize (MAP_SIZES) et resourceLevel (RESOURCE_LEVELS) : carte moyenne et ressources normales donnent
+// exactement l'amas d'avant ces réglages. Même graine et mêmes réglages : même amas.
+export function generateCluster(seed, playerSpecies = DEFAULT_SPECIES, rivals = RIVALS.default, { mapSize, resourceLevel } = {}) {
+  const map = mapSettings(mapSize);
+  const richness = resourceSettings(resourceLevel);
   const rng = createRng(seed);
   const names = createNameGenerator(rng);
-  const stars = placeStars(rng).map((pos, id) => {
+  const stars = placeStars(rng, map).map((pos, id) => {
     const star = { id, name: names.next(), type: rng.weighted(STAR_WEIGHTS), pos, planets: [], level: 0, hasRuins: false, rival: null };
-    star.planets = generatePlanets(rng, star);
+    star.planets = generatePlanets(rng, star, richness);
     return star;
   });
-  const homeId = chooseHome(stars);
-  setupHome(rng, stars[homeId]);
-  placeRuins(rng, stars, homeId);
+  const homeId = chooseHome(stars, map);
+  setupHome(rng, stars[homeId], richness);
+  placeRuins(rng, stars, homeId, map);
   placeRivals(stars, homeId, chooseRivals(seed, playerSpecies, rivals));
-  const currents = createCurrents(rng, stars, homeId);
-  addWaterAndFuel(seed, stars, homeId);
-  addMoonsAndRings(seed, stars);
-  return { seed, stars, currents, homeId };
+  const currents = createCurrents(rng, stars, homeId, map);
+  addWaterAndFuel(seed, stars, homeId, richness);
+  addMoonsAndRings(seed, stars, richness);
+  return { seed, stars, currents, homeId, clusterRadius: map.clusterRadius };
 }
 
 // Eau et deutérium : tirés avec leur propre générateur, après tout le reste, pour que les
@@ -81,11 +86,11 @@ const WATER_FUEL = {
   rocheuse: [0.4, 0],
 };
 
-function addWaterAndFuel(seed, stars, homeId) {
+function addWaterAndFuel(seed, stars, homeId, richness) {
   const rng = createRng((seed ^ 0x9e3779b9) >>> 0);
   for (const star of stars) {
     for (const planet of star.planets) {
-      const [water, fuel] = WATER_FUEL[planet.type];
+      const [water, fuel] = WATER_FUEL[planet.type].map((base) => base * richness.waterFuel);
       const roll = (base) => Math.max(0, Math.min(3, Math.round(base * rng.range(0.4, 1.3) + rng.gauss() * 0.5)));
       planet.deposits.eau = roll(water);
       planet.deposits.deuterium = roll(fuel);
@@ -110,7 +115,7 @@ const MOON_TYPES = {
   tellurique: [['rocheuse', 6], ['glacee', 2], ['desertique', 1], ['volcanique', 1]],
 };
 
-function addMoonsAndRings(seed, stars) {
+function addMoonsAndRings(seed, stars, richness) {
   const rng = createRng((seed ^ 0x51ed270b) >>> 0);
   for (const star of stars) {
     const count = star.planets.length;
@@ -122,8 +127,8 @@ function addMoonsAndRings(seed, stars) {
       for (let k = 0; k < moons; k++) {
         const type = rng.weighted(MOON_TYPES[parent.type === 'gazeuse' ? 'gazeuse' : 'tellurique']);
         const colonisable = PLANET_TYPES[type].colonisable !== false;
-        const deposits = rollDeposits(rng, type);
-        const [water, fuel] = WATER_FUEL[type];
+        const deposits = rollDeposits(rng, type, richness);
+        const [water, fuel] = WATER_FUEL[type].map((base) => base * richness.waterFuel);
         const roll = (base) => Math.max(0, Math.min(3, Math.round(base * rng.range(0.4, 1.3) + rng.gauss() * 0.5)));
         deposits.eau = roll(water);
         deposits.deuterium = roll(fuel);
@@ -141,15 +146,15 @@ function addMoonsAndRings(seed, stars) {
   }
 }
 
-function placeStars(rng) {
-  const R = CONFIG.clusterRadius;
+function placeStars(rng, map) {
+  const R = map.clusterRadius;
   const clumps = Array.from({ length: 7 }, () => {
     const a = rng.range(0, Math.PI * 2);
     const r = R * 0.75 * Math.sqrt(rng.next());
     return { x: Math.cos(a) * r, y: rng.gauss() * 6, z: Math.sin(a) * r };
   });
   const out = [];
-  for (let guard = 0; out.length < CONFIG.starCount && guard < CONFIG.starCount * 60; guard++) {
+  for (let guard = 0; out.length < map.starCount && guard < map.starCount * 60; guard++) {
     let p;
     if (rng.chance(0.3)) {
       const a = rng.range(0, Math.PI * 2);
@@ -164,43 +169,44 @@ function placeStars(rng) {
   return out;
 }
 
-function makePlanet(rng, star, index, type) {
+function makePlanet(rng, star, index, type, richness) {
   const colonisable = PLANET_TYPES[type].colonisable !== false;
   return {
     name: `${star.name} ${ROMAN[index]}`,
     type,
     size: colonisable ? rng.weighted([['petite', 3], ['moyenne', 4], ['grande', 2]]) : null,
-    deposits: rollDeposits(rng, type),
+    deposits: rollDeposits(rng, type, richness),
     ruins: false,
     inhabitedBy: null,
   };
 }
 
-function rollDeposits(rng, type) {
+// richness.deposits multiplie la richesse moyenne ; la Vélarine n'en dépend pas.
+function rollDeposits(rng, type, richness) {
   const base = PLANET_TYPES[type].dep;
   const deposits = {};
   for (const r of ['minerais', 'energie', 'biomasse']) {
-    const v = base[r] * rng.range(0.4, 1.3) + rng.gauss() * 0.5;
+    const v = base[r] * richness.deposits * rng.range(0.4, 1.3) + rng.gauss() * 0.5;
     deposits[r] = Math.max(0, Math.min(3, Math.round(v)));
   }
   deposits.velarine = rng.chance(base.velarine * 0.35) ? (rng.chance(0.25) ? 2 : 1) : 0;
   return deposits;
 }
 
-function generatePlanets(rng, star) {
+function generatePlanets(rng, star, richness) {
   const count = rng.weighted([[0, 1], [1, 2], [2, 3], [3, 4], [4, 4], [5, 3], [6, 2]]);
   const planets = [];
   for (let i = 0; i < count; i++) {
     const f = count === 1 ? 0.5 : i / (count - 1);
     const zone = f < 0.3 ? 'inner' : f < 0.7 ? 'middle' : 'outer';
-    planets.push(makePlanet(rng, star, i, rng.weighted(ORBIT_ZONES[zone])));
+    planets.push(makePlanet(rng, star, i, rng.weighted(ORBIT_ZONES[zone]), richness));
   }
   return planets;
 }
 
 // Le monde d'origine : vers le bord de l'amas, là où les voisins à portée de saut sont nombreux.
-function chooseHome(stars) {
-  const R = CONFIG.clusterRadius;
+function chooseHome(stars, map) {
+  const R = map.clusterRadius;
   let best = 0;
   let bestScore = -1;
   for (const s of stars) {
@@ -215,17 +221,17 @@ function chooseHome(stars) {
   return best;
 }
 
-function setupHome(rng, star) {
+function setupHome(rng, star, richness) {
   star.type = 'jaune';
-  star.planets = ['volcanique', 'desertique', 'tempere', 'glacee', 'gazeuse'].map((t, i) => makePlanet(rng, star, i, t));
+  star.planets = ['volcanique', 'desertique', 'tempere', 'glacee', 'gazeuse'].map((t, i) => makePlanet(rng, star, i, t, richness));
   const home = star.planets[2];
   home.size = 'grande';
   home.deposits.biomasse = Math.max(2, home.deposits.biomasse);
 }
 
-function placeRuins(rng, stars, homeId) {
+function placeRuins(rng, stars, homeId, map) {
   const candidates = rng.shuffle(stars.filter((s) => s.id !== homeId && s.planets.some(isColonisable)));
-  for (const star of candidates.slice(0, CONFIG.ruinCount)) {
+  for (const star of candidates.slice(0, map.ruinCount)) {
     rng.pick(star.planets.filter(isColonisable)).ruins = true;
     star.hasRuins = true;
     // La Vélarine se trouve plus souvent près des ruines.
@@ -266,7 +272,7 @@ function placeRivals(stars, homeId, rivals) {
 
 // Les courants gravitationnels relient des étoiles lointaines. Ils garantissent aussi
 // que tout l'amas reste accessible avec la portée de saut de départ.
-function createCurrents(rng, stars, homeId) {
+function createCurrents(rng, stars, homeId, map) {
   const parent = stars.map((_, i) => i);
   const find = (i) => (parent[i] === i ? i : (parent[i] = find(parent[i])));
   const union = (a, b) => (parent[find(a)] = find(b));
@@ -303,7 +309,7 @@ function createCurrents(rng, stars, homeId) {
 
   const hasCurrent = (id) => currents.some((c) => c.a === id || c.b === id);
   let added = 0;
-  for (let attempt = 0; attempt < 400 && added < CONFIG.extraCurrents; attempt++) {
+  for (let attempt = 0; attempt < 400 && added < map.extraCurrents; attempt++) {
     const a = rng.pick(stars);
     const b = rng.pick(stars);
     const d = starDistance(a, b);

@@ -20,6 +20,9 @@ export function serialize(game) {
     seed: game.seed,
     species: game.species,
     rivals: game.rivals,
+    difficulty: game.difficulty,
+    mapSize: game.mapSize,
+    resourceLevel: game.resourceLevel,
     time: game.time,
     speedIndex: game.speedIndex,
     selectedStarId: game.selectedStarId,
@@ -54,7 +57,15 @@ export function restore(data) {
   if (!data || data.version !== VERSION || typeof data.seed !== 'number') throw new Error('Sauvegarde illisible ou d\'une autre version.');
   // Une partie d'avant le choix d'espèce reçoit le profil neutre « Colons de l'Arche ».
   // Une partie d'avant le choix du nombre d'adversaires en a toujours eu 4.
-  const game = createGame(data.seed, data.species ?? DEFAULT_SPECIES, data.rivals ?? RIVALS.default);
+  // Une partie d'avant le niveau de difficulté (ou avec une valeur inconnue) : Standard, carte moyenne, ressources normales.
+  const game = createGame(data.seed, data.species ?? DEFAULT_SPECIES, data.rivals ?? RIVALS.default, {
+    difficulty: data.difficulty,
+    mapSize: data.mapSize,
+    resourceLevel: data.resourceLevel,
+  });
+  // L'amas régénéré doit avoir autant de systèmes et de courants que celui de la sauvegarde.
+  if (!Array.isArray(data.stars) || data.stars.length !== game.stars.length || !Array.isArray(data.currents) || data.currents.length !== game.currents.length)
+    throw new Error("Sauvegarde illisible : l'amas ne correspond pas.");
   Object.assign(game, {
     time: data.time,
     speedIndex: data.speedIndex,

@@ -2,7 +2,6 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
-import { CONFIG } from './config.js';
 import { STAR_TYPES, starDistance } from './galaxy.js';
 import { reachableStars, shipProgress, selectedShip } from './game.js';
 import { currentSpecies, knownRival, rivalInfo } from './species.js';
@@ -66,7 +65,7 @@ export function createGalaxyView(container, game, callbacks) {
 
   const sky = createSky();
   scene.add(sky);
-  addNebulae(scene, glow);
+  addNebulae(scene, glow, game.clusterRadius);
 
   // Étoiles : un halo coloré + une étiquette pour les systèmes visités.
   const starViews = game.stars.map((star) => {
@@ -544,8 +543,7 @@ export function createGalaxyView(container, game, callbacks) {
 }
 
 // Nébuleuses diffuses à l'intérieur de l'amas.
-function addNebulae(scene, glow) {
-  const R = CONFIG.clusterRadius;
+function addNebulae(scene, glow, R) {
   const tints = [0x4b2f8f, 0x1f4f99, 0x6a2a5e, 0x23506b];
   for (let i = 0; i < 9; i++) {
     const nebula = new THREE.Sprite(

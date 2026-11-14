@@ -1,7 +1,6 @@
 // Réglages du prototype. Les distances sont en années-lumière (al).
+// Le nombre de systèmes, le rayon de l'amas, les ruines et les courants dépendent de la taille de carte (MAP_SIZES).
 export const CONFIG = {
-  starCount: 140,
-  clusterRadius: 100,
   minStarSpacing: 7,
   jumpRange: 22, // portée de saut d'une sonde
   sensorRange: 28, // rayon dans lequel une sonde repère des lueurs
@@ -10,8 +9,68 @@ export const CONFIG = {
   analyseDays: 10, // jours pour connaître la composition d'un système
   secondsPerDay: 1, // durée d'un jour à la vitesse x1
   speeds: [1, 2, 4],
-  ruinCount: 9,
-  extraCurrents: 8,
+};
+
+// Réglages de la partie, choisis au début et fixes ensuite (docs/plan-difficulte.md).
+// Taille de carte : la moyenne est l'amas d'avant ce choix (mêmes systèmes pour une même graine).
+// Le rayon suit la racine carrée du nombre de systèmes (amas plat, même densité) ; ruines et courants en proportion.
+export const MAP_SIZES = {
+  default: 'moyenne',
+  sizes: {
+    petite: { label: 'Petite', starCount: 90, clusterRadius: 80, ruinCount: 6, extraCurrents: 5 },
+    moyenne: { label: 'Moyenne', starCount: 140, clusterRadius: 100, ruinCount: 9, extraCurrents: 8 },
+    grande: { label: 'Grande', starCount: 200, clusterRadius: 120, ruinCount: 13, extraCurrents: 11 },
+  },
+};
+
+// Abondance des ressources : multiplie la richesse moyenne des gisements (minerais, énergie, biomasse)
+// et celle de l'eau et du deutérium. Ni la Vélarine, ni les ruines, ni le plancher d'épuisement.
+export const RESOURCE_LEVELS = {
+  default: 'normales',
+  levels: {
+    rares: { label: 'Rares', deposits: 0.7, waterFuel: 0.7 },
+    normales: { label: 'Normales', deposits: 1, waterFuel: 1 },
+    abondantes: { label: 'Abondantes', deposits: 1.3, waterFuel: 1.3 },
+  },
+};
+
+// Niveaux de difficulté. Standard = 1 partout, c'est le jeu d'avant ce choix. Valeurs : premières estimations.
+// Multiplicateurs (×) des réglages des rivaux, sauf graceDays, fleetEvery, maxFleets et fleetSizeMax (valeurs).
+// smarter : rivaux plus malins (§ 2.1 du plan : 0 non, 1 points 1 à 3, 2 tous) ; rivalCanWin : un rival peut gagner ; imposed : réglages imposés.
+// Pas encore branchés sur les règles (étape 3 du plan).
+export const DIFFICULTY = {
+  default: 'standard',
+  levels: {
+    decouverte: {
+      label: 'Découverte',
+      growth: 0.7, power: 0.7, maxExtraRange: 0.8, // RIVAL_AI
+      graceDays: 1500, warChancePerDay: 0.5, proximityPerColony: 0.5, stockPerDay: 0.8, margin: 0.9, // DIPLOMACY (margin : aussi le prix de la paix)
+      fleetEvery: 90, maxFleets: 2, fleetSizeMax: 4, rivalColonyDefense: 0.8, // COMBAT
+      smarter: 0, rivalCanWin: false,
+    },
+    standard: {
+      label: 'Standard',
+      growth: 1, power: 1, maxExtraRange: 1,
+      graceDays: 500, warChancePerDay: 1, proximityPerColony: 1, stockPerDay: 1, margin: 1,
+      fleetEvery: 60, maxFleets: 3, fleetSizeMax: 6, rivalColonyDefense: 1,
+      smarter: 0, rivalCanWin: false,
+    },
+    ardu: {
+      label: 'Ardu',
+      growth: 1.3, power: 1.3, maxExtraRange: 1.2,
+      graceDays: 400, warChancePerDay: 1.5, proximityPerColony: 1.3, stockPerDay: 1.2, margin: 1.1,
+      fleetEvery: 50, maxFleets: 3, fleetSizeMax: 7, rivalColonyDefense: 1.2,
+      smarter: 1, rivalCanWin: true,
+    },
+    redoutable: {
+      label: 'Redoutable',
+      growth: 1.6, power: 1.6, maxExtraRange: 1.4,
+      graceDays: 300, warChancePerDay: 2, proximityPerColony: 1.6, stockPerDay: 1.5, margin: 1.25,
+      fleetEvery: 40, maxFleets: 4, fleetSizeMax: 8, rivalColonyDefense: 1.5,
+      smarter: 2, rivalCanWin: true,
+      imposed: { mapSize: 'petite', rivals: 7, resourceLevel: 'rares' },
+    },
+  },
 };
 
 // Espèces jouables (voir docs/plan-especes.md). Données pures : la logique est dans species.js.
