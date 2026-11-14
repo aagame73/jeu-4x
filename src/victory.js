@@ -61,6 +61,9 @@ export function leadingKnownRival(game) {
 
 // Nom de l'empire avec son article : « le Concordat orrhaïde », « l'Hégémonie vaskhar ». Majuscule : capital = true.
 const FEMININE = new Set(['Hégémonie', 'Confluence', 'Ligue', 'Archive', 'Caravane']);
+// Nom d'un rival qui domine ou approche du seuil : « un empire inconnu » s'il n'a jamais été rencontré.
+export const rivalLabel = (species, known, capital = false) => (known === false ? (capital ? 'Un empire inconnu' : 'un empire inconnu') : empireName(species, capital));
+
 export function empireName(species, capital = false) {
   const title = SPECIES[species] ? rivalInfo(species).empire : 'un empire rival';
   const first = title.split(' ')[0];
@@ -84,7 +87,7 @@ export function endState(game) {
   // Un rival domine l'amas (Ardu, Redoutable), même s'il n'a pas encore été rencontré.
   const goal = rivalGoal(game);
   const top = goal && rivalShares(game)[0];
-  if (top && top.share >= goal) return { result: 'defaite', reason: 'rival-domine', species: top.empire.species };
+  if (top && top.share >= goal) return { result: 'defaite', reason: 'rival-domine', species: top.empire.species, known: top.empire.met };
   return null;
 }
 
@@ -100,15 +103,16 @@ export function newMilestones(game) {
 // Étapes lues dans une sauvegarde : seulement celles de config.js.
 export const validMilestones = (saved) => (Array.isArray(saved) ? VICTORY.milestones.filter((m) => saved.includes(m)) : []);
 
-// Rivaux connus qui approchent de leur seuil (VICTORY.rivalWarning de celui-ci) pour la première fois : le conseiller
-// prévient une seule fois par empire (espèces notées dans game.rivalWarnings, gardé dans la sauvegarde).
+// Rivaux qui approchent de leur seuil (VICTORY.rivalWarning de celui-ci) pour la première fois : le conseiller
+// prévient une seule fois par empire (espèces notées dans game.rivalWarnings, gardé dans la sauvegarde). Un empire
+// jamais rencontré est annoncé aussi, sans son nom (décision du 15/11/2026) : known dit si on peut le nommer.
 export function newRivalWarnings(game) {
   const goal = rivalGoal(game);
   if (!goal) return [];
   if (!Array.isArray(game.rivalWarnings)) game.rivalWarnings = [];
-  const warned = rivalShares(game).filter((r) => r.empire.met && r.share >= goal * VICTORY.rivalWarning && !game.rivalWarnings.includes(r.empire.species));
+  const warned = rivalShares(game).filter((r) => r.share >= goal * VICTORY.rivalWarning && !game.rivalWarnings.includes(r.empire.species));
   game.rivalWarnings.push(...warned.map((r) => r.empire.species));
-  return warned.map((r) => ({ ...r, goal }));
+  return warned.map((r) => ({ ...r, goal, known: r.empire.met }));
 }
 
 // Avertissements lus dans une sauvegarde : des espèces connues seulement ; ancienne sauvegarde : aucun.
@@ -145,5 +149,6 @@ export function validEnded(saved) {
   const ended = { result: saved.result, reason: saved.reason, day: Number.isFinite(saved.day) ? saved.day : 0 };
   // Rival qui domine : son espèce, si elle est connue (sinon l'écran dit « un empire rival »).
   if (saved.reason === 'rival-domine' && typeof saved.species === 'string' && Object.hasOwn(SPECIES, saved.species)) ended.species = saved.species;
+  if (saved.reason === 'rival-domine') ended.known = saved.known !== false; // ancienne sauvegarde : empire nommé
   return ended;
 }

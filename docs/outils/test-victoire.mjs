@@ -240,13 +240,16 @@ const fakeColony = (game, star) => game.colonies.push({ starId: star.id, planetI
     const game = levelGame(level);
     const rival = game.empires[0];
     check(V.rivalGoal(game) === goal && goal > 0 && goal < VICTORY.share, `${label} : seuil d'un rival lu dans DIFFICULTY (${Math.round(goal * 100)} %)`);
-    // Sous le seuil d'avertissement : rien. Au-dessus, mais rival pas encore rencontré : rien non plus.
+    // Sous le seuil d'avertissement : rien. Au-dessus, rival pas encore rencontré : prévenu sans son nom, pas au compteur.
     grow(game, rival, goal * VICTORY.rivalWarning * 0.9);
     rival.met = true;
     check(V.newRivalWarnings(game).length === 0, `${label} : sous ${Math.round(VICTORY.rivalWarning * 100)} % du seuil, pas d'avertissement`);
     rival.met = false;
     grow(game, rival, goal * VICTORY.rivalWarning + 0.01);
-    check(V.newRivalWarnings(game).length === 0 && V.leadingKnownRival(game) === null, `${label} : rival inconnu, ni avertissement ni compteur`);
+    const unknown = V.newRivalWarnings(game);
+    check(unknown.length === 1 && unknown[0].known === false && V.leadingKnownRival(game) === null, `${label} : rival inconnu, prévenu sans son nom, absent du compteur`);
+    check(V.rivalLabel(rival.species, false) === 'un empire inconnu', `${label} : rival inconnu nommé « un empire inconnu »`);
+    game.rivalWarnings = []; // on reprend avec le rival rencontré
     rival.met = true;
     const lead = V.leadingKnownRival(game);
     check(lead?.empire === rival && lead.goal === goal && lead.share >= goal * VICTORY.rivalWarning, `${label} : compteur, plus grand rival connu (${Math.floor((lead?.share ?? 0) * 100)} % sur ${Math.round(goal * 100)} %)`);
@@ -284,7 +287,7 @@ const fakeColony = (game, star) => game.colonies.push({ starId: star.id, planetI
     const rival = game.empires[0];
     grow(game, rival, DIFFICULTY.levels.ardu.rivalShare);
     G.tick(game, 1);
-    check(game.ended?.reason === 'rival-domine' && game.log.at(-1).text === `Défaite : ${V.empireName(rival.species)} domine l'amas.`, `tick : défaite annoncée (« ${game.log.at(-1).text} »)`);
+    check(game.ended?.reason === 'rival-domine' && game.log.at(-1).text === `Défaite : ${V.rivalLabel(rival.species, rival.met)} domine l'amas.`, `tick : défaite annoncée (« ${game.log.at(-1).text} »)`);
     check(V.empireName('orrhaides', true) === 'Le Concordat orrhaïde' && V.empireName('vaskhar') === "l'Hégémonie vaskhar" && V.empireName('ashkari') === 'la Caravane ashkari', "articles : le Concordat, l'Hégémonie, la Caravane");
     check(V.empireName('inconnue', true) === 'Un empire rival', 'espèce inconnue : « Un empire rival »');
   }
@@ -316,6 +319,13 @@ const fakeColony = (game, star) => game.colonies.push({ starId: star.id, planetI
     grow(game, game.empires[0], DIFFICULTY.levels.ardu.rivalShare);
     check(V.endState(game)?.reason === 'rival-domine', 'sans colonie (vaisseau colonie restant) : un rival au seuil gagne');
   }
+}
+
+// Défaite par un rival jamais rencontré : « un empire inconnu », gardé dans la sauvegarde ; ancienne sauvegarde : nommé.
+{
+  check(V.validEnded({ result: 'defaite', reason: 'rival-domine', species: 'thrennes', known: false, day: 9 }).known === false, 'défaite par un rival inconnu gardée inconnue au chargement');
+  check(V.validEnded({ result: 'defaite', reason: 'rival-domine', species: 'thrennes', day: 9 }).known === true, 'ancienne sauvegarde : le rival qui domine est nommé');
+  check(V.rivalLabel('thrennes', false, true) === 'Un empire inconnu' && V.rivalLabel('thrennes', true) === V.empireName('thrennes'), "nom du rival selon qu'il a été rencontré");
 }
 
 console.log(fails ? `\n${fails} échec(s).` : '\nTous les tests passent.');
