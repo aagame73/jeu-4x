@@ -108,26 +108,49 @@
   justify-content: flex-end;
   margin-top: 14px;
 }
-.sp-rivals {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
+/* Réglages de la partie : adversaires, difficulté, taille de carte, ressources. */
+.sp-settings {
+  display: grid;
   gap: 6px;
   margin-top: 14px;
 }
-.sp-rivals span {
-  margin-right: 6px;
+.sp-setting {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.sp-setting-label {
+  min-width: 130px;
+}
+.sp-setting button {
+  padding: 6px 12px;
+  text-align: center;
 }
 .sp-rivals button {
   width: 36px;
   padding: 6px 0;
-  text-align: center;
 }
-.sp-rivals button.selected {
+.sp-setting button.selected {
   border-color: var(--accent);
   color: var(--accent);
 }
+/* Réglage imposé par le niveau : grisé, le choix imposé reste lisible. */
+.sp-setting button.selected:disabled {
+  opacity: 0.75;
+}
+.sp-imposed {
+  margin-left: 6px;
+  font-size: 12px;
+  color: var(--gold);
+}
+.sp-hint-level {
+  margin: 0 0 4px 136px;
+}
 @media (max-width: 640px) {
+  .sp-hint-level {
+    margin-left: 0;
+  }
   .sp-detail {
     flex-direction: column;
     text-align: center;

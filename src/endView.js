@@ -5,6 +5,7 @@ import { createAlienPortrait } from './aliens.js';
 import { ENDINGS } from './dialogues.js';
 import { startEndingFx } from './endingFx.js';
 import { currentSpecies } from './species.js';
+import { settingsLabel } from './difficulty.js';
 import { progress } from './victory.js';
 
 const REASONS = {
@@ -20,6 +21,7 @@ export function endSummary(game) {
   const p = progress(game);
   const r = game.record;
   return [
+    ['Réglages', settingsLabel(game)],
     ['Durée', plural(game.ended?.day ?? Math.floor(game.time) + 1, 'jour')],
     ['Systèmes tenus', `${p.owned} sur ${p.total} (${Math.floor(p.share * 100)} %)`],
     ['Colonies', String(game.colonies.length)],

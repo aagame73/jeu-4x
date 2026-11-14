@@ -1,4 +1,4 @@
-// Tests des réglages de la partie : niveau, taille de carte, ressources (docs/plan-difficulte.md, étapes 1 et 2).
+// Tests des réglages de la partie : niveau, taille de carte, ressources (docs/plan-difficulte.md, étapes 1 à 4).
 // Usage : node docs/outils/test-difficulte.mjs .
 import { pathToFileURL } from 'node:url';
 import { resolve } from 'node:path';
@@ -350,6 +350,55 @@ function peacefulRun(seed, level) {
   check(loaded.difficulty === 'standard' && hash(loaded.empires) === hash(twin.empires), 'ancienne sauvegarde : rivaux identiques à Standard 1 500 jours plus tard');
   const ardu = restore(copy(serialize(G.createGame(42, 'vaskhar', 4, { difficulty: 'ardu' }))));
   check(ardu.difficulty === 'ardu' && E.rivalReach(ardu, { power: 1000 }) === E.rivalReach({ difficulty: 'ardu' }, { power: 1000 }), 'partie Ardu rechargée : leviers d\'Ardu');
+}
+
+// Étape 4 : adresse, demande de nouvelle partie, bilan de fin, menu.
+{
+  const params = (q) => new URLSearchParams(q);
+  const def = D.gameSettings();
+  check(JSON.stringify(D.settingsFromParams(params(''))) === JSON.stringify(def), 'adresse sans réglages : valeurs par défaut');
+  const read = D.settingsFromParams(params('?graine=42&niveau=ardu&carte=grande&ressources=abondantes&rivaux=6'));
+  check(read.difficulty === 'ardu' && read.mapSize === 'grande' && read.resourceLevel === 'abondantes' && read.rivals === 6, '?niveau=ardu&carte=grande&ressources=abondantes&rivaux=6 lus');
+  const odd = D.settingsFromParams(params('?niveau=facile&carte=__proto__&ressources=&rivaux=12'));
+  check(JSON.stringify(odd) === JSON.stringify(def), 'adresse : valeurs inconnues remplacées par les valeurs par défaut');
+  const red = D.settingsFromParams(params('?niveau=redoutable&carte=grande&ressources=abondantes&rivaux=3'));
+  check(red.mapSize === 'petite' && red.rivals === 7 && red.resourceLevel === 'rares', '?niveau=redoutable : contraintes appliquées');
+  const choice = { difficulty: 'decouverte', mapSize: 'petite', resourceLevel: 'rares', rivals: 3 };
+  check(D.settingsQuery(choice) === 'niveau=decouverte&carte=petite&ressources=rares&rivaux=3', 'réglages écrits pour l\'adresse');
+  check(JSON.stringify(D.settingsFromParams(params(D.settingsQuery(choice)))) === JSON.stringify(D.gameSettings(choice)), 'aller-retour par l\'adresse');
+
+  // Demande de nouvelle partie par sessionStorage (simulé).
+  const store = new Map();
+  globalThis.sessionStorage = { getItem: (k) => store.get(k) ?? null, setItem: (k, v) => store.set(k, String(v)), removeItem: (k) => store.delete(k) };
+  globalThis.location = { pathname: '/', href: '' };
+  const S = await imp('save.js');
+  S.newGameAndRestart('vaskhar', D.gameSettings({ difficulty: 'ardu', mapSize: 'grande', resourceLevel: 'rares', rivals: 5 }));
+  check(S.takeNewGameRequest() === 'vaskhar', 'demande de nouvelle partie : espèce transmise');
+  const asked = S.takeSettingsRequest();
+  check(asked?.difficulty === 'ardu' && asked.mapSize === 'grande' && asked.resourceLevel === 'rares' && asked.rivals === 5, 'demande de nouvelle partie : réglages transmis');
+  check(S.takeSettingsRequest() === null, 'la demande ne sert qu\'une fois');
+  S.newGameAndRestart();
+  check(S.takeNewGameRequest() === '' && S.takeSettingsRequest() === null, 'nouvelle partie sans réglages (écran de choix)');
+  store.set('amas-inexplore:reglages', '{illisible');
+  check(S.takeSettingsRequest() === null, 'demande illisible ignorée');
+  const game = G.createGame(42, 'vaskhar', asked.rivals, asked);
+  check(game.difficulty === 'ardu' && game.mapSize === 'grande' && game.resourceLevel === 'rares' && game.rivals === 5, 'createGame suit la demande');
+  delete globalThis.sessionStorage;
+  delete globalThis.location;
+
+  // Bilan de fin et menu.
+  const { endSummary } = await imp('endView.js');
+  const line = endSummary(game).find(([k]) => k === 'Réglages');
+  check(line?.[1] === 'Ardu · carte grande · ressources rares · 5 adversaires', `bilan : « ${line?.[1]} »`);
+  const redGame = G.createGame(42, 'vaskhar', 4, { difficulty: 'redoutable' });
+  check(endSummary(redGame)[0][1] === 'Redoutable · carte petite · ressources rares · 7 adversaires', 'bilan Redoutable : réglages imposés');
+  const old = copy(serialize(G.createGame(42, 'vaskhar', 4)));
+  delete old.difficulty;
+  delete old.mapSize;
+  delete old.resourceLevel;
+  check(endSummary(restore(old))[0][1] === 'Standard · carte moyenne · ressources normales · 4 adversaires', 'bilan d\'une ancienne sauvegarde : Standard');
+  check(S.summary({ ...old, savedAt: 0 }).difficulty === 'Standard' && S.summary({ ...serialize(game), savedAt: 0 }).difficulty === 'Ardu', 'menu : niveau dans la description de la sauvegarde');
+  check(Object.values(DIFFICULTY.levels).every((l) => typeof l.hint === 'string' && l.hint.length > 10), 'chaque niveau a sa phrase d\'explication');
 }
 
 console.log(fails ? `\n${fails} échec(s)` : '\nTous les tests passent.');

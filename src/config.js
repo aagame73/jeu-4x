@@ -36,13 +36,14 @@ export const RESOURCE_LEVELS = {
 
 // Niveaux de difficulté. Standard = 1 partout, c'est le jeu d'avant ce choix. Valeurs : premières estimations.
 // Multiplicateurs (×) des réglages des rivaux, sauf graceDays, fleetEvery, maxFleets et fleetSizeMax (valeurs).
-// smarter : rivaux plus malins (§ 2.1 du plan : 0 non, 1 points 1 à 3, 2 tous) ; rivalCanWin : un rival peut gagner ; imposed : réglages imposés.
-// Pas encore branchés sur les règles (étape 3 du plan).
+// hint : phrase de l'écran de nouvelle partie ; smarter : rivaux plus malins (§ 2.1 du plan : 0 non, 1 points 1 à 3, 2 tous) ; rivalCanWin : un rival peut gagner ; imposed : réglages imposés.
+// Lus par les règles via lever() dans difficulty.js (étape 3 du plan).
 export const DIFFICULTY = {
   default: 'standard',
   levels: {
     decouverte: {
       label: 'Découverte',
+      hint: 'Rivaux plus lents et plus patients : pour découvrir le jeu sans pression.',
       growth: 0.7, power: 0.7, maxExtraRange: 0.8, // RIVAL_AI
       graceDays: 1500, warChancePerDay: 0.5, proximityPerColony: 0.5, stockPerDay: 0.8, margin: 0.9, // DIPLOMACY (margin : aussi le prix de la paix)
       fleetEvery: 90, maxFleets: 2, fleetSizeMax: 4, rivalColonyDefense: 0.8, // COMBAT
@@ -50,6 +51,7 @@ export const DIFFICULTY = {
     },
     standard: {
       label: 'Standard',
+      hint: "L'équilibre prévu : des rivaux qui s'étendent et se défendent à votre rythme.",
       growth: 1, power: 1, maxExtraRange: 1,
       graceDays: 500, warChancePerDay: 1, proximityPerColony: 1, stockPerDay: 1, margin: 1,
       fleetEvery: 60, maxFleets: 3, fleetSizeMax: 6, rivalColonyDefense: 1,
@@ -57,6 +59,7 @@ export const DIFFICULTY = {
     },
     ardu: {
       label: 'Ardu',
+      hint: 'Rivaux plus rapides, plus forts et plus prompts à la guerre.',
       growth: 1.3, power: 1.3, maxExtraRange: 1.2,
       graceDays: 400, warChancePerDay: 1.5, proximityPerColony: 1.3, stockPerDay: 1.2, margin: 1.1,
       fleetEvery: 50, maxFleets: 3, fleetSizeMax: 7, rivalColonyDefense: 1.2,
@@ -64,6 +67,7 @@ export const DIFFICULTY = {
     },
     redoutable: {
       label: 'Redoutable',
+      hint: 'Rivaux implacables, sur une petite carte, à sept contre vous, avec peu de ressources.',
       growth: 1.6, power: 1.6, maxExtraRange: 1.4,
       graceDays: 300, warChancePerDay: 2, proximityPerColony: 1.6, stockPerDay: 1.5, margin: 1.25,
       fleetEvery: 40, maxFleets: 4, fleetSizeMax: 8, rivalColonyDefense: 1.5,

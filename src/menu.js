@@ -7,7 +7,7 @@ const SLOT_LABELS = { auto: 'Sauvegarde automatique', slot1: 'Emplacement 1', sl
 function describe(data) {
   if (!data) return '<span class="muted">vide</span>';
   const s = summary(data);
-  return `Jour ${s.day} · ${s.colonies} colonie${s.colonies > 1 ? 's' : ''} · ${s.ships} vaisseau${s.ships > 1 ? 'x' : ''}<br><span class="muted small">enregistrée le ${s.savedAt}</span>`;
+  return `${s.difficulty} · jour ${s.day} · ${s.colonies} colonie${s.colonies > 1 ? 's' : ''} · ${s.ships} vaisseau${s.ships > 1 ? 'x' : ''}<br><span class="muted small">enregistrée le ${s.savedAt}</span>`;
 }
 
 export function createMenu(root, game, { onOpen, onClose, onNewGame }) {

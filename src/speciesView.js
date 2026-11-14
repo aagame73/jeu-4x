@@ -1,5 +1,6 @@
 // Écran de choix de l'espèce, entre « Nouvelle partie » et l'arrivée de l'Arche.
-import { SPECIES, RIVALS } from './config.js';
+import { SPECIES, RIVALS, DIFFICULTY, MAP_SIZES, RESOURCE_LEVELS } from './config.js';
+import { gameSettings, imposedSettings, difficultyLevel } from './difficulty.js';
 import { playableSpecies } from './species.js';
 import { PLANET_TYPES } from './galaxy.js';
 import { TERRAINS } from './surface.js';
@@ -19,11 +20,12 @@ function fleetImages(key) {
 
 const habitatLabel = (type) => (type === 'lune' ? 'Lunes habitables' : PLANET_TYPES[type]?.label ?? type);
 
-// onChoose(clé, nombre de rivaux) lance la partie ; onBack (facultatif) revient à l'écran d'accueil.
+// onChoose(clé, réglages) lance la partie (réglages : difficulty, mapSize, resourceLevel, rivals, contraintes
+// du niveau appliquées) ; onBack (facultatif) revient à l'écran d'accueil.
 export function createSpeciesView(root, { onChoose, onBack }) {
   let portraits = [];
   let selected = null;
-  let rivals = RIVALS.default;
+  let choices = gameSettings(); // réglages choisis par le joueur (sans les contraintes du niveau)
 
   function card(key) {
     const s = SPECIES[key];
@@ -52,12 +54,29 @@ export function createSpeciesView(root, { onChoose, onBack }) {
       </div>`;
   }
 
-  function rivalsPicker() {
-    const options = [];
-    for (let n = RIVALS.min; n <= RIVALS.max; n++) {
-      options.push(`<button data-rivals="${n}" aria-pressed="${n === rivals}" class="${n === rivals ? 'selected' : ''}">${n}</button>`);
-    }
-    return `<div class="sp-rivals" role="group" aria-label="Nombre d'adversaires"><span>Adversaires</span>${options.join('')}</div>`;
+  // Une rangée de boutons : options = [[valeur, texte, infobulle]]. Un réglage imposé par le niveau est grisé.
+  function picker(key, label, options, shown, imposed) {
+    const buttons = options.map(([value, text, title]) => {
+      const on = String(value) === String(shown[key]);
+      return `<button data-setting="${key}" data-value="${value}" aria-pressed="${on}" class="${on ? 'selected' : ''}"${title ? ` title="${title}"` : ''}${imposed ? ' disabled' : ''}>${text}</button>`;
+    });
+    const note = imposed ? `<em class="sp-imposed">imposé en ${difficultyLevel(shown.difficulty).label}</em>` : '';
+    return `<div class="sp-setting sp-${key}" role="group" aria-label="${label}"><span class="sp-setting-label">${label}</span>${buttons.join('')}${note}</div>`;
+  }
+
+  // Les choix du joueur restent dans « choices » ; l'écran montre les réglages effectifs (imposés en Redoutable).
+  // En quittant Redoutable, les choix d'avant reviennent donc d'eux-mêmes.
+  function settingsPicker() {
+    const shown = gameSettings(choices);
+    const imposed = imposedSettings(choices.difficulty);
+    const counts = [];
+    for (let n = RIVALS.min; n <= RIVALS.max; n++) counts.push([n, String(n)]);
+    return `
+      ${picker('rivals', 'Adversaires', counts, shown, 'rivals' in imposed)}
+      ${picker('difficulty', 'Difficulté', Object.entries(DIFFICULTY.levels).map(([k, l]) => [k, l.label]), shown, false)}
+      <p class="sp-hint-level small muted" aria-live="polite">${difficultyLevel(shown.difficulty).hint}</p>
+      ${picker('mapSize', 'Taille de carte', Object.entries(MAP_SIZES.sizes).map(([k, m]) => [k, `${m.label} · ${m.starCount}`, `${m.starCount} systèmes`]), shown, 'mapSize' in imposed)}
+      ${picker('resourceLevel', 'Ressources', Object.entries(RESOURCE_LEVELS.levels).map(([k, r]) => [k, r.label]), shown, 'resourceLevel' in imposed)}`;
   }
 
   function stopPortraits() {
@@ -74,7 +93,7 @@ export function createSpeciesView(root, { onChoose, onBack }) {
         <p class="muted">L'Arche emporte une seule espèce. Chacune a une force et une faiblesse ; aucune n'est meilleure que les autres.</p>
         <div class="sp-grid">${keys.map(card).join('')}</div>
         <div id="sp-detail">${selected ? details(selected) : '<p class="muted sp-hint">Cliquez sur une espèce pour la découvrir.</p>'}</div>
-        ${rivalsPicker()}
+        <div class="sp-settings">${settingsPicker()}</div>
         <div class="menu-row sp-actions">
           ${onBack ? '<button data-sp="back">Retour</button>' : ''}
           <button class="primary big" data-sp="start" ${selected ? '' : 'disabled'}>Lancer l'Arche${selected ? `<span class="small">${SPECIES[selected].label}</span>` : ''}</button>
@@ -94,15 +113,13 @@ export function createSpeciesView(root, { onChoose, onBack }) {
   }
 
   root.addEventListener('click', (e) => {
-    const rivalsEl = e.target.closest('[data-rivals]');
-    if (rivalsEl) {
-      rivals = Number(rivalsEl.dataset.rivals);
-      // Sans tout redessiner : les portraits continuent de s'animer.
-      root.querySelectorAll('[data-rivals]').forEach((el) => {
-        const on = el === rivalsEl;
-        el.classList.toggle('selected', on);
-        el.setAttribute('aria-pressed', String(on));
-      });
+    const settingEl = e.target.closest('[data-setting]');
+    if (settingEl) {
+      const { setting, value } = settingEl.dataset;
+      choices[setting] = setting === 'rivals' ? Number(value) : value;
+      // Seuls les réglages sont redessinés : les portraits continuent de s'animer. Le focus reste sur le bouton.
+      root.querySelector('.sp-settings').innerHTML = settingsPicker();
+      root.querySelector(`[data-setting="${setting}"][data-value="${value}"]`)?.focus();
       return;
     }
     const cardEl = e.target.closest('[data-species]');
@@ -114,13 +131,13 @@ export function createSpeciesView(root, { onChoose, onBack }) {
     const action = e.target.closest('[data-sp]')?.dataset.sp;
     if (action === 'start' && selected) {
       stopPortraits();
-      onChoose(selected, rivals);
+      onChoose(selected, gameSettings(choices));
     } else if (action === 'back') close();
   });
 
   function open() {
     selected = null;
-    rivals = RIVALS.default;
+    choices = gameSettings(); // à chaque ouverture : Standard, carte moyenne, ressources normales, 4 adversaires
     root.hidden = false;
     render();
   }

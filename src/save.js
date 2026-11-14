@@ -7,6 +7,7 @@ import { validConvoys, validProposals } from './diplomacy.js';
 import { validFleets } from './combat.js';
 import { validEnded, validMilestones, validRecord } from './victory.js';
 import { DEFAULT_SPECIES, RIVALS } from './config.js';
+import { difficultyLevel } from './difficulty.js';
 
 const VERSION = 1;
 const PREFIX = 'amas-inexplore:';
@@ -152,6 +153,7 @@ export function summary(data) {
     ships: data.ships.length,
     savedAt: new Date(data.savedAt).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' }),
     seed: data.seed,
+    difficulty: difficultyLevel(data.difficulty).label,
   };
 }
 
@@ -198,21 +200,24 @@ export function takePendingLoad() {
 }
 
 // species : espèce déjà choisie ; sans elle, la page rechargée ouvre l'écran de choix.
-export function newGameAndRestart(species = '', rivals = null) {
+// settings : réglages choisis (niveau, carte, ressources, adversaires), relus par takeSettingsRequest.
+export function newGameAndRestart(species = '', settings = null) {
   try {
     sessionStorage.setItem(`${PREFIX}nouvelle`, species || '?');
-    if (rivals !== null) sessionStorage.setItem(`${PREFIX}adversaires`, String(rivals));
+    if (settings) sessionStorage.setItem(`${PREFIX}reglages`, JSON.stringify(settings));
   } catch {
     /* sans stockage, la page rechargée démarre de toute façon une nouvelle partie */
   }
   location.href = location.pathname;
 }
 
-export function takeRivalsRequest() {
+// Réglages demandés pour la nouvelle partie (null si aucun) ; createGame les valide.
+export function takeSettingsRequest() {
   try {
-    const asked = sessionStorage.getItem(`${PREFIX}adversaires`);
-    sessionStorage.removeItem(`${PREFIX}adversaires`);
-    return asked === null ? null : Number(asked);
+    const asked = sessionStorage.getItem(`${PREFIX}reglages`);
+    sessionStorage.removeItem(`${PREFIX}reglages`);
+    const settings = asked === null ? null : JSON.parse(asked);
+    return settings && typeof settings === 'object' ? settings : null;
   } catch {
     return null;
   }
