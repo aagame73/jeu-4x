@@ -5,7 +5,7 @@ import { bindResearch, TECHS } from './research.js';
 import { applyKnownColonies, newContacts, validEmpires } from './empires.js';
 import { validConvoys, validProposals } from './diplomacy.js';
 import { validFleets } from './combat.js';
-import { validEnded, validMilestones, validRecord } from './victory.js';
+import { validEnded, validMilestones, validRecord, validRivalWarnings } from './victory.js';
 import { DEFAULT_SPECIES, RIVALS } from './config.js';
 import { difficultyLevel } from './difficulty.js';
 
@@ -50,6 +50,7 @@ export function serialize(game) {
     log: game.log.slice(-200),
     ended: game.ended ?? null,
     milestones: game.milestones,
+    rivalWarnings: game.rivalWarnings,
     record: game.record,
   };
 }
@@ -104,6 +105,7 @@ export function restore(data) {
   // Une partie finie le reste (l'écran de fin se rouvre) ; une ancienne sauvegarde n'est pas finie.
   game.ended = validEnded(data.ended);
   game.milestones = validMilestones(data.milestones);
+  game.rivalWarnings = validRivalWarnings(data.rivalWarnings); // ancienne sauvegarde : aucun avertissement donné
   game.record = validRecord(data.record);
   game.research = data.research ?? { current: null, progress: 0, done: impliedTechs(game), bank: 0, partial: {}, paid: [] };
   // L'arbre a grandi : une technologie acquise reçoit aussi ses nouveaux prérequis.

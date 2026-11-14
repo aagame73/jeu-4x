@@ -6,12 +6,14 @@ import { ENDINGS } from './dialogues.js';
 import { startEndingFx } from './endingFx.js';
 import { currentSpecies } from './species.js';
 import { settingsLabel } from './difficulty.js';
-import { progress } from './victory.js';
+import { empireName, progress } from './victory.js';
 
 const REASONS = {
-  expansion: 'Vos colonies occupent la plus grande partie de l\'amas.',
-  elimination: 'Plus aucun empire rival ne vous dispute l\'amas.',
-  'tout-perdu': "Vous n'avez plus aucune colonie, ni de vaisseau pour en fonder une.",
+  expansion: () => 'Vos colonies occupent la plus grande partie de l\'amas.',
+  elimination: () => 'Plus aucun empire rival ne vous dispute l\'amas.',
+  'tout-perdu': () => "Vous n'avez plus aucune colonie, ni de vaisseau pour en fonder une.",
+  // Ardu et Redoutable : un rival a atteint son seuil (« Le Concordat orrhaïde domine l'amas. »).
+  'rival-domine': (ended) => `${empireName(ended.species, true)} domine l'amas.`,
 };
 
 const plural = (n, one, many = `${one}s`) => `${n} ${n > 1 ? many : one}`;
@@ -86,7 +88,7 @@ export function createEndView(game, { onNewGame, onMenu, isBusy }) {
         <div class="ending-text">
           <span class="ending-kicker">${won ? 'Victoire' : 'Défaite'}</span>
           <strong>${species.label}</strong>
-          <p class="ending-reason">${REASONS[reason]}</p>
+          <p class="ending-reason">${REASONS[reason](game.ended)}</p>
           <blockquote class="ending-quote">« ${ENDINGS[game.species]?.[result] ?? ENDINGS['sans-espece'][result]} »</blockquote>
           <dl class="ending-summary">${endSummary(game)
             .map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`)

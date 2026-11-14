@@ -16,7 +16,7 @@ import { tickColony, colonyReport, SHIPYARD, canAfford, RESOURCE_LABELS } from '
 import { TECHS, hasTech, bindResearch, markTech, techCost } from './research.js';
 import { SPECIES, DEFAULT_SPECIES, RIVALS, DIPLOMACY, VICTORY } from './config.js';
 import { tickCombat } from './combat.js';
-import { checkEnd, emptyRecord, newMilestones, recordEvent } from './victory.js';
+import { checkEnd, emptyRecord, empireName, newMilestones, newRivalWarnings, recordEvent } from './victory.js';
 import { acceptPeaceOffer, applyDeal, breakTreaties, declareWar, declineProposal, describeOffer, evaluateDeal, tickConvoys, tickDiplomacy } from './diplomacy.js';
 import { line } from './dialogues.js';
 import { createEmpires, tickEmpires, revealEmpires, rivalColonyAt, newContacts } from './empires.js';
@@ -102,6 +102,7 @@ export function createGame(seed, species = DEFAULT_SPECIES, rivals = RIVALS.defa
     fleets: [], // flottes de guerre des rivaux
     ended: null, // fin de partie : { result, reason, day } (victory.js)
     milestones: [], // étapes de l'expansion déjà annoncées (VICTORY.milestones)
+    rivalWarnings: [], // espèces des rivaux dont l'approche du seuil de victoire a été annoncée (VICTORY.rivalWarning)
     record: emptyRecord(), // bilan des combats, pour l'écran de fin
     nextFleetId: 0,
     proposals: [], // propositions des rivaux en attente de réponse
@@ -581,12 +582,17 @@ export function tick(game, days) {
     addLog(game, `Vos colonies occupent au moins ${Math.round(m * 100)} % des systèmes colonisables. La victoire est à ${Math.round(VICTORY.share * 100)} %.`, 'discovery');
     changed = true;
   }
+  for (const { empire, share, goal } of newRivalWarnings(game)) {
+    addLog(game, `Attention : ${empireName(empire.species)} occupe déjà ${Math.floor(share * 100)} % des systèmes colonisables. À ${Math.round(goal * 100)} %, cet empire dominera l'amas et vous aurez perdu.`, 'alert');
+    changed = true;
+  }
   const end = checkEnd(game);
   if (end) {
     const text = {
       expansion: 'Victoire : vos colonies occupent la plus grande partie de l\'amas.',
       elimination: 'Victoire : plus aucun empire rival ne vous dispute l\'amas.',
       'tout-perdu': "Défaite : vous n'avez plus aucune colonie, ni de vaisseau pour en fonder une.",
+      'rival-domine': `Défaite : ${empireName(end.species)} domine l'amas.`,
     }[end.reason];
     addLog(game, text, end.result === 'victoire' ? 'discovery' : 'alert');
     changed = true;

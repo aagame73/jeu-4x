@@ -10,7 +10,7 @@ import { createAdvisor } from './advisor.js';
 import { currentSpecies, speciesHabitat, rivalInfo } from './species.js';
 import { treatyConflicts } from './diplomacy.js';
 import { shipHealth, warReport } from './combat.js';
-import { progress } from './victory.js';
+import { empireName, leadingKnownRival, progress, rivalGoal } from './victory.js';
 import { COMBAT } from './config.js';
 // Accès tolérant aux règles écrites en parallèle (SIZE_LABELS, shipStats peuvent manquer).
 import * as rules from './game.js';
@@ -148,7 +148,10 @@ export function createUI(root, game, actions) {
   function goalCounter(gauge) {
     const p = progress(game);
     const pct = Math.floor(p.share * 100);
-    const title = `Objectifs : ${pct} % des systèmes colonisables (victoire à ${Math.round(p.goal * 100)} %), ${p.rivalsLeft} empire${p.rivalsLeft > 1 ? 's' : ''} ${p.rivalsLeft > 1 ? 'rivaux' : 'rival'} en vie. Clic : détail`;
+    // Ardu et Redoutable : part du plus grand rival rencontré et son seuil de victoire.
+    const lead = leadingKnownRival(game);
+    const threat = lead ? ` Plus grand rival connu : ${empireName(lead.empire.species)}, ${Math.floor(lead.share * 100)} % (victoire à ${Math.round(lead.goal * 100)} %).` : '';
+    const title = `Objectifs : ${pct} % des systèmes colonisables (victoire à ${Math.round(p.goal * 100)} %), ${p.rivalsLeft} empire${p.rivalsLeft > 1 ? 's' : ''} ${p.rivalsLeft > 1 ? 'rivaux' : 'rival'} en vie.${threat} Clic : détail`;
     return `<button class="counter goal" data-action="objectives" title="${title}" aria-label="${title}" aria-controls="objectives" aria-expanded="${!$('objectives').hidden}">${ICONS.objectifs}<span class="counter-body"><b>${pct}<small> %/${Math.round(p.goal * 100)}</small></b>${gauge(p.share / p.goal)}</span><span class="goal-rivals">${p.rivalsLeft}<small>/${p.rivalsTotal}</small></span></button>`;
   }
 
@@ -184,7 +187,19 @@ export function createUI(root, game, actions) {
       <section>
         <h4>Défaite</h4>
         <p class="muted">Si vous perdez toutes vos colonies sans vaisseau pour en fonder une autre.</p>
+        ${rivalThreat()}
       </section>`;
+  }
+
+  // Ardu et Redoutable : un rival gagne à son seuil ; part du plus grand rival rencontré (rien sur les autres).
+  function rivalThreat() {
+    const goal = rivalGoal(game);
+    if (!goal) return '';
+    const lead = leadingKnownRival(game);
+    const rule = `<p class="muted">Ou si un empire rival occupe ${Math.round(goal * 100)} % des systèmes colonisables.</p>`;
+    if (!lead) return `${rule}<p class="muted">Aucun empire rival rencontré pour l'instant.</p>`;
+    const r = rivalInfo(lead.empire.species);
+    return `${rule}<p>Plus grand rival connu : <b style="color:${r.accent}">${r.empire}</b>, ${lead.owned} système${lead.owned > 1 ? 's' : ''} (<b>${Math.floor(lead.share * 100)} %</b> sur ${Math.round(goal * 100)} %).</p>`;
   }
 
   // Bouton « Recherche » : barre fine du projet en cours, ou point or s'il n'y en a pas.

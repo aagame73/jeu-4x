@@ -31,6 +31,7 @@ const fingerprint = (g) => createHash('sha256').update(JSON.stringify({ stars: g
   check(ones.every((k) => std[k] === 1), 'Standard : multiplicateurs à 1');
   check(std.graceDays === DIPLOMACY.graceDays && std.fleetEvery === COMBAT.fleetEvery && std.maxFleets === COMBAT.maxFleets && std.fleetSizeMax === COMBAT.fleetSize.max, 'Standard : valeurs égales aux réglages actuels');
   check(std.smarter === 0 && !std.rivalCanWin && !DIFFICULTY.levels.decouverte.rivalCanWin && DIFFICULTY.levels.ardu.rivalCanWin && DIFFICULTY.levels.redoutable.rivalCanWin, 'un rival ne gagne qu\'en Ardu et Redoutable');
+  check(std.rivalShare === null && DIFFICULTY.levels.decouverte.rivalShare === null && DIFFICULTY.levels.ardu.rivalShare > 0 && DIFFICULTY.levels.redoutable.rivalShare > 0, 'seuil de victoire d\'un rival seulement en Ardu et Redoutable (étape 6)');
   const rising = (k) => order.every((l, i) => i === 0 || DIFFICULTY.levels[l][k] >= DIFFICULTY.levels[order[i - 1]][k]);
   check(['growth', 'power', 'maxExtraRange', 'warChancePerDay', 'stockPerDay', 'margin', 'maxFleets', 'fleetSizeMax', 'smarter'].every(rising), 'les leviers montent avec le niveau');
   check(order.every((l, i) => i === 0 || DIFFICULTY.levels[l].graceDays < DIFFICULTY.levels[order[i - 1]].graceDays), 'le délai de grâce raccourcit avec le niveau');

@@ -16,8 +16,8 @@ const check = (ok, msg) => {
 const copy = (x) => JSON.parse(JSON.stringify(x));
 
 // Une partie avec une vraie colonie fondée par l'Arche.
-function setup(seed = 42) {
-  const game = G.createGame(seed, 'vaskhar', 4);
+function setup(seed = 42, settings) {
+  const game = settings ? G.createGame(seed, 'vaskhar', 4, settings) : G.createGame(seed, 'vaskhar', 4);
   const arche = game.ships[0];
   const home = game.stars[arche.starId];
   home.level = 3;
@@ -201,6 +201,121 @@ const fakeColony = (game, star) => game.colonies.push({ starId: star.id, planetI
   }
   check(errors === 0, '18 scènes jouées 30 secondes sans erreur');
   check(worst < 3000, `dessin raisonnable (au plus ${Math.round(worst)} appels par image)`);
+}
+
+// Étape 6 du plan de difficulté : victoire d'un rival, seulement en Ardu et Redoutable.
+{
+  const { DIFFICULTY } = await imp('config.js');
+  // Partie au niveau voulu (réglages imposés en Redoutable), avec la colonie du joueur ; grow donne à un rival des systèmes libres jusqu'à la part voulue.
+  const levelGame = (difficulty) => setup(42, { difficulty });
+  const grow = (game, empire, share) => {
+    const stars = V.colonizableStars(game);
+    const mine = V.playerStars(game);
+    const taken = new Set(game.empires.flatMap((e) => e.colonies.map((c) => c.starId)));
+    const need = Math.ceil(share * stars.length);
+    for (const star of stars) {
+      if (new Set(empire.colonies.map((c) => c.starId)).size >= need) break;
+      if (mine.has(star.id) || taken.has(star.id)) continue;
+      empire.colonies.push({ starId: star.id, planetIndex: star.planets.findIndex((pl) => pl.size), known: false });
+      taken.add(star.id);
+    }
+  };
+  for (const level of ['decouverte', 'standard']) {
+    const label = DIFFICULTY.levels[level].label;
+    const game = levelGame(level);
+    grow(game, game.empires[0], 0.6);
+    check(V.rivalGoal(game) === null && V.endState(game) === null, `${label} : un rival à 60 % ne gagne pas`);
+    game.empires[0].met = true;
+    check(V.newRivalWarnings(game).length === 0 && V.leadingKnownRival(game) === null, `${label} : ni avertissement ni rival au compteur`);
+  }
+  {
+    const game = setup();
+    delete game.difficulty;
+    grow(game, game.empires[0], 0.6);
+    check(V.endState(game) === null, 'partie sans niveau (ancienne) : Standard, un rival ne gagne pas');
+  }
+  for (const level of ['ardu', 'redoutable']) {
+    const label = DIFFICULTY.levels[level].label;
+    const goal = DIFFICULTY.levels[level].rivalShare;
+    const game = levelGame(level);
+    const rival = game.empires[0];
+    check(V.rivalGoal(game) === goal && goal > 0 && goal < VICTORY.share, `${label} : seuil d'un rival lu dans DIFFICULTY (${Math.round(goal * 100)} %)`);
+    // Sous le seuil d'avertissement : rien. Au-dessus, mais rival pas encore rencontré : rien non plus.
+    grow(game, rival, goal * VICTORY.rivalWarning * 0.9);
+    rival.met = true;
+    check(V.newRivalWarnings(game).length === 0, `${label} : sous ${Math.round(VICTORY.rivalWarning * 100)} % du seuil, pas d'avertissement`);
+    rival.met = false;
+    grow(game, rival, goal * VICTORY.rivalWarning + 0.01);
+    check(V.newRivalWarnings(game).length === 0 && V.leadingKnownRival(game) === null, `${label} : rival inconnu, ni avertissement ni compteur`);
+    rival.met = true;
+    const lead = V.leadingKnownRival(game);
+    check(lead?.empire === rival && lead.goal === goal && lead.share >= goal * VICTORY.rivalWarning, `${label} : compteur, plus grand rival connu (${Math.floor((lead?.share ?? 0) * 100)} % sur ${Math.round(goal * 100)} %)`);
+    const before = game.log.length;
+    G.tick(game, 1);
+    const warned = game.log.slice(before).filter((l) => l.text.startsWith('Attention'));
+    check(warned.length === 1 && game.rivalWarnings.includes(rival.species), `${label} : avertissement au journal (« ${warned[0]?.text} »)`);
+    G.tick(game, 1);
+    check(game.log.filter((l) => l.text.startsWith('Attention')).length === 1, `${label} : avertissement donné une seule fois`);
+    const back = restore(copy(serialize(game)));
+    check(back.rivalWarnings.length === 1 && back.rivalWarnings[0] === rival.species && V.newRivalWarnings(back).length === 0, `${label} : avertissements gardés dans la sauvegarde`);
+    const old = copy(serialize(game));
+    delete old.rivalWarnings;
+    check(restore(old).rivalWarnings.length === 0, `${label} : ancienne sauvegarde, aucun avertissement`);
+    old.rivalWarnings = ['inconnue', 42, rival.species, rival.species];
+    check(JSON.stringify(restore(old).rivalWarnings) === JSON.stringify([rival.species]), `${label} : avertissements inconnus ou en double ignorés`);
+    // Sous le seuil : pas de fin ; au seuil : défaite.
+    check(V.endState(game) === null, `${label} : sous le seuil, pas de fin`);
+    grow(game, rival, goal);
+    const end = V.checkEnd(game);
+    check(end?.result === 'defaite' && end.reason === 'rival-domine' && end.species === rival.species, `${label} : au seuil, défaite « rival-domine » (${rival.species})`);
+    check(game.paused && game.ended === end, `${label} : partie finie et en pause`);
+    const saved = restore(copy(serialize(game)));
+    check(saved.ended?.reason === 'rival-domine' && saved.ended.species === rival.species && saved.ended.day === end.day, `${label} : fin « rival-domine » gardée dans la sauvegarde`);
+    const odd = copy(serialize(game));
+    odd.ended = { result: 'defaite', reason: 'rival-domine', day: 3, species: 'inconnue' };
+    const fixed = restore(odd).ended;
+    check(fixed?.reason === 'rival-domine' && fixed.species === undefined, `${label} : espèce inconnue ignorée, la fin reste valide`);
+    odd.ended = { result: 'victoire', reason: 'rival-domine' };
+    check(restore(odd).ended === null, `${label} : « rival-domine » n'est pas une victoire`);
+  }
+  // Annonce au journal et nom de l'empire.
+  {
+    const game = levelGame('ardu');
+    const rival = game.empires[0];
+    grow(game, rival, DIFFICULTY.levels.ardu.rivalShare);
+    G.tick(game, 1);
+    check(game.ended?.reason === 'rival-domine' && game.log.at(-1).text === `Défaite : ${V.empireName(rival.species)} domine l'amas.`, `tick : défaite annoncée (« ${game.log.at(-1).text} »)`);
+    check(V.empireName('orrhaides', true) === 'Le Concordat orrhaïde' && V.empireName('vaskhar') === "l'Hégémonie vaskhar" && V.empireName('ashkari') === 'la Caravane ashkari', "articles : le Concordat, l'Hégémonie, la Caravane");
+    check(V.empireName('inconnue', true) === 'Un empire rival', 'espèce inconnue : « Un empire rival »');
+  }
+  // Le joueur atteint sa victoire le même jour qu'un rival son seuil : la victoire du joueur passe avant.
+  {
+    const game = levelGame('redoutable');
+    const stars = V.colonizableStars(game);
+    const mine = V.playerStars(game);
+    const need = Math.ceil(stars.length * VICTORY.share);
+    for (const star of stars) {
+      if (mine.size >= need) break;
+      if (!mine.has(star.id)) {
+        fakeColony(game, star);
+        mine.add(star.id);
+      }
+    }
+    // Systèmes partagés : le rival compte aussi les siens.
+    const rival = game.empires[0];
+    for (const star of stars.slice(0, Math.ceil(stars.length * DIFFICULTY.levels.redoutable.rivalShare))) rival.colonies.push({ starId: star.id, planetIndex: 0, known: false });
+    check(V.rivalShares(game)[0].share >= V.rivalGoal(game), 'joueur et rival à leur seuil le même jour');
+    const end = V.checkEnd(game);
+    check(end?.result === 'victoire' && end.reason === 'expansion', 'la victoire du joueur passe avant celle du rival');
+  }
+  // Sans colonie mais avec un vaisseau colonie : un rival au seuil gagne quand même.
+  {
+    const game = levelGame('ardu');
+    game.colonies = [];
+    game.ships.push({ id: 999, kind: 'colonie', name: 'Colonie 1', starId: 0, state: 'idle' });
+    grow(game, game.empires[0], DIFFICULTY.levels.ardu.rivalShare);
+    check(V.endState(game)?.reason === 'rival-domine', 'sans colonie (vaisseau colonie restant) : un rival au seuil gagne');
+  }
 }
 
 console.log(fails ? `\n${fails} échec(s).` : '\nTous les tests passent.');
