@@ -40,7 +40,7 @@ const plural = (n, word) => `${n} ${word}${n > 1 ? 's' : ''}`;
 export function createUI(root, game, actions) {
   root.innerHTML = `
     <header class="topbar panel">
-      <div class="title" title="Amas inexploré : prototype"><span class="game-name">Amas<br>inexploré</span></div>
+      <div class="title" title="L'Arche des Veilleurs"><span class="game-name">L'Arche des<br>Veilleurs</span></div>
       <div class="stats" id="stats"></div>
       <button class="menu-btn fs-btn" data-action="fullscreen" title="Plein écran (F)" aria-label="Plein écran">${ICONS.pleinEcran}</button>
       <button class="menu-btn icon-only" data-action="diplomacy" title="Diplomatie (D)" aria-label="Diplomatie">${ICONS.diplomatie}</button>

@@ -42,7 +42,7 @@ export function createMenu(root, game, { onOpen, onClose, onNewGame }) {
     if (mode === 'start') {
       const auto = readSlot('auto');
       $('menu-body').innerHTML = `
-        <h1 class="menu-title">Amas inexploré</h1>
+        <h1 class="menu-title">L'Arche des Veilleurs</h1>
         ${auto ? '<p class="muted">Une partie est en cours sur cet ordinateur.</p>' : ''}
         <div class="start-actions">
           ${auto ? `<button class="primary big" data-menu="load" data-slot="auto">Continuer<span class="small">${describe(auto)}</span></button>` : ''}
