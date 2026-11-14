@@ -17,7 +17,7 @@ import { TECHS, hasTech, bindResearch, markTech, techCost } from './research.js'
 import { SPECIES, DEFAULT_SPECIES, RIVALS, DIPLOMACY, VICTORY } from './config.js';
 import { tickCombat } from './combat.js';
 import { checkEnd, emptyRecord, newMilestones, recordEvent } from './victory.js';
-import { applyDeal, breakTreaties, declareWar, describeOffer, evaluateDeal, tickConvoys, tickDiplomacy } from './diplomacy.js';
+import { acceptPeaceOffer, applyDeal, breakTreaties, declareWar, declineProposal, describeOffer, evaluateDeal, tickConvoys, tickDiplomacy } from './diplomacy.js';
 import { line } from './dialogues.js';
 import { createEmpires, tickEmpires, revealEmpires, rivalColonyAt, newContacts } from './empires.js';
 import { bindSpecies, speciesBonus, speciesHabitat, hostilePenalty, currentSpecies, rivalInfo } from './species.js';
@@ -548,7 +548,9 @@ export function tick(game, days) {
       addLog(game, `Les ${label} vous jugent désormais : ${event.attitude.label.toLowerCase()}. « ${line(empire.species, event.better ? 'plusAmical' : 'plusHostile')} »`, event.better ? 'info' : 'alert');
     } else if (event.type === 'proposal') {
       addLog(game, `Les ${label} proposent ${describeOffer(event.proposal.offer)}. « ${line(empire.species, 'proposition')} » Répondez dans la diplomatie (D).`, 'alert');
-    } else if (event.type === 'expired') addLog(game, `La proposition des ${label} a expiré.`, 'info');
+    } else if (event.type === 'peace-offer') {
+      addLog(game, `Les ${label} perdent la guerre et vous proposent la paix, sans condition. « ${line(empire.species, 'offrePaix')} » Répondez dans la diplomatie (D).`, 'alert');
+    } else if (event.type === 'expired') addLog(game, event.peace ? `L'offre de paix des ${label} a expiré : la guerre continue.` : `La proposition des ${label} a expiré.`, 'info');
     else if (event.type === 'war') addLog(game, `Les ${label} vous déclarent la guerre ! « ${line(empire.species, 'guerre')} »`, 'alert');
     changed = true;
   }
@@ -619,6 +621,20 @@ export function signDeal(game, empire, offer) {
   if (offer.get.peace) addLog(game, `Paix signée avec les ${rivalInfo(empire.species).label}. Trêve jusqu'au jour ${Math.floor(empire.truceUntil) + 1}. « ${line(empire.species, 'paix')} »`, 'info');
   else addLog(game, `Échange conclu avec les ${rivalInfo(empire.species).label}.${travel}`, 'info');
   return answer;
+}
+
+// Le joueur accepte la paix proposée par un empire qui perd la guerre. Renvoie false si l'offre n'est plus valable.
+export function acceptPeace(game, empire) {
+  if (!acceptPeaceOffer(game, empire)) return false;
+  addLog(game, `Vous acceptez la paix des ${rivalInfo(empire.species).label}. Trêve jusqu'au jour ${Math.floor(empire.truceUntil) + 1}. « ${line(empire.species, 'paix')} »`, 'info');
+  return true;
+}
+
+// Le joueur refuse une proposition (échange ou paix) ; un refus de paix est noté au journal.
+export function refuseProposal(game, empire) {
+  const proposal = declineProposal(game, empire);
+  if (proposal?.peace) addLog(game, `Vous refusez la paix des ${rivalInfo(empire.species).label} : la guerre continue.`, 'info');
+  return proposal;
 }
 
 // Le joueur déclare la guerre à un empire rencontré. Renvoie false si c'est impossible.

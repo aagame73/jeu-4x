@@ -1,7 +1,7 @@
 // Répliques des empires rivaux, écrites pour chaque espèce (voir docs/dialogues-especes.md).
 // Une réplique par situation : accueil, accord, refus, offre trop faible, refus hostile,
 // contre-offre, proposition, traité rompu, attitude en hausse, attitude en baisse ; et pour la guerre :
-// déclaration, paix, colonie prise au joueur, flotte perdue, convoi pillé.
+// déclaration, paix, colonie prise au joueur, flotte perdue, convoi pillé, offre de paix d'un empire qui perd la guerre.
 export const DIALOGUES = {
   vaskhar: {
     accueil: 'La roche écoute. Parlez lentement, petit être de chair.',
@@ -19,6 +19,7 @@ export const DIALOGUES = {
     victoire: 'Ce monde est à nous, désormais. Nous creuserons sous vos ruines.',
     defaite: 'Une flotte brisée… La roche patiente. Elle se reforme toujours.',
     pillage: 'Vous volez nos minerais sur la route ? Nous n\'oublierons pas ce filon.',
+    offrePaix: 'Nos galeries s\'effondrent une à une. Que la roche se taise : nous offrons la paix.',
   },
   ondesiens: {
     accueil: 'Nos filaments s\'illuminent : bienvenue dans le courant.',
@@ -36,6 +37,7 @@ export const DIALOGUES = {
     victoire: 'Ce monde rejoint nos courants. Ses habitants apprendront à nager.',
     defaite: 'Notre flotte s\'est dissoute dans le vide. Le courant pleure, puis repart.',
     pillage: 'Vous avez coupé un courant qui nourrissait les nôtres. Cela ne s\'oublie pas.',
+    offrePaix: 'Nos eaux se troublent de trop de pertes. Laissons le courant s\'apaiser : faisons la paix.',
   },
   keltirr: {
     accueil: 'Vite, vite ! L\'essaim vous écoute, mais pas longtemps.',
@@ -53,6 +55,7 @@ export const DIALOGUES = {
     victoire: 'Ha ! Ce nid est à l\'essaim maintenant ! Trop lents, trop lents !',
     defaite: 'Des plumes partout… L\'essaim reviendra plus nombreux.',
     pillage: 'Voleurs ! L\'essaim a vu, l\'essaim se souviendra !',
+    offrePaix: 'Assez, assez ! L\'essaim a perdu trop de plumes. La paix, vite, avant d\'autres chutes !',
   },
   synodes: {
     accueil: 'Le réseau s\'ouvre à vous. Mille pensées vous écoutent.',
@@ -70,6 +73,7 @@ export const DIALOGUES = {
     victoire: 'Ce monde est absorbé dans le réseau. Ses pensées seront les nôtres.',
     defaite: 'Perte enregistrée. Le réseau ajuste ses calculs.',
     pillage: 'Interception de nos spores de ravitaillement constatée. Réponse en préparation.',
+    offrePaix: 'Le réseau a recalculé : poursuivre ce conflit nous coûte trop. Il propose d\'y mettre fin.',
   },
   orrhaides: {
     accueil: 'Votre lumière nous parvient. Nous résonnons à votre approche.',
@@ -87,6 +91,7 @@ export const DIALOGUES = {
     victoire: 'Ce monde brille désormais de notre éclat.',
     defaite: 'Des cristaux éparpillés dans le vide… ils repousseront ailleurs.',
     pillage: 'Vous avez éteint un de nos convois. L\'ombre que vous jetez s\'allonge.',
+    offrePaix: 'Trop de nos cristaux se sont brisés. Laissons nos éclats se refroidir : la paix.',
   },
   thrennes: {
     accueil: 'Parlez, étranger. Mais pesez chaque mot : nous les gravons.',
@@ -104,6 +109,7 @@ export const DIALOGUES = {
     victoire: 'Ce monde est gravé à notre nom. Une victoire de plus sur nos coques.',
     defaite: 'Nos guerriers sont tombés debout. Leurs noms seront vengés.',
     pillage: 'Piller nos convois ? Une lâcheté. Elle sera gravée, elle aussi.',
+    offrePaix: 'Vous avez gagné notre respect au combat. Le Serment nous permet de rengainer : acceptez la paix.',
   },
   liseurs: {
     accueil: 'Nous lisons votre venue dans les glyphes. Soyez bienvenus.',
@@ -121,6 +127,7 @@ export const DIALOGUES = {
     victoire: 'Ce monde est désormais consigné dans nos registres.',
     defaite: 'Une flotte effacée des archives. D\'autres pages suivront.',
     pillage: 'Vous avez déchiré une page de nos approvisionnements. Elle sera recopiée, et vous rappelée.',
+    offrePaix: 'Les glyphes annoncent une fin amère pour nous. Refermons ce chapitre avant qu\'il ne nous efface.',
   },
   ashkari: {
     accueil: 'La caravane fait halte. Que vendez-vous, voyageur ?',
@@ -138,6 +145,7 @@ export const DIALOGUES = {
     victoire: 'Ce monde change de propriétaire. Bonne affaire pour nous.',
     defaite: 'Une flotte perdue, une dette de plus. Nous la recouvrerons.',
     pillage: 'Des pillards ! Toute la route saura qui a volé nos caisses.',
+    offrePaix: 'Cette guerre nous ruine, voyageur. Signons la paix, et rouvrons les routes du commerce.',
   },
 };
 

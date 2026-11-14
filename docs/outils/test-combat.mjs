@@ -448,7 +448,8 @@ function supplyGame() {
   const war = ['guerre', 'paix', 'victoire', 'defaite', 'pillage'];
   const all = S.playableSpecies().flatMap((k) => war.map((x) => DIALOGUES[k]?.[x]));
   check(all.length === 40 && all.every((t) => typeof t === 'string' && t.length > 10), '40 répliques de guerre : 5 situations pour chacune des 8 espèces');
-  check(new Set(Object.values(DIALOGUES).flatMap((d) => Object.values(d))).size === 120, '120 répliques au total, aucune en double');
+  // 120 répliques de diplomatie et de guerre, plus 8 offres de paix d'un empire qui perd (plan-difficulte.md, étape 5).
+  check(new Set(Object.values(DIALOGUES).flatMap((d) => Object.values(d))).size === 128, '128 répliques au total, aucune en double');
   // Elles apparaissent bien au journal.
   const { game, empire } = setup('thrennes', 'vaskhar');
   G.declareWarOn(game, empire);

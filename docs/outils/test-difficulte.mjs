@@ -184,6 +184,9 @@ function withColony(seed, level) {
   for (const e of game.empires) e.met = true;
   return game;
 }
+// Empreintes d'avant l'étape 5 : on retire ce que la paix proposée (tous niveaux, étape 5) a ajouté, le bilan de
+// guerre des empires et leurs offres de paix ; tout le reste doit rester identique en Standard.
+const beforePeace = (empires) => empires.map(({ warLosses, nextPeaceOffer, ...e }) => e);
 // Rivaux tenus hostiles : guerre, flottes, prix de la paix.
 function hostileRun(seed, level) {
   const game = withColony(seed, level);
@@ -193,13 +196,13 @@ function hostileRun(seed, level) {
     G.tick(game, 1);
     if (d % 500 === 0) peace.push(...game.empires.map((e) => Dp.peacePrice(e, 'minerais', game)));
   }
-  return hash({ empires: game.empires, fleets: game.fleets, n: game.nextFleetId, c: game.colonies.length, t: game.time, peace });
+  return hash({ empires: beforePeace(game.empires), fleets: game.fleets, n: game.nextFleetId, c: game.colonies.length, t: game.time, peace });
 }
 // Joueur passif : expansion, stocks, notes, propositions.
 function peacefulRun(seed, level) {
   const game = withColony(seed, level);
   for (let d = 0; d < 3000 && !game.ended; d++) G.tick(game, 1);
-  return hash({ empires: game.empires, proposals: game.proposals, t: game.time });
+  return hash({ empires: beforePeace(game.empires), proposals: game.proposals.filter((p) => !p.peace), t: game.time });
 }
 {
   // Empreintes relevées avec le code d'avant l'étape 3.
@@ -399,6 +402,288 @@ function peacefulRun(seed, level) {
   check(endSummary(restore(old))[0][1] === 'Standard · carte moyenne · ressources normales · 4 adversaires', 'bilan d\'une ancienne sauvegarde : Standard');
   check(S.summary({ ...old, savedAt: 0 }).difficulty === 'Standard' && S.summary({ ...serialize(game), savedAt: 0 }).difficulty === 'Ardu', 'menu : niveau dans la description de la sauvegarde');
   check(Object.values(DIFFICULTY.levels).every((l) => typeof l.hint === 'string' && l.hint.length > 10), 'chaque niveau a sa phrase d\'explication');
+}
+
+// Étape 5 : rivaux plus malins (points 1 à 3 en Ardu, tous en Redoutable, aucun en Standard) et paix proposée (tous niveaux).
+{
+  const addWarship = (game, kind, starId) => {
+    const ship = { id: game.nextShipId++, kind, name: `${kind} ${game.nextShipId}`, starId, state: 'idle', toId: null, fromId: null, distance: 0, speed: 0, progress: 0, daysLeft: 0, age: 0, worn: false, shipSeed: 1, accent: '#fff', registry: 'T' };
+    game.ships.push(ship);
+    return ship;
+  };
+  // Partie en guerre contre le premier empire, sans colonie de l'Arche : colonies du joueur posées à la main.
+  // Deux systèmes près de l'empire : a (le plus proche), b (plus loin, dans la marge de choix des cibles).
+  const war = (level) => {
+    const game = G.createGame(42, 'vaskhar', 4);
+    game.difficulty = level;
+    const e = game.empires[0];
+    e.met = true;
+    G.declareWarOn(game, e);
+    Object.assign(e, { power: 0, nextFleet: 1e9, nextSupply: 1e9 });
+    const home = game.stars[e.homeId];
+    const free = game.stars
+      .filter((s) => s.id !== home.id && s.id !== game.homeId && !game.empires.some((x) => x.colonies.some((c) => c.starId === s.id)) && s.planets.some((p) => p.size && !p.inhabitedBy))
+      .sort((x, y) => starDistance(home, x) - starDistance(home, y));
+    const a = free[0];
+    const b = free.find((s) => starDistance(home, s) > starDistance(home, a) + 5 && starDistance(home, s) < starDistance(home, a) + COMBAT.smart.targetSlack);
+    const colonyAt = (star, defense, population) => {
+      const colony = { starId: star.id, planetIndex: star.planets.findIndex((p) => p.size && !p.inhabitedBy), name: star.name, population, habitat: 1, growth: 0, construction: null, shipyard: null, famine: false, orbital: { dock: false, defense, ecope: false }, thirst: false, damage: 0 };
+      game.colonies.push(colony);
+      return colony;
+    };
+    game.colonies = [];
+    game.time = 1000;
+    return { game, e, home, a, b, colonyAt };
+  };
+  const fleetOf = (game, e, kind, n, starId, extra = {}) => {
+    const fleet = { id: game.nextFleetId++, species: e.species, ships: Array.from({ length: n }, () => ({ kind, damage: 0 })), starId, fromId: null, toId: null, distance: 0, progress: 0, state: 'idle', ...extra };
+    game.fleets.push(fleet);
+    return fleet;
+  };
+  const day = (game) => {
+    game.time += 1;
+    return C.tickCombat(game, 1);
+  };
+
+  // 1. Cible choisie : une colonie proche bien défendue, une autre plus loin sans défense et plus peuplée.
+  const target = (level) => {
+    const { game, e, home, a, b, colonyAt } = war(level);
+    colonyAt(a, 2, 1);
+    colonyAt(b, 0, 5);
+    const fleet = fleetOf(game, e, 'croiseur', 6, home.id);
+    day(game);
+    return { to: fleet.toId, a: a.id, b: b.id };
+  };
+  const std = target('standard');
+  check(std.to === std.a, 'Standard : la flotte vise la colonie la plus proche');
+  check(target('decouverte').to === std.a, 'Découverte : la flotte vise la colonie la plus proche');
+  const ardu = target('ardu');
+  check(ardu.to === ardu.b, 'Ardu : la flotte vise la colonie sans défense et plus peuplée, même plus loin');
+  check(target('redoutable').to === ardu.b, 'Redoutable : idem');
+
+  // 2. Flottes groupées : la première attend la seconde, puis elles partent ensemble vers la même cible.
+  const group = (level) => {
+    const { game, e, a, colonyAt } = war(level);
+    colonyAt(a, 0, 1);
+    e.stocks.alliages = 1e6;
+    e.nextFleet = 0;
+    day(game);
+    const first = game.fleets.find((f) => f.species === e.species);
+    const firstState = first.state;
+    e.nextFleet = 0;
+    day(game);
+    const both = game.fleets.filter((f) => f.species === e.species);
+    return { firstState, both };
+  };
+  const gStd = group('standard');
+  check(gStd.firstState === 'travel', 'Standard : chaque flotte part dès qu\'elle est construite');
+  const gArdu = group('ardu');
+  check(gArdu.firstState === 'idle' && gArdu.both.length === 2, 'Ardu : la première flotte attend la seconde');
+  check(gArdu.both.every((f) => f.state === 'travel' && f.toId === gArdu.both[0].toId && f.progress === gArdu.both[0].progress && f.fromId === gArdu.both[0].fromId), 'Ardu : les deux flottes partent ensemble, même route, même jour');
+  {
+    // Une flotte seule part quand même après groupWaitDays.
+    const { game, e, a, colonyAt } = war('ardu');
+    colonyAt(a, 0, 1);
+    e.stocks.alliages = 1e6;
+    e.nextFleet = 0;
+    day(game);
+    const fleet = game.fleets.find((f) => f.species === e.species);
+    e.nextFleet = 1e9; // pas de seconde flotte
+    for (let d = 1; d < COMBAT.smart.groupWaitDays; d++) day(game);
+    const waited = fleet.state;
+    day(game);
+    check(waited === 'idle' && fleet.state === 'travel', `Ardu : une flotte seule part après ${COMBAT.smart.groupWaitDays} jours d'attente`);
+  }
+
+  // 3. Retraite : une petite flotte face à une colonie bien défendue n'attaque pas ; au siège, elle se replie.
+  const retreat = (level) => {
+    const { game, e, home, a, colonyAt } = war(level);
+    colonyAt(a, 5, 1);
+    const waiting = fleetOf(game, e, 'corvette', 2, home.id);
+    const besieging = fleetOf(game, e, 'corvette', 2, a.id);
+    const events = day(game);
+    return { waiting, besieging, events, home, a };
+  };
+  const rStd = retreat('standard');
+  check(rStd.waiting.state === 'travel' && rStd.waiting.toId === rStd.a.id, 'Standard : une flotte faible attaque quand même');
+  check(rStd.besieging.state === 'idle' && rStd.besieging.starId === rStd.a.id, 'Standard : une flotte faible reste au siège');
+  const rArdu = retreat('ardu');
+  check(rArdu.waiting.state === 'idle' && rArdu.waiting.hold === true, 'Ardu : une flotte nettement plus faible n\'attaque pas, elle attend des renforts');
+  check(rArdu.besieging.state === 'travel' && rArdu.besieging.toId === rArdu.home.id, 'Ardu : au siège, une flotte nettement plus faible rentre');
+  check(rArdu.events.some((x) => x.type === 'fleet-retreat'), 'Ardu : la retraite est annoncée');
+  {
+    // Avec des renforts, la flotte n'est plus nettement plus faible : elle attaque.
+    const { game, e, home, a, colonyAt } = war('ardu');
+    colonyAt(a, 5, 1);
+    const one = fleetOf(game, e, 'croiseur', 3, home.id, { hold: true, heldSince: 1000 });
+    const two = fleetOf(game, e, 'croiseur', 3, home.id, { hold: true, heldSince: 1000 });
+    day(game);
+    check(one.state === 'travel' && two.state === 'travel' && one.toId === a.id, 'Ardu : réunies, les flottes attaquent la colonie défendue');
+  }
+
+  // 4. Guerre opportuniste : un rival méfiant déclare la guerre si le joueur a peu de vaisseaux de guerre ou est déjà en guerre.
+  const opportunist = (level, warships, otherWar) => {
+    const game = G.createGame(42, 'vaskhar', 4);
+    game.difficulty = level;
+    const e = game.empires[0];
+    e.met = true;
+    for (let i = 0; i < warships; i++) addWarship(game, 'fregate', game.homeId);
+    if (otherWar) Object.assign(game.empires[1], { war: true });
+    game.time = DIFFICULTY.levels[level].graceDays;
+    for (let d = 0; d < 6000; d++) {
+      game.time += 1;
+      e.relation = -40; // méfiant
+      if (Dp.tickDiplomacy(game, 1).some((x) => x.type === 'war' && x.empire === e)) return true;
+    }
+    return false;
+  };
+  check(Dp.attitudeOf(-40).key === 'mefiant', 'note -40 : méfiant');
+  check(!opportunist('standard', 0, false) && !opportunist('ardu', 0, false), 'Standard et Ardu : un rival méfiant ne déclare jamais la guerre');
+  check(opportunist('redoutable', 0, false), 'Redoutable : un rival méfiant attaque un joueur sans vaisseau de guerre');
+  check(!opportunist('redoutable', DIPLOMACY.opportunism.fewWarships + 1, false), `Redoutable : pas de guerre opportuniste contre ${DIPLOMACY.opportunism.fewWarships + 1} vaisseaux de guerre`);
+  check(opportunist('redoutable', DIPLOMACY.opportunism.fewWarships + 1, true), 'Redoutable : guerre opportuniste si le joueur est déjà en guerre contre un autre');
+
+  // 5. Défense du monde natal : le joueur l'assiège, les flottes y retournent.
+  const homeDefense = (level) => {
+    const { game, e, home, a, colonyAt } = war(level);
+    colonyAt(a, 0, 1);
+    const fleet = fleetOf(game, e, 'croiseur', 4, a.id);
+    addWarship(game, 'cuirasse', home.id);
+    const events = day(game);
+    return { fleet, events, home };
+  };
+  const hArdu = homeDefense('ardu');
+  check(hArdu.fleet.state === 'idle', 'Ardu : la flotte continue son siège quand le monde natal est attaqué');
+  const hStd = homeDefense('standard');
+  check(hStd.fleet.state === 'idle', 'Standard : idem');
+  const hRed = homeDefense('redoutable');
+  check(hRed.fleet.state === 'travel' && hRed.fleet.toId === hRed.home.id, 'Redoutable : la flotte rentre défendre le monde natal');
+  check(hRed.events.some((x) => x.type === 'fleet-recall'), 'Redoutable : le rappel est annoncé');
+
+  // Paix proposée par un rival qui perd la guerre (tous niveaux).
+  const losing = (level = 'standard') => {
+    const game = G.createGame(42, 'vaskhar', 4);
+    game.difficulty = level;
+    const e = game.empires[0];
+    e.met = true;
+    game.time = 1000;
+    G.declareWarOn(game, e);
+    return { game, e };
+  };
+  const P = DIPLOMACY.peaceOffer;
+  const offerDay = (game) => {
+    game.time += 1;
+    return Dp.tickDiplomacy(game, 1);
+  };
+  for (const level of LEVELS) {
+    const { game, e } = losing(level);
+    e.warLosses = { fleets: P.threshold, colonies: 0, taken: 0 };
+    let offered = null;
+    for (let d = 0; d < P.minDays + 5 && !offered; d++) offered = offerDay(game).find((x) => x.type === 'peace-offer');
+    check(offered && game.time - e.warSince >= P.minDays && Dp.pendingProposal(game, e)?.peace, `${level} : ${P.threshold} flottes perdues, l'empire propose la paix après ${P.minDays} jours de guerre`);
+  }
+  {
+    const { game, e } = losing();
+    e.warLosses = { fleets: P.threshold - 1, colonies: 0, taken: 0 };
+    for (let d = 0; d < P.minDays + 50; d++) offerDay(game);
+    check(!game.proposals.length, 'pas assez de pertes : pas d\'offre de paix');
+    e.warLosses = { fleets: 2, colonies: 1, taken: 1 };
+    offerDay(game);
+    check(!game.proposals.length, 'une colonie prise au joueur compense une colonie perdue');
+    e.warLosses = { fleets: 1, colonies: 1, taken: 0 };
+    offerDay(game);
+    check(Dp.pendingProposal(game, e)?.peace, 'une colonie et une flotte perdues : offre de paix');
+  }
+  {
+    const { game, e } = losing();
+    for (let d = 0; d < P.daysPerPoint * P.threshold - 1; d++) offerDay(game);
+    check(!game.proposals.length, 'une longue guerre sans perte : pas d\'offre avant le seuil de durée');
+    offerDay(game);
+    check(Dp.pendingProposal(game, e)?.peace, `une guerre de ${P.daysPerPoint * P.threshold} jours suffit à proposer la paix`);
+  }
+  {
+    // Acceptée : la guerre finit, trêve, flottes rentrées, annonce au journal avec la réplique de l'espèce.
+    const { game, e } = losing();
+    e.warLosses = { fleets: P.threshold, colonies: 0, taken: 0 };
+    game.time += P.minDays;
+    const events = offerDay(game);
+    check(events.some((x) => x.type === 'peace-offer'), 'offre de paix émise');
+    game.fleets.push({ id: game.nextFleetId++, species: e.species, ships: [{ kind: 'corvette', damage: 0 }], starId: e.homeId, fromId: null, toId: null, distance: 0, progress: 0, state: 'idle' });
+    check(G.acceptPeace(game, e) && !e.war && !game.proposals.length, 'acceptée : la guerre finit, l\'offre disparaît');
+    check(e.truceUntil >= game.time + DIPLOMACY.truceDays - 1e-9 && !game.fleets.some((f) => f.species === e.species), 'acceptée : trêve, flottes rentrées');
+    const { line } = await imp('dialogues.js');
+    check(game.log.some((l) => l.text.includes('Vous acceptez la paix') && l.text.includes(line(e.species, 'paix'))), 'acceptée : annoncée au journal');
+    check(!G.acceptPeace(game, e), 'on n\'accepte pas deux fois');
+  }
+  {
+    // Annoncée au journal par game.js (le conseiller la lit), avec la réplique de l'espèce.
+    const { game, e } = losing();
+    e.warLosses = { fleets: P.threshold, colonies: 0, taken: 0 };
+    game.time += P.minDays;
+    G.tick(game, 1);
+    const { line } = await imp('dialogues.js');
+    check(game.log.some((l) => l.text.includes('vous proposent la paix') && l.text.includes(line(e.species, 'offrePaix')) && line(e.species, 'offrePaix').length > 10), 'offre de paix annoncée au journal, avec la réplique de l\'espèce');
+    // Refusée : la guerre continue, pas de nouvelle offre avant delay jours.
+    const refused = G.refuseProposal(game, e);
+    check(refused?.peace && e.war && !game.proposals.length && e.nextPeaceOffer === game.time + P.delay, 'refusée : la guerre continue');
+    check(game.log.some((l) => l.text.includes('Vous refusez la paix')), 'refus noté au journal');
+    for (let d = 0; d < P.delay - 1; d++) offerDay(game);
+    check(!game.proposals.length, `refusée : pas de nouvelle offre pendant ${P.delay} jours`);
+    offerDay(game);
+    check(Dp.pendingProposal(game, e)?.peace, 'puis l\'empire la propose de nouveau');
+  }
+  {
+    // Expirée : retirée après days jours, annoncée, et pas d'autre offre avant delay jours.
+    const { game, e } = losing();
+    e.warLosses = { fleets: P.threshold, colonies: 0, taken: 0 };
+    game.time += P.minDays;
+    offerDay(game);
+    let expired = null;
+    for (let d = 0; d < P.days + 1 && !expired; d++) expired = offerDay(game).find((x) => x.type === 'expired');
+    check(expired?.peace && !game.proposals.length && e.war, `expirée après ${P.days} jours, la guerre continue`);
+    check(e.nextPeaceOffer > game.time, 'expirée : nouvelle offre plus tard');
+    check(!G.acceptPeace(game, e), 'une offre expirée ne s\'accepte plus');
+  }
+  {
+    // Pas en paix : jamais d'offre de paix hors guerre ; une offre en attente disparaît si la paix se fait autrement.
+    const { game, e } = losing();
+    e.warLosses = { fleets: 10, colonies: 0, taken: 0 };
+    e.war = false;
+    for (let d = 0; d < P.minDays + 10; d++) offerDay(game);
+    check(!game.proposals.some((p) => p.peace), 'hors guerre : jamais d\'offre de paix');
+    e.war = true;
+    offerDay(game);
+    check(Dp.pendingProposal(game, e)?.peace, 'offre de paix en attente');
+    game.resources.minerais = 1e6;
+    const price = Dp.peacePrice(e, 'minerais', game);
+    check(G.signDeal(game, e, { give: { resources: { minerais: price } }, get: { resources: {}, peace: true } }).ok && !game.proposals.length, 'paix achetée autrement : l\'offre disparaît');
+    check(!G.acceptPeace(game, e), 'pas de paix offerte quand on n\'est plus en guerre');
+  }
+  {
+    // Les pertes sont comptées par le combat : flotte anéantie.
+    const { game, e, a, colonyAt } = war('standard');
+    colonyAt(a, 10, 1);
+    fleetOf(game, e, 'corvette', 1, a.id);
+    for (let d = 0; d < 30 && game.fleets.length; d++) day(game);
+    check(e.warLosses.fleets === 1, 'flotte anéantie comptée dans le bilan de guerre');
+  }
+  {
+    // Sauvegarde : bilan et date de la prochaine offre gardés ; anciennes sauvegardes sans ces champs : valeurs par défaut.
+    const { game, e } = losing();
+    e.warLosses = { fleets: 2, colonies: 1, taken: 0 };
+    e.nextPeaceOffer = 1234;
+    game.proposals.push({ species: e.species, offer: { give: { resources: {}, techs: [], map: false }, get: { resources: {}, techs: [], map: false, treaties: [], peace: true } }, expires: 5000, peace: true });
+    const back = restore(copy(serialize(game)));
+    const be = back.empires[0];
+    check(be.warLosses.fleets === 2 && be.warLosses.colonies === 1 && be.nextPeaceOffer === 1234 && Dp.pendingProposal(back, be)?.peace, 'sauvegarde : bilan, délai et offre de paix gardés');
+    const old = copy(serialize(game));
+    for (const x of old.empires) {
+      delete x.warLosses;
+      delete x.nextPeaceOffer;
+    }
+    const oldBack = restore(old);
+    check(oldBack.empires.every((x) => JSON.stringify(x.warLosses) === JSON.stringify(Dp.noLosses()) && x.nextPeaceOffer === 0), 'ancienne sauvegarde : bilan à zéro, pas de délai');
+  }
 }
 
 console.log(fails ? `\n${fails} échec(s)` : '\nTous les tests passent.');

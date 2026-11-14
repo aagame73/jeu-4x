@@ -21,6 +21,7 @@ Généré par `docs/outils/liste-dialogues.mjs` à partir de `src/dialogues.js` 
 | Prend une de vos colonies | Ce monde est à nous, désormais. Nous creuserons sous vos ruines. |
 | Perd une flotte | Une flotte brisée… La roche patiente. Elle se reforme toujours. |
 | Convoi de ravitaillement pillé | Vous volez nos minerais sur la route ? Nous n'oublierons pas ce filon. |
+| Propose la paix (il perd la guerre) | Nos galeries s'effondrent une à une. Que la roche se taise : nous offrons la paix. |
 
 ## Ondésiens · Confluence ondésienne
 
@@ -41,6 +42,7 @@ Généré par `docs/outils/liste-dialogues.mjs` à partir de `src/dialogues.js` 
 | Prend une de vos colonies | Ce monde rejoint nos courants. Ses habitants apprendront à nager. |
 | Perd une flotte | Notre flotte s'est dissoute dans le vide. Le courant pleure, puis repart. |
 | Convoi de ravitaillement pillé | Vous avez coupé un courant qui nourrissait les nôtres. Cela ne s'oublie pas. |
+| Propose la paix (il perd la guerre) | Nos eaux se troublent de trop de pertes. Laissons le courant s'apaiser : faisons la paix. |
 
 ## Kel-Tirr · Ligue des Vents kel-tirr
 
@@ -61,6 +63,7 @@ Généré par `docs/outils/liste-dialogues.mjs` à partir de `src/dialogues.js` 
 | Prend une de vos colonies | Ha ! Ce nid est à l'essaim maintenant ! Trop lents, trop lents ! |
 | Perd une flotte | Des plumes partout… L'essaim reviendra plus nombreux. |
 | Convoi de ravitaillement pillé | Voleurs ! L'essaim a vu, l'essaim se souviendra ! |
+| Propose la paix (il perd la guerre) | Assez, assez ! L'essaim a perdu trop de plumes. La paix, vite, avant d'autres chutes ! |
 
 ## Synodes · Grand Synode
 
@@ -81,6 +84,7 @@ Généré par `docs/outils/liste-dialogues.mjs` à partir de `src/dialogues.js` 
 | Prend une de vos colonies | Ce monde est absorbé dans le réseau. Ses pensées seront les nôtres. |
 | Perd une flotte | Perte enregistrée. Le réseau ajuste ses calculs. |
 | Convoi de ravitaillement pillé | Interception de nos spores de ravitaillement constatée. Réponse en préparation. |
+| Propose la paix (il perd la guerre) | Le réseau a recalculé : poursuivre ce conflit nous coûte trop. Il propose d'y mettre fin. |
 
 ## Orrhaïdes · Concordat orrhaïde
 
@@ -101,6 +105,7 @@ Généré par `docs/outils/liste-dialogues.mjs` à partir de `src/dialogues.js` 
 | Prend une de vos colonies | Ce monde brille désormais de notre éclat. |
 | Perd une flotte | Des cristaux éparpillés dans le vide… ils repousseront ailleurs. |
 | Convoi de ravitaillement pillé | Vous avez éteint un de nos convois. L'ombre que vous jetez s'allonge. |
+| Propose la paix (il perd la guerre) | Trop de nos cristaux se sont brisés. Laissons nos éclats se refroidir : la paix. |
 
 ## Thrennes · Serment threnne
 
@@ -121,6 +126,7 @@ Généré par `docs/outils/liste-dialogues.mjs` à partir de `src/dialogues.js` 
 | Prend une de vos colonies | Ce monde est gravé à notre nom. Une victoire de plus sur nos coques. |
 | Perd une flotte | Nos guerriers sont tombés debout. Leurs noms seront vengés. |
 | Convoi de ravitaillement pillé | Piller nos convois ? Une lâcheté. Elle sera gravée, elle aussi. |
+| Propose la paix (il perd la guerre) | Vous avez gagné notre respect au combat. Le Serment nous permet de rengainer : acceptez la paix. |
 
 ## Liseurs de Vey · Archive de Vey
 
@@ -141,6 +147,7 @@ Généré par `docs/outils/liste-dialogues.mjs` à partir de `src/dialogues.js` 
 | Prend une de vos colonies | Ce monde est désormais consigné dans nos registres. |
 | Perd une flotte | Une flotte effacée des archives. D'autres pages suivront. |
 | Convoi de ravitaillement pillé | Vous avez déchiré une page de nos approvisionnements. Elle sera recopiée, et vous rappelée. |
+| Propose la paix (il perd la guerre) | Les glyphes annoncent une fin amère pour nous. Refermons ce chapitre avant qu'il ne nous efface. |
 
 ## Ashkari · Caravane ashkari
 
@@ -161,3 +168,4 @@ Généré par `docs/outils/liste-dialogues.mjs` à partir de `src/dialogues.js` 
 | Prend une de vos colonies | Ce monde change de propriétaire. Bonne affaire pour nous. |
 | Perd une flotte | Une flotte perdue, une dette de plus. Nous la recouvrerons. |
 | Convoi de ravitaillement pillé | Des pillards ! Toute la route saura qui a volé nos caisses. |
+| Propose la paix (il perd la guerre) | Cette guerre nous ruine, voyageur. Signons la paix, et rouvrons les routes du commerce. |

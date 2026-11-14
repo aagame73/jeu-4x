@@ -22,6 +22,7 @@ const SITUATIONS = {
   victoire: 'Prend une de vos colonies',
   defaite: 'Perd une flotte',
   pillage: 'Convoi de ravitaillement pillé',
+  offrePaix: 'Propose la paix (il perd la guerre)',
 };
 let md = '# Répliques des espèces rivales\n\nGénéré par `docs/outils/liste-dialogues.mjs` à partir de `src/dialogues.js` : modifier ce dernier, puis relancer.\n';
 for (const [key, lines] of Object.entries(DIALOGUES)) {

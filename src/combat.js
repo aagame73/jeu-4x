@@ -5,7 +5,7 @@ import { starDistance } from './galaxy.js';
 import { SHIP_KINDS, colonyDefense, getSurface, removeShip, shipStats } from './game.js';
 import { createRng } from './rng.js';
 import { rivalInfo, speciesHabitat } from './species.js';
-import { changeRelation } from './diplomacy.js';
+import { changeRelation, recordWarLoss } from './diplomacy.js';
 import { lever } from './difficulty.js';
 import { RESOURCE_LABELS } from './economy.js';
 
@@ -121,17 +121,152 @@ function buildFleet(game, empire) {
     progress: 0,
     state: 'idle',
   };
+  // Rivaux plus malins : la nouvelle flotte attend les suivantes pour partir avec elles (flottes groupées).
+  if (smarter(game, 1)) Object.assign(fleet, { hold: true, heldSince: game.time });
   game.fleets.push(fleet);
   return fleet;
 }
 
-// Une flotte au repos choisit la colonie du joueur la plus proche et s'y rend.
+// --- Rivaux plus malins (docs/plan-difficulte.md § 2.1) -----------------------------------
+// smarter 1 (Ardu) : cible choisie, flottes groupées, retraite ; smarter 2 (Redoutable) : en plus défense du monde natal.
+// En Découverte et Standard (smarter 0), rien de tout cela : moveFleet garde le comportement simple.
+
+const smarter = (game, n) => lever(game, 'smarter') >= n;
+
+// Force d'un camp : somme des attaques × somme des résistances restantes.
+function force(units) {
+  const attack = units.reduce((sum, u) => sum + u.attack, 0);
+  const hp = units.reduce((sum, u) => sum + Math.max(0, toughness(u) - u.damage), 0);
+  return attack * hp;
+}
+
+const fleetsForce = (game, fleets) => force(fleets.flatMap((f) => f.ships.map((ship) => rivalShipUnit(game, f, ship))));
+
+// Ce qui attend une flotte dans ce système : la colonie du joueur et ses vaisseaux présents.
+function defenseForce(game, starId) {
+  const units = game.ships
+    .filter((s) => s.starId === starId && s.state !== 'travel')
+    .map((ship) => {
+      const s = shipStats(game, ship);
+      return { attack: s.attack, defense: Math.max(1, s.defense), damage: Number.isFinite(ship.damage) ? ship.damage : 0 };
+    });
+  const colony = game.colonies.find((c) => c.starId === starId);
+  const unit = colony && playerColonyUnit(game, colony);
+  if (unit) units.push(unit);
+  return force(units);
+}
+
+// Trop faible pour attaquer : force sous retreatRatio × celle de la défense.
+const outmatched = (attack, defense) => attack < COMBAT.smart.retreatRatio * defense;
+
+function send(game, fleet, star) {
+  const here = game.stars[fleet.starId];
+  Object.assign(fleet, { state: 'travel', fromId: here.id, toId: star.id, distance: Math.max(1, starDistance(here, star)), progress: 0, hold: false });
+}
+
+// Cible d'un groupe de flottes : la colonie du joueur la plus attrayante à portée (valeur ÷ défense ÷ distance),
+// parmi celles qu'il peut attaquer sans être nettement plus faible, avec les flottes déjà en route vers elle.
+function chooseTarget(game, empire, group) {
+  const here = game.stars[group[0].starId];
+  const { targetSlack, distanceScale, worthPerPop } = COMBAT.smart;
+  const targets = game.colonies.map((colony) => ({ colony, star: game.stars[colony.starId], d: starDistance(here, game.stars[colony.starId]) }));
+  if (!targets.length) return null;
+  const nearest = Math.min(...targets.map((t) => t.d));
+  let best = null;
+  for (const { colony, star, d } of targets) {
+    if (d > nearest + targetSlack) continue;
+    const allies = game.fleets.filter(
+      (f) => f.species === empire.species && !group.includes(f) && ((f.state === 'idle' && f.starId === star.id) || (f.state === 'travel' && f.toId === star.id)),
+    );
+    const defense = defenseForce(game, star.id);
+    if (outmatched(fleetsForce(game, [...group, ...allies]), defense)) continue;
+    const worth = 1 + (Number.isFinite(colony.population) ? colony.population : 0) * worthPerPop;
+    const score = worth / ((1 + defense) * (1 + d / distanceScale));
+    if (!best || score > best.score) best = { star, score };
+  }
+  return best?.star ?? null;
+}
+
+// Colonie de l'empire la plus proche (pour rentrer) ; null si la flotte y est déjà.
+function homeward(game, empire, fleet) {
+  const here = game.stars[fleet.starId];
+  if (empire.colonies.some((c) => c.starId === here.id)) return null;
+  const stars = empire.colonies.map((c) => game.stars[c.starId]);
+  return stars.sort((a, b) => starDistance(here, a) - starDistance(here, b))[0] ?? null;
+}
+
+// Le joueur assiège le monde natal de l'empire : des vaisseaux de guerre y sont.
+const homeBesieged = (game, empire) =>
+  empire.colonies[0]?.starId === empire.homeId && game.ships.some((s) => s.starId === empire.homeId && s.state !== 'travel' && SHIP_KINDS[s.kind].warship);
+
+// Ordres du jour des flottes au repos d'un empire plus malin. Renvoie les événements (retraites).
+function smartOrders(game, empire) {
+  const events = [];
+  const idle = () => game.fleets.filter((f) => f.species === empire.species && f.state === 'idle');
+  const { label } = rivalInfo(empire.species);
+  // 5. Défense du monde natal : toutes les flottes au repos y retournent, sans attendre ni compter.
+  if (smarter(game, 2) && homeBesieged(game, empire)) {
+    const home = game.stars[empire.homeId];
+    const away = idle().filter((f) => f.starId !== home.id);
+    for (const fleet of away) send(game, fleet, home);
+    for (const fleet of idle()) fleet.hold = false;
+    if (away.length && !empire.defendingHome) events.push({ text: `Les ${label} rappellent leurs flottes pour défendre leur monde natal, ${home.name}.`, type: 'fleet-recall', species: empire.species });
+    empire.defendingHome = true;
+    return events;
+  }
+  if (empire.defendingHome) delete empire.defendingHome;
+  // 3. Retraite : au siège d'une colonie du joueur, des flottes nettement plus faibles que la défense se replient.
+  for (const starId of new Set(idle().map((f) => f.starId))) {
+    if (!game.colonies.some((c) => c.starId === starId)) continue;
+    const here = idle().filter((f) => f.starId === starId);
+    if (!outmatched(fleetsForce(game, here), defenseForce(game, starId))) continue;
+    let left = 0;
+    for (const fleet of here) {
+      const back = homeward(game, empire, fleet);
+      if (!back) continue;
+      send(game, fleet, back);
+      wait(game, fleet);
+      left++;
+    }
+    if (left) events.push({ text: `Les flottes des ${label} se replient du système ${game.stars[starId].name}.`, kind: 'discovery', type: 'fleet-retreat', species: empire.species });
+  }
+  // 2. Flottes groupées : celles qui attendent partent ensemble dès qu'elles sont assez nombreuses (ou ont trop attendu).
+  const held = idle().filter((f) => f.hold === true && !game.colonies.some((c) => c.starId === f.starId));
+  const waited = held.length && game.time - Math.min(...held.map((f) => (Number.isFinite(f.heldSince) ? f.heldSince : 0))) >= COMBAT.smart.groupWaitDays;
+  if (held.length >= COMBAT.smart.groupFleets || waited) {
+    // Elles partent de l'étoile de la première ; les autres la rejoignent si elles sont ailleurs (même cible).
+    const target = chooseTarget(game, empire, held);
+    if (target) for (const fleet of held) send(game, fleet, target);
+  }
+  // 1. Les autres flottes au repos, hors siège : cible choisie ; sinon elles rentrent et attendent des renforts.
+  for (const fleet of idle()) {
+    if (fleet.hold === true || game.colonies.some((c) => c.starId === fleet.starId)) continue;
+    const target = chooseTarget(game, empire, [fleet]);
+    if (target) {
+      send(game, fleet, target);
+      continue;
+    }
+    const back = homeward(game, empire, fleet);
+    if (back) send(game, fleet, back);
+    wait(game, fleet);
+  }
+  return events;
+}
+
+// La flotte attendra les renforts pour repartir en groupe (même en route vers chez elle).
+function wait(game, fleet) {
+  Object.assign(fleet, { hold: true, heldSince: game.time });
+}
+
+// Une flotte au repos choisit la colonie du joueur la plus proche et s'y rend. Aux niveaux où les rivaux
+// sont plus malins, ce sont les ordres de smartOrders qui décident (la flotte ne fait ici qu'avancer).
 function moveFleet(game, fleet) {
   if (fleet.state === 'travel') {
     fleet.progress += COMBAT.fleetSpeed;
     if (fleet.progress >= fleet.distance) Object.assign(fleet, { state: 'idle', starId: fleet.toId, fromId: null, toId: null, progress: 0, distance: 0 });
     return;
   }
+  if (smarter(game, 1)) return;
   if (game.colonies.some((c) => c.starId === fleet.starId)) return; // déjà au siège
   const here = game.stars[fleet.starId];
   const target = game.colonies.map((c) => game.stars[c.starId]).sort((a, b) => starDistance(here, a) - starDistance(here, b))[0];
@@ -250,6 +385,7 @@ function battleDay(game, starId, rng) {
   for (const fleet of fleets) {
     if (fleet.ships.length) continue;
     game.fleets = game.fleets.filter((f) => f !== fleet);
+    recordWarLoss(empireOf(game, fleet.species), 'fleets');
     events.push({ text: `Une flotte des ${rivalInfo(fleet.species).label} est anéantie dans le système ${star.name}.`, kind: 'discovery', type: 'fleet-lost', species: fleet.species });
   }
   // Colonie du joueur assiégée.
@@ -262,6 +398,7 @@ function battleDay(game, starId, rng) {
     const fallen = colonyUnit ? !alive(colonyUnit) : colony.siegeDays >= COMBAT.captureDays;
     if (besiegers.length && !defended && fallen) {
       captureFromPlayer(game, colony, besiegers[0].species);
+      recordWarLoss(empireOf(game, besiegers[0].species), 'taken');
       events.push({ text: `${colony.name} est tombée aux mains des ${rivalInfo(besiegers[0].species).label} !`, type: 'colony-lost', species: besiegers[0].species });
     }
   }
@@ -275,6 +412,7 @@ function battleDay(game, starId, rng) {
     if (alive(u) || !stillWarships || !u.empire.colonies.includes(u.ref)) continue;
     if (home && u.ref.siegeDays < COMBAT.homeSiegeDays) continue; // un monde natal résiste longtemps
     const how = captureFromEmpire(game, u.empire, u.ref);
+    recordWarLoss(u.empire, 'colonies');
     const name = star.planets[u.ref.planetIndex].name;
     const { label, empire: title } = rivalInfo(u.empire.species);
     events.push({ text: how === 'retaken' ? `Vous reprenez ${name} aux ${label} !` : `Vous prenez ${name} aux ${label} !`, kind: 'discovery', type: 'colony-won', species: u.empire.species });
@@ -354,6 +492,7 @@ function warDay(game) {
     events.push({ text: `Les ${rivalInfo(empire.species).label} lancent une flotte de guerre (${n} ${kind}${n > 1 ? 's' : ''}).`, type: 'fleet-built', species: empire.species });
   }
   game.fleets = game.fleets.filter((f) => atWar(game, f.species));
+  if (smarter(game, 1)) for (const empire of game.empires) if (empire.war) events.push(...smartOrders(game, empire));
   for (const fleet of game.fleets) moveFleet(game, fleet);
 
   const idleFleetStars = game.fleets.filter((f) => f.state === 'idle').map((f) => f.starId);

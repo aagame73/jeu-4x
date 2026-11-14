@@ -290,6 +290,14 @@ export const DIPLOMACY = {
   peaceValue: 300, // prix de la paix : peaceValue + peaceValuePerPower × puissance de l'empire
   peaceValuePerPower: 10,
   warMargin: 1.2, // en guerre, l'empire exige un peu plus que ce que vaut la paix
+  // Guerre opportuniste (Redoutable, smarter 2) : un rival Méfiant peut aussi déclarer la guerre si le joueur a au plus
+  // fewWarships vaisseaux de guerre ou s'il est déjà en guerre contre un autre empire ; chance de guerre × chance.
+  opportunism: { fewWarships: 2, chance: 0.5 },
+  // Paix proposée par un rival qui perd la guerre (tous niveaux). Pertes = flottes détruites × perFleet + colonies
+  // perdues × perColony − colonies prises au joueur × perTaken + un point par daysPerPoint jours de guerre.
+  // Il propose la paix (sans condition) quand ses pertes atteignent threshold, jamais avant minDays de guerre ;
+  // l'offre vaut days jours ; refusée ou expirée, il attend delay jours avant d'en refaire une.
+  peaceOffer: { minDays: 200, perFleet: 1, perColony: 3, perTaken: 3, daysPerPoint: 1500, threshold: 4, days: 60, delay: 400 },
   convoySpeed: 2, // al par jour : les matières reçues voyagent depuis la colonie la plus proche de l'empire
   treatyRespectPerDay: 0.01, // note gagnée chaque jour tant qu'un traité tient
   treatyBreakPenalty: 25, // note perdue à la rupture
@@ -341,6 +349,17 @@ export const COMBAT = {
   interceptRange: 10, // al : un vaisseau de guerre du joueur intercepte un convoi passant à cette distance
   pillageShare: 0.6, // part de la cargaison récupérée
   pillageRelation: 10, // note perdue auprès de l'empire pillé
+  // Rivaux plus malins (docs/plan-difficulte.md § 2.1), selon smarter du niveau (DIFFICULTY) : 1 = cible choisie,
+  // flottes groupées et retraite ; 2 = en plus défense du monde natal (et guerre opportuniste, DIPLOMACY.opportunism).
+  // Force d'un camp = somme des attaques × somme des résistances restantes.
+  smart: {
+    targetSlack: 40, // al : colonies visées jusqu'à la distance de la plus proche + cette marge
+    distanceScale: 40, // al : attrait d'une cible ÷ (1 + distance / distanceScale)
+    worthPerPop: 1, // valeur d'une colonie : 1 + population × worthPerPop ; attrait = valeur ÷ (1 + force de sa défense)
+    groupFleets: 2, // flottes réunies avant de partir ensemble
+    groupWaitDays: 150, // au-delà, une flotte qui attend part seule (si elle n'est pas nettement plus faible)
+    retreatRatio: 0.5, // « nettement plus faible » : force sous cette part de la défense qui l'attend → pas d'attaque
+  },
 };
 
 // Expansion des empires rivaux (empires.js). Le niveau de difficulté ajuste growth, power et maxExtraRange (DIFFICULTY, lever() dans difficulty.js).

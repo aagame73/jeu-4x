@@ -6,6 +6,7 @@ import { TECHS } from './research.js';
 import { RESOURCE_LABELS } from './economy.js';
 import { createRng } from './rng.js';
 import { lever } from './difficulty.js';
+import { SHIP_KINDS } from './game.js';
 
 export const startRelation = (species) => DIPLOMACY.startRelation[species];
 
@@ -132,6 +133,8 @@ export function peacePrice(empire, res, game) {
 export function declareWar(game, empire, byPlayer) {
   empire.war = true;
   empire.warSince = game.time;
+  empire.warLosses = noLosses();
+  empire.nextPeaceOffer = 0;
   for (const key of Object.keys(DIPLOMACY.treaties)) empire.treaties[key] = 0;
   dropProposal(game, empire.species);
   empire.relation = Math.min(empire.relation, DIPLOMACY.warRelation);
@@ -143,17 +146,65 @@ export function declareWar(game, empire, byPlayer) {
 
 function makePeace(game, empire) {
   empire.war = false;
+  dropProposal(game, empire.species); // une offre de paix en attente n'a plus d'objet
   game.fleets = game.fleets.filter((f) => f.species !== empire.species); // les flottes rentrent chez elles
   empire.truceUntil = game.time + DIPLOMACY.truceDays;
   empire.relation = Math.max(empire.relation, DIPLOMACY.peaceRelation);
 }
 
+// Bilan de la guerre en cours, pour la paix proposée : flottes détruites, colonies perdues, colonies prises au joueur.
+export const noLosses = () => ({ fleets: 0, colonies: 0, taken: 0 });
+
+// Une perte (ou une prise, clé « taken ») de cet empire pendant la guerre ; combat.js l'appelle.
+export function recordWarLoss(empire, key) {
+  empire.warLosses = { ...noLosses(), ...empire.warLosses };
+  empire.warLosses[key] += 1;
+}
+
+// L'empire perd-il assez cette guerre pour proposer lui-même la paix ?
+export function losingWar(game, empire) {
+  const p = DIPLOMACY.peaceOffer;
+  const days = game.time - empire.warSince;
+  if (!empire.war || days < p.minDays) return false;
+  const l = { ...noLosses(), ...empire.warLosses };
+  const score = l.fleets * p.perFleet + l.colonies * p.perColony - l.taken * p.perTaken + Math.floor(days / p.daysPerPoint);
+  return score >= p.threshold;
+}
+
+const peaceOfferDeal = () => ({ give: { resources: {}, techs: [], map: false }, get: { resources: {}, techs: [], map: false, treaties: [], peace: true } });
+
+// Le joueur accepte la paix proposée par l'empire : fin de la guerre et trêve, sans rien payer.
+export function acceptPeaceOffer(game, empire) {
+  const proposal = pendingProposal(game, empire);
+  if (!proposal?.peace || !empire.war) return false;
+  makePeace(game, empire);
+  return true;
+}
+
+// Le joueur refuse une proposition ; une offre de paix refusée ne revient pas avant peaceOffer.delay jours.
+export function declineProposal(game, empire) {
+  const proposal = proposalOf(game, empire);
+  dropProposal(game, empire.species);
+  if (proposal?.peace) empire.nextPeaceOffer = game.time + DIPLOMACY.peaceOffer.delay;
+  return proposal ?? null;
+}
+
+// Le joueur paraît vulnérable : peu de vaisseaux de guerre, ou déjà en guerre contre un autre empire.
+function playerLooksWeak(game, empire) {
+  const warships = game.ships.filter((s) => SHIP_KINDS[s.kind]?.warship).length;
+  return warships <= DIPLOMACY.opportunism.fewWarships || game.empires.some((e) => e !== empire && e.war && !e.eliminated);
+}
+
 // Un rival hostile peut déclarer la guerre : jamais avant le délai de grâce ni pendant une trêve.
+// En Redoutable (smarter 2), un rival méfiant aussi, si le joueur paraît vulnérable (guerre opportuniste).
 function warDay(game, empire, events) {
   if (empire.war || game.time < lever(game, 'graceDays') || game.time < empire.truceUntil) return;
-  if (attitudeOf(empire.relation).key !== 'hostile') return;
+  const attitude = attitudeOf(empire.relation).key;
+  const opportunist = attitude === 'mefiant' && lever(game, 'smarter') >= 2 && playerLooksWeak(game, empire);
+  if (attitude !== 'hostile' && !opportunist) return;
   const rng = createRng((game.seed ^ Math.imul(empire.homeId + 1, 0x7f4a7c15) ^ Math.imul(Math.floor(game.time), 0x165667b1)) >>> 0);
-  if (rng.next() >= DIPLOMACY.warChancePerDay * lever(game, 'warChancePerDay') * (DIPLOMACY.warStyle[empire.species] ?? 1)) return;
+  const chance = DIPLOMACY.warChancePerDay * lever(game, 'warChancePerDay') * (DIPLOMACY.warStyle[empire.species] ?? 1);
+  if (rng.next() >= chance * (opportunist ? DIPLOMACY.opportunism.chance : 1)) return;
   declareWar(game, empire, false);
   events.push({ type: 'war', empire });
 }
@@ -431,16 +482,26 @@ function proposalDay(game, empire, events) {
   const current = proposalOf(game, empire);
   if (current && game.time >= current.expires) {
     game.proposals = game.proposals.filter((p) => p !== current);
-    events.push({ type: 'expired', empire });
+    if (current.peace) empire.nextPeaceOffer = game.time + DIPLOMACY.peaceOffer.delay;
+    events.push({ type: 'expired', empire, peace: current.peace === true });
   }
   if (!empire.nextProposal) scheduleProposal(game, empire);
   const hostile = attitudeOf(empire.relation).key === 'hostile';
-  // Un empire devenu hostile retire sa proposition.
-  if ((hostile || empire.war) && proposalOf(game, empire)) {
-    game.proposals = game.proposals.filter((p) => p.species !== empire.species);
-    events.push({ type: 'expired', empire });
+  // Un empire devenu hostile retire sa proposition d'échange ; une offre de paix n'a plus d'objet hors guerre.
+  const stale = proposalOf(game, empire);
+  if (stale && (stale.peace ? !empire.war : hostile || empire.war)) {
+    game.proposals = game.proposals.filter((p) => p !== stale);
+    if (!stale.peace) events.push({ type: 'expired', empire });
   }
-  if (proposalOf(game, empire) || game.time < empire.nextProposal || hostile || empire.war) return;
+  // En guerre, un empire qui perd propose lui-même la paix (tous niveaux).
+  if (empire.war) {
+    if (proposalOf(game, empire) || game.time < (empire.nextPeaceOffer ?? 0) || !losingWar(game, empire)) return;
+    const proposal = { species: empire.species, offer: peaceOfferDeal(), expires: game.time + DIPLOMACY.peaceOffer.days, peace: true };
+    game.proposals.push(proposal);
+    events.push({ type: 'peace-offer', empire, proposal });
+    return;
+  }
+  if (proposalOf(game, empire) || game.time < empire.nextProposal || hostile) return;
   const offer = makeProposal(game, empire);
   scheduleProposal(game, empire);
   if (!offer) return;

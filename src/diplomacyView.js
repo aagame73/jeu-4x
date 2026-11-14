@@ -5,7 +5,7 @@ import { DIPLOMACY, SPECIES } from './config.js';
 import { attitudeOf, peacePrice, buyableTechs, counterOffer, describeOffer, dropProposal, evaluateDeal, pendingProposal, relationReasons, rivalsOf, sellableTechs, treatyActive } from './diplomacy.js';
 import { line } from './dialogues.js';
 import { RESOURCE_LABELS } from './economy.js';
-import { declareWarOn, signDeal } from './game.js';
+import { acceptPeace, declareWarOn, refuseProposal, signDeal } from './game.js';
 import { TECHS } from './research.js';
 import { rivalInfo } from './species.js';
 
@@ -154,7 +154,8 @@ export function createDiplomacyView(root, game, actions) {
     const proposal = pendingProposal(game, empire);
     if (!proposal) return '';
     const days = Math.max(0, Math.ceil(proposal.expires - game.time));
-    return `<div class="dp-proposal"><b>Proposition en attente</b> (encore ${days} jours) : ${describeOffer(proposal.offer)}.
+    const text = proposal.peace ? 'la paix, sans condition (trêve aussitôt signée)' : describeOffer(proposal.offer);
+    return `<div class="dp-proposal"><b>${proposal.peace ? 'Offre de paix' : 'Proposition en attente'}</b> (encore ${days} jours) : ${text}.
       <span class="dp-proposal-actions"><button data-dp="decline">Refuser</button><button class="primary" data-dp="accept-proposal">Accepter</button></span></div>`;
   }
 
@@ -289,13 +290,27 @@ export function createDiplomacyView(root, game, actions) {
     }
     else if (action === 'accept-proposal') {
       const proposal = pendingProposal(game, selected);
+      if (proposal?.peace) {
+        // Paix offerte par l'empire : rien à payer, elle prend effet tout de suite.
+        if (acceptPeace(game, selected)) {
+          offer = emptyOffer();
+          say(line(selected.species, 'paix'), true);
+          actions.refresh();
+        }
+        renderDetail();
+        renderList();
+        return;
+      }
       dropProposal(game, selected.species);
       if (proposal?.offer) propose(proposal.offer);
       else renderDetail(); // échue entre-temps
       renderList();
     } else if (action === 'decline') {
-      dropProposal(game, selected.species);
-      say(line(selected.species, 'refus'), null);
+      // Paix refusée : la guerre continue, le rival le fait savoir ; sinon il prend acte du refus.
+      const peace = game.proposals.some((p) => p.species === selected.species && p.peace);
+      refuseProposal(game, selected);
+      say(line(selected.species, peace ? 'guerre' : 'refus'), null);
+      actions.refresh();
       renderList();
       renderDetail();
     }

@@ -1,7 +1,7 @@
 // Empires rivaux simulés (voir docs/plan-rivaux-ia.md) : ils s'étendent dans l'amas sans bâtir
-// sur les hexagones. Réglages dans config.js (RIVAL_AI). Diplomatie : diplomacy.js ; pas encore de combat.
+// sur les hexagones. Réglages dans config.js (RIVAL_AI). Diplomatie : diplomacy.js ; guerre : combat.js.
 import { DIPLOMACY, RIVAL_AI, SPECIES } from './config.js';
-import { startRelation, startStocks, treatyForbids } from './diplomacy.js';
+import { noLosses, startRelation, startStocks, treatyForbids } from './diplomacy.js';
 import { lever } from './difficulty.js';
 import { starDistance } from './galaxy.js';
 import { TECHS } from './research.js';
@@ -32,6 +32,8 @@ export function createEmpires(stars) {
         truceUntil: 0,
         nextFleet: 0,
         nextSupply: 0,
+        warLosses: noLosses(), // bilan de la guerre en cours (diplomacy.js : paix proposée par un empire qui perd)
+        nextPeaceOffer: 0, // pas d'offre de paix avant ce jour (après un refus ou une offre expirée)
         eliminated: false, // monde natal perdu : l'empire a disparu (combat.js)
       };
       empire.stocks = startStocks(empire);
@@ -113,6 +115,9 @@ const validStocks = (empire) => {
   return Object.fromEntries(Object.keys(start).map((res) => [res, Number.isFinite(empire.stocks?.[res]) && empire.stocks[res] >= 0 ? empire.stocks[res] : start[res]]));
 };
 
+// Bilan de guerre d'une sauvegarde (absent avant la paix proposée : rien de perdu).
+const validLosses = (saved) => Object.fromEntries(Object.entries(noLosses()).map(([key, zero]) => [key, Number.isInteger(saved?.[key]) && saved[key] >= 0 ? saved[key] : zero]));
+
 // Empires d'une sauvegarde, s'ils correspondent à cette partie ; sinon null (un fichier modifié
 // ne doit ni planter ni fausser la partie : les rivaux repartent alors de leur monde natal).
 export function validEmpires(game, saved) {
@@ -143,8 +148,11 @@ export function validEmpires(game, saved) {
     truceUntil: number(empire.truceUntil) ? empire.truceUntil : 0,
     nextFleet: number(empire.nextFleet) ? empire.nextFleet : 0,
     nextSupply: number(empire.nextSupply) ? empire.nextSupply : 0,
+    warLosses: validLosses(empire.warLosses),
+    nextPeaceOffer: number(empire.nextPeaceOffer) ? empire.nextPeaceOffer : 0,
     lastAttitude: DIPLOMACY.attitudes.some((a) => a.key === empire.lastAttitude) ? empire.lastAttitude : undefined,
     eliminated: empire.eliminated === true,
+    ...(empire.defendingHome === true ? { defendingHome: true } : {}), // flottes rappelées au monde natal assiégé (Redoutable)
   }));
 }
 
