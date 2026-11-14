@@ -14,7 +14,8 @@
 - Rien. **Combat** publié le 08/11/2026. **Vue du système en guerre** (`docs/plan-systeme-guerre.md`) faite le 13/11/2026 : vaisseaux visibles, tirs, explosions, panneau de bataille, ouverture automatique, temps ralenti. Publiée le 14/11/2026.
 - **Victoire et fin de partie** (`docs/plan-victoire.md`) faite le 14/11/2026, 5 étapes : 80 % des systèmes colonisables ou plus aucun rival ; mondes natals prenables (30 jours de siège), empire éliminé ; compteur d'objectifs ; écran de fin avec bilan ; animation et réplique de fin par espèce. Animations vérifiées dans Chrome. Publiée le 14/11/2026.
 
-## Prochaine étape (décisions du 08/11/2026)
+## Prochaine étape (14/11/2026)
+- **Niveau de difficulté** (avec l'IA des rivaux ; dira aussi si un rival peut gagner) : plan à écrire dans `docs/`, sans coder, puis questions de design.
 - **Équilibrage** : une fois le jeu terminé, par simulations (flottes, prix de la paix, pillage, espèces, rivaux, échanges).
 - À relire ensemble quand tu veux : les 120 répliques (`docs/dialogues-especes.md`).
 
