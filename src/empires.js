@@ -2,6 +2,7 @@
 // sur les hexagones. Réglages dans config.js (RIVAL_AI). Diplomatie : diplomacy.js ; pas encore de combat.
 import { DIPLOMACY, RIVAL_AI, SPECIES } from './config.js';
 import { startRelation, startStocks, treatyForbids } from './diplomacy.js';
+import { lever } from './difficulty.js';
 import { starDistance } from './galaxy.js';
 import { TECHS } from './research.js';
 import { createRng } from './rng.js';
@@ -38,14 +39,16 @@ export function createEmpires(stars) {
     });
 }
 
-const growthOf = (empire, day) => {
+// Points d'expansion par jour, selon le style de l'espèce et le niveau de la partie.
+const growthOf = (game, empire) => {
   const style = RIVAL_AI.styles[empire.species];
-  return style.lateDay !== undefined && day >= style.lateDay ? style.lateGrowth : style.growth;
+  return (style.lateDay !== undefined && game.time >= style.lateDay ? style.lateGrowth : style.growth) * lever(game, 'growth');
 };
 
 const colonyCost = (empire) => RIVAL_AI.baseCost * (1 + RIVAL_AI.costGrowth * (empire.colonies.length - 1));
 
-const reach = (empire) => RIVAL_AI.startRange + Math.min(RIVAL_AI.maxExtraRange, empire.power);
+// Portée de l'empire (al) : elle grandit avec sa puissance, jusqu'à un plafond selon le niveau.
+export const rivalReach = (game, empire) => RIVAL_AI.startRange + Math.min(RIVAL_AI.maxExtraRange * lever(game, 'maxExtraRange'), empire.power);
 
 export function rivalColonyAt(game, starId, planetIndex) {
   for (const empire of game.empires) {
@@ -73,7 +76,7 @@ function chooseTarget(game, empire) {
   const rng = createRng((game.seed ^ Math.imul(empire.homeId + 1, 0x9e3779b1) ^ Math.imul(empire.colonies.length, 0x51ed270b)) >>> 0);
   const own = empire.colonies.map((c) => game.stars[c.starId]);
   const others = game.empires.filter((e) => e !== empire).flatMap((e) => e.colonies.map((c) => game.stars[c.starId]));
-  const range = reach(empire);
+  const range = rivalReach(game, empire);
   const playerStars = new Set(game.colonies.map((c) => c.starId));
   const taken = new Set(game.empires.flatMap((e) => e.colonies.map((c) => `${c.starId}-${c.planetIndex}`)));
   const ruinsLeft = freeRuins(game, taken);
@@ -189,8 +192,8 @@ export function tickEmpires(game, days) {
   for (const empire of game.empires) {
     if (empire.eliminated) continue;
     const style = RIVAL_AI.styles[empire.species];
-    empire.points += growthOf(empire, game.time) * days;
-    empire.power += style.power * days;
+    empire.points += growthOf(game, empire) * days;
+    empire.power += style.power * lever(game, 'power') * days;
     if (empire.points < colonyCost(empire) || game.time < empire.nextTry) continue;
     const target = chooseTarget(game, empire);
     if (!target) {

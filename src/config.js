@@ -275,8 +275,8 @@ export const DIPLOMACY = {
   proposalMax: 200,
   proposalMaterials: ['minerais', 'alliages', 'biomasse', 'eau', 'deuterium'], // la Vélarine et les artefacts ne se proposent pas
   // Guerre et paix (docs/plan-combat.md). Un rival hostile peut déclarer la guerre au joueur, jamais avant graceDays
-  // ni pendant une trêve ; warChancePerDay × warStyle de l'espèce, chaque jour.
-  graceDays: 500,
+  // ni pendant une trêve ; warChancePerDay × warStyle de l'espèce, chaque jour (× le levier du niveau, DIFFICULTY).
+  graceDays: 500, // valeur de Standard, pour les tests : le jeu lit DIFFICULTY.levels.*.graceDays
   truceDays: 300,
   warChancePerDay: 0.004,
   warStyle: { keltirr: 2, thrennes: 2, ondesiens: 0.5, ashkari: 0.5 },
@@ -314,6 +314,7 @@ export const COMBAT = {
   maxBattleDays: 60, // au-delà, les deux camps se séparent (simulation seulement)
   battleSpeed: 0.5, // jours par seconde pendant un combat chez le joueur (la vitesse x1 en fait 1)
   // Flottes rivales, seulement en guerre contre le joueur.
+  // fleetEvery, maxFleets et fleetSize.max : valeurs de Standard, pour les tests ; le jeu lit celles du niveau (DIFFICULTY).
   fleetEvery: 60, // jours entre deux flottes d'un même empire
   maxFleets: 3, // flottes en même temps par empire
   fleetSpeed: 1.5, // al par jour
@@ -338,7 +339,7 @@ export const COMBAT = {
   pillageRelation: 10, // note perdue auprès de l'empire pillé
 };
 
-// Expansion des empires rivaux (empires.js). Un niveau de difficulté pourra agir sur ces réglages.
+// Expansion des empires rivaux (empires.js). Le niveau de difficulté ajuste growth, power et maxExtraRange (DIFFICULTY, lever() dans difficulty.js).
 // Une colonie coûte baseCost points × (1 + costGrowth par colonie déjà fondée) ; un empire gagne growth points par jour.
 // power : monte chaque jour, augmente la portée (al) et autorise les milieux hostiles. deposits : poids des gisements.
 // ruins : attrait des ruines ; frontier : attrait des systèmes proches d'un autre empire.

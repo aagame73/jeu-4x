@@ -27,3 +27,7 @@ export const imposedSettings = (difficulty) => DIFFICULTY.levels[validDifficulty
 export const difficultyLevel = (key) => DIFFICULTY.levels[validDifficulty(key)];
 export const mapSettings = (key) => MAP_SIZES.sizes[validMapSize(key)];
 export const resourceSettings = (key) => RESOURCE_LEVELS.levels[validResourceLevel(key)];
+
+// Levier des rivaux au niveau de la partie (étape 3) : un multiplicateur (growth, power, margin…) ou une valeur
+// (graceDays, fleetEvery, maxFleets, fleetSizeMax). Sans niveau (ancienne partie, tests), c'est Standard : le jeu d'avant.
+export const lever = (game, key) => difficultyLevel(game?.difficulty)[key];

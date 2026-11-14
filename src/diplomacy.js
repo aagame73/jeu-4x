@@ -5,6 +5,7 @@ import { starDistance } from './galaxy.js';
 import { TECHS } from './research.js';
 import { RESOURCE_LABELS } from './economy.js';
 import { createRng } from './rng.js';
+import { lever } from './difficulty.js';
 
 export const startRelation = (species) => DIPLOMACY.startRelation[species];
 
@@ -44,7 +45,7 @@ function stockDay(game, empire) {
   const ruins = empire.colonies.filter((c) => game.stars[c.starId].planets[c.planetIndex].ruins).length;
   for (const res of Object.keys(DIPLOMACY.stockCap)) {
     const producers = res === 'artefacts' ? ruins : empire.colonies.length;
-    const gain = DIPLOMACY.stockPerDay[res] * (bonuses[res] ?? 1) * producers;
+    const gain = DIPLOMACY.stockPerDay[res] * lever(game, 'stockPerDay') * (bonuses[res] ?? 1) * producers;
     empire.stocks[res] = Math.min(stockCap(empire, res), empire.stocks[res] + gain);
   }
 }
@@ -108,11 +109,13 @@ export function breakTreaties(game, starId) {
 
 // --- Guerre et paix -----------------------------------------------------------------------
 
-const peaceValue = (empire) => DIPLOMACY.peaceValue + DIPLOMACY.peaceValuePerPower * empire.power;
+// Valeur de la paix, plus chère aux niveaux élevés (levier margin).
+const peaceValue = (game, empire) => (DIPLOMACY.peaceValue + DIPLOMACY.peaceValuePerPower * empire.power) * lever(game, 'margin');
 
 // Quantité minimale d'une matière pour acheter la paix à cet empire (selon sa rareté chez lui).
-export function peacePrice(empire, res) {
-  const needed = peaceValue(empire) * DIPLOMACY.warMargin;
+// Sans partie (game absent), le prix est celui du niveau Standard.
+export function peacePrice(empire, res, game) {
+  const needed = peaceValue(game, empire) * DIPLOMACY.warMargin;
   let low = 1;
   let high = 1;
   while (materialValue(empire, res, high, true) < needed && high < 1e6) high *= 2;
@@ -147,10 +150,10 @@ function makePeace(game, empire) {
 
 // Un rival hostile peut déclarer la guerre : jamais avant le délai de grâce ni pendant une trêve.
 function warDay(game, empire, events) {
-  if (empire.war || game.time < DIPLOMACY.graceDays || game.time < empire.truceUntil) return;
+  if (empire.war || game.time < lever(game, 'graceDays') || game.time < empire.truceUntil) return;
   if (attitudeOf(empire.relation).key !== 'hostile') return;
   const rng = createRng((game.seed ^ Math.imul(empire.homeId + 1, 0x7f4a7c15) ^ Math.imul(Math.floor(game.time), 0x165667b1)) >>> 0);
-  if (rng.next() >= DIPLOMACY.warChancePerDay * (DIPLOMACY.warStyle[empire.species] ?? 1)) return;
+  if (rng.next() >= DIPLOMACY.warChancePerDay * lever(game, 'warChancePerDay') * (DIPLOMACY.warStyle[empire.species] ?? 1)) return;
   declareWar(game, empire, false);
   events.push({ type: 'war', empire });
 }
@@ -249,7 +252,7 @@ function sideValue(game, empire, side, playerGives) {
   total += (side.techs ?? []).reduce((sum, key) => sum + techValue(key), 0);
   if (side.map) total += DIPLOMACY.mapValuePerColony * (playerGives ? game.colonies.length : unknownColonies(empire));
   total += (side.treaties ?? []).reduce((sum, key) => sum + DIPLOMACY.treaties[key].value, 0);
-  if (side.peace) total += peaceValue(empire);
+  if (side.peace) total += peaceValue(game, empire);
   return total;
 }
 
@@ -330,7 +333,7 @@ export function evaluateDeal(game, empire, offer) {
   const given = sideValue(game, empire, offer.get, false);
   const margin = empire.war
     ? DIPLOMACY.warMargin
-    : Math.max(DIPLOMACY.marginFloor, DIPLOMACY.margin[attitudeOf(empire.relation).key] * (DIPLOMACY.tradeFactor[empire.species] ?? 1));
+    : Math.max(DIPLOMACY.marginFloor, DIPLOMACY.margin[attitudeOf(empire.relation).key] * lever(game, 'margin') * (DIPLOMACY.tradeFactor[empire.species] ?? 1));
   return { ok: received >= given * margin, reason: received >= given * margin ? null : 'unbalanced', received, given, margin };
 }
 
@@ -502,7 +505,9 @@ function diplomacyDay(game) {
       }
     }
     if (!empire.met) continue;
-    const pressure = Math.min(DIPLOMACY.proximityMax, nearColonies(game, empire) * DIPLOMACY.proximityPerColony);
+    // Le niveau change l'agacement par colonie et son plafond (sinon il ne jouerait plus au-delà de 5 colonies proches).
+    const annoyance = lever(game, 'proximityPerColony');
+    const pressure = Math.min(DIPLOMACY.proximityMax * annoyance, nearColonies(game, empire) * DIPLOMACY.proximityPerColony * annoyance);
     // En guerre, la rancune ne s'efface pas d'elle-même.
     const drift = empire.war ? 0 : (startRelation(empire.species) - empire.relation) * DIPLOMACY.returnPerDay;
     changeRelation(empire, drift - pressure);

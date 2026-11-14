@@ -166,5 +166,191 @@ const fingerprint = (g) => createHash('sha256').update(JSON.stringify({ stars: g
   }
 }
 
+// Étape 3 : leviers des rivaux selon le niveau.
+const Dp = await imp('diplomacy.js');
+const C = await imp('combat.js');
+const LEVELS = ['decouverte', 'standard', 'ardu', 'redoutable'];
+const hash = (x) => createHash('sha256').update(JSON.stringify(x)).digest('hex').slice(0, 16);
+// Partie avec la colonie de l'Arche fondée ; level : niveau posé après la création (même amas pour tous).
+function withColony(seed, level) {
+  const game = G.createGame(seed, 'vaskhar', 4);
+  if (level) game.difficulty = level;
+  const arche = game.ships[0];
+  const home = game.stars[arche.starId];
+  home.level = 3;
+  const index = home.planets.findIndex((p) => p.size && !p.inhabitedBy);
+  const surface = G.getSurface(game, home.id, index);
+  G.foundColony(game, arche, home.id, index, surface.tiles.findIndex((t) => t.terrain !== 'ocean' && !t.building && !['minerais', 'velarine'].includes(t.deposit?.resource)));
+  for (const e of game.empires) e.met = true;
+  return game;
+}
+// Rivaux tenus hostiles : guerre, flottes, prix de la paix.
+function hostileRun(seed, level) {
+  const game = withColony(seed, level);
+  const peace = [];
+  for (let d = 0; d < 2500 && !game.ended; d++) {
+    for (const e of game.empires) if (e.species === 'thrennes' || e.species === 'keltirr' || e.relation < 0) e.relation = -90;
+    G.tick(game, 1);
+    if (d % 500 === 0) peace.push(...game.empires.map((e) => Dp.peacePrice(e, 'minerais', game)));
+  }
+  return hash({ empires: game.empires, fleets: game.fleets, n: game.nextFleetId, c: game.colonies.length, t: game.time, peace });
+}
+// Joueur passif : expansion, stocks, notes, propositions.
+function peacefulRun(seed, level) {
+  const game = withColony(seed, level);
+  for (let d = 0; d < 3000 && !game.ended; d++) G.tick(game, 1);
+  return hash({ empires: game.empires, proposals: game.proposals, t: game.time });
+}
+{
+  // Empreintes relevées avec le code d'avant l'étape 3.
+  const before = { hostile: { 42: 'b4ccc7d238fec5f3', 7: '3162c0b6024669db' }, peaceful: { 42: '932f49a80242f972', 7: '454e4dc3bb196b22' } };
+  for (const seed of [42, 7]) {
+    check(hostileRun(seed) === before.hostile[seed] && hostileRun(seed, 'standard') === before.hostile[seed], `graine ${seed} : Standard identique à avant (rivaux hostiles, guerre et flottes)`);
+    check(peacefulRun(seed) === before.peaceful[seed], `graine ${seed} : Standard identique à avant (expansion, stocks, notes sur 3 000 jours)`);
+  }
+  check(hostileRun(42, 'ardu') !== before.hostile[42] && peacefulRun(42, 'decouverte') !== before.peaceful[42], 'les autres niveaux changent bien la partie');
+}
+{
+  const byLevel = (fn) => LEVELS.map(fn);
+  const ordered = (xs) => xs.every((x, i) => i === 0 || x > xs[i - 1]);
+  const show = (xs) => xs.map((x) => (Number.isInteger(x) ? x : x.toFixed(3))).join(' < ');
+
+  // Expansion et puissance.
+  const grow = byLevel((level) => {
+    const game = G.createGame(42, 'vaskhar', 4);
+    game.difficulty = level;
+    for (let d = 1; d <= 2000; d++) {
+      game.time = d;
+      E.tickEmpires(game, 1);
+    }
+    return { colonies: game.empires.reduce((s, e) => s + e.colonies.length, 0), power: game.empires[0].power };
+  });
+  check(ordered(grow.map((g) => g.colonies)), `expansion : colonies au jour 2 000 ${show(grow.map((g) => g.colonies))}`);
+  check(ordered(grow.map((g) => g.power)), `puissance au jour 2 000 ${show(grow.map((g) => g.power))}`);
+
+  // Portée maximale.
+  const reach = byLevel((level) => {
+    const game = G.createGame(42, 'vaskhar', 4);
+    game.difficulty = level;
+    return E.rivalReach(game, { ...game.empires[0], power: 1000 });
+  });
+  check(ordered(reach) && reach[1] === 50, `portée maximale (al) ${show(reach)}`);
+
+  // Délai de grâce et chance de guerre : rival tenu hostile, premier jour de guerre moyen sur plusieurs graines.
+  const firstWar = (seed, level) => {
+    const game = G.createGame(seed, 'vaskhar', 7);
+    game.difficulty = level;
+    const e = game.empires.find((x) => x.species === 'orrhaides') ?? game.empires[0];
+    e.met = true;
+    for (let d = 0; d < 6000; d++) {
+      game.time += 1;
+      e.relation = -90;
+      if (Dp.tickDiplomacy(game, 1).some((x) => x.type === 'war' && x.empire === e)) return game.time;
+    }
+    return 6000;
+  };
+  const wars = byLevel((level) => [1, 42, 77, 1234, 5150].map((s) => firstWar(s, level)));
+  check(LEVELS.every((l, i) => wars[i].every((d) => d >= DIFFICULTY.levels[l].graceDays)), 'jamais de guerre avant le délai de grâce du niveau');
+  const lateness = wars.map((w, i) => w.reduce((a, b) => a + b, 0) / w.length - DIFFICULTY.levels[LEVELS[i]].graceDays);
+  check(ordered(wars.map((w) => -w.reduce((a, b) => a + b, 0))), `guerre plus tôt aux niveaux élevés (jours moyens ${wars.map((w) => Math.round(w.reduce((a, b) => a + b, 0) / w.length)).join(' / ')})`);
+  check(lateness[0] > lateness[3], `chance de guerre : attente après le délai de grâce ${Math.round(lateness[0])} j en Découverte, ${Math.round(lateness[3])} j en Redoutable`);
+
+  // Agacement du voisinage : une colonie du joueur (puis dix) près d'un empire à sa note de départ.
+  const annoyance = (level, n) => {
+    const game = G.createGame(42, 'vaskhar', 4);
+    game.difficulty = level;
+    const e = game.empires[0];
+    e.met = true;
+    e.relation = Dp.startRelation(e.species);
+    for (let i = 0; i < n; i++) game.colonies.push({ starId: e.colonies[0].starId, planetIndex: 0, name: 'test' });
+    game.time = 1;
+    Dp.tickDiplomacy(game, 1);
+    return Dp.startRelation(e.species) - e.relation;
+  };
+  const one = byLevel((l) => annoyance(l, 1));
+  const ten = byLevel((l) => annoyance(l, 10));
+  check(ordered(one), `agacement par colonie proche (points par jour) ${show(one)}`);
+  check(ordered(ten) && Math.abs(ten[1] - DIPLOMACY.proximityMax) < 1e-12, `agacement plafonné, plafond selon le niveau ${show(ten)}`);
+
+  // Stocks des rivaux.
+  const stock = byLevel((level) => {
+    const game = G.createGame(42, 'vaskhar', 4);
+    game.difficulty = level;
+    const e = game.empires[0];
+    e.stocks.minerais = 0;
+    game.time = 1;
+    Dp.tickDiplomacy(game, 1);
+    return e.stocks.minerais;
+  });
+  check(ordered(stock), `stocks : minerais gagnés en un jour ${show(stock)}`);
+
+  // Défense des colonies rivales : même dégâts, plus de résistance restante.
+  const defense = byLevel((level) => {
+    const game = G.createGame(42, 'vaskhar', 4);
+    game.difficulty = level;
+    const e = game.empires[0];
+    e.power = 0;
+    e.colonies[0].damage = 100;
+    return C.rivalColonyHealth(game, e, e.colonies[0]);
+  });
+  check(ordered(defense), `défense des colonies rivales (résistance restante) ${show(defense)}`);
+
+  // Flottes : taille, intervalle, nombre.
+  const fleets = byLevel((level) => {
+    const game = withColony(42, level);
+    const e = game.empires[0];
+    Object.assign(e, { war: true, power: 200, nextFleet: 0, nextSupply: 1e9 });
+    e.stocks.alliages = 1e7;
+    game.time = 1;
+    C.tickCombat(game, 1);
+    const first = game.fleets.find((f) => f.species === e.species);
+    const every = e.nextFleet - game.time;
+    for (let d = 0; d < 20; d++) {
+      e.nextFleet = 0;
+      game.time += 1;
+      C.tickCombat(game, 1);
+    }
+    return { size: first?.ships.length ?? 0, every, count: game.fleets.filter((f) => f.species === e.species).length };
+  });
+  check(LEVELS.every((l, i) => fleets[i].size === DIFFICULTY.levels[l].fleetSizeMax), `taille des flottes ${fleets.map((x) => x.size).join(' / ')}`);
+  check(LEVELS.every((l, i) => fleets[i].every === DIFFICULTY.levels[l].fleetEvery), `intervalle des flottes ${fleets.map((x) => x.every).join(' / ')} jours`);
+  check(LEVELS.every((l, i) => fleets[i].count === DIFFICULTY.levels[l].maxFleets), `flottes en même temps ${fleets.map((x) => x.count).join(' / ')}`);
+
+  // Exigence aux échanges et prix de la paix.
+  const deals = byLevel((level) => {
+    const game = G.createGame(42, 'vaskhar', 4);
+    game.difficulty = level;
+    const e = game.empires.find((x) => !DIPLOMACY.tradeFactor[x.species]);
+    e.met = true;
+    e.relation = 0; // neutre
+    const margin = Dp.evaluateDeal(game, e, { give: { resources: { minerais: 10 } }, get: { resources: { biomasse: 5 } } }).margin;
+    e.war = true;
+    return { margin, peace: Dp.peacePrice(e, 'minerais', game) };
+  });
+  check(ordered(deals.map((d) => d.margin)), `exigence aux échanges (empire neutre) ${show(deals.map((d) => d.margin))}`);
+  check(ordered(deals.map((d) => d.peace)), `prix de la paix (minerais) ${show(deals.map((d) => d.peace))}`);
+  {
+    const game = G.createGame(42, 'vaskhar', 4);
+    const e = game.empires[0];
+    check(Dp.peacePrice(e, 'minerais') === Dp.peacePrice(e, 'minerais', game), 'prix de la paix sans partie : celui de Standard');
+  }
+}
+{
+  // Ancienne sauvegarde (sans niveau) : elle continue exactement comme une partie Standard.
+  const game = withColony(42);
+  for (let d = 0; d < 800; d++) G.tick(game, 1);
+  const old = copy(serialize(game));
+  delete old.difficulty;
+  const loaded = restore(old);
+  const twin = restore(copy(serialize(game)));
+  for (let d = 0; d < 1500; d++) {
+    G.tick(loaded, 1);
+    G.tick(twin, 1);
+  }
+  check(loaded.difficulty === 'standard' && hash(loaded.empires) === hash(twin.empires), 'ancienne sauvegarde : rivaux identiques à Standard 1 500 jours plus tard');
+  const ardu = restore(copy(serialize(G.createGame(42, 'vaskhar', 4, { difficulty: 'ardu' }))));
+  check(ardu.difficulty === 'ardu' && E.rivalReach(ardu, { power: 1000 }) === E.rivalReach({ difficulty: 'ardu' }, { power: 1000 }), 'partie Ardu rechargée : leviers d\'Ardu');
+}
+
 console.log(fails ? `\n${fails} échec(s)` : '\nTous les tests passent.');
 process.exit(fails ? 1 : 0);

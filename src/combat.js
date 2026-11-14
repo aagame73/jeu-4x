@@ -6,6 +6,7 @@ import { SHIP_KINDS, colonyDefense, getSurface, removeShip, shipStats } from './
 import { createRng } from './rng.js';
 import { rivalInfo, speciesHabitat } from './species.js';
 import { changeRelation } from './diplomacy.js';
+import { lever } from './difficulty.js';
 import { RESOURCE_LABELS } from './economy.js';
 
 // Une unité : { attack, defense, damage } (vaisseau, flotte ou défense de colonie). Elle tombe quand
@@ -79,7 +80,7 @@ function rivalShipUnit(game, fleet, ship) {
 
 function rivalColonyUnit(game, empire, colony) {
   const { base, perPower, home } = COMBAT.rivalColonyDefense;
-  const defense = (base + perPower * empire.power) * (colony === empire.colonies[0] ? home : 1);
+  const defense = (base + perPower * empire.power) * lever(game, 'rivalColonyDefense') * (colony === empire.colonies[0] ? home : 1);
   // Défense abattue pendant ce siège : elle reste à terre (la puissance de l'empire, qui grandit
   // chaque jour, ne doit pas la relever d'un cheveu).
   const damage = colony.down ? defense * COMBAT.hpPerDefense : Number.isFinite(colony.damage) ? colony.damage : 0;
@@ -104,8 +105,8 @@ function buildFleet(game, empire) {
     }
   }
   const kind = COMBAT.fleetKinds.find(([power]) => empire.power >= power)[1];
-  const { base, perPower, max } = COMBAT.fleetSize;
-  const wanted = Math.min(max, Math.floor(base + perPower * empire.power));
+  const { base, perPower } = COMBAT.fleetSize; // taille maximale : selon le niveau (fleetSizeMax)
+  const wanted = Math.min(lever(game, 'fleetSizeMax'), Math.floor(base + perPower * empire.power));
   const count = Math.min(wanted, Math.floor(empire.stocks.alliages / COMBAT.shipCost[kind]));
   if (count < 1) return null;
   empire.stocks.alliages -= count * COMBAT.shipCost[kind];
@@ -344,8 +345,8 @@ function warDay(game) {
   events.push(...pillageDay(game));
   for (const empire of game.empires) {
     if (!empire.war || game.time < empire.nextFleet) continue;
-    empire.nextFleet = game.time + COMBAT.fleetEvery;
-    if (game.fleets.filter((f) => f.species === empire.species).length >= COMBAT.maxFleets) continue;
+    empire.nextFleet = game.time + lever(game, 'fleetEvery');
+    if (game.fleets.filter((f) => f.species === empire.species).length >= lever(game, 'maxFleets')) continue;
     const fleet = buildFleet(game, empire);
     if (!fleet) continue;
     const n = fleet.ships.length;

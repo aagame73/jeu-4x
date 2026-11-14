@@ -80,7 +80,7 @@ export function createDiplomacyView(root, game, actions) {
   }
 
   function peaceRow(empire) {
-    const prices = ['minerais', 'alliages', 'deuterium'].map((res) => `${peacePrice(empire, res)} ${(RESOURCE_LABELS[res] ?? res).toLowerCase()}`).join(', ou ');
+    const prices = ['minerais', 'alliages', 'deuterium'].map((res) => `${peacePrice(empire, res, game)} ${(RESOURCE_LABELS[res] ?? res).toLowerCase()}`).join(', ou ');
     return `<p class="small">En guerre, seule la paix se négocie. Elle s'achète : par exemple ${prices} (ou un mélange).</p>
       <label class="dp-check"><input type="checkbox" data-peace ${offer.get.peace ? 'checked' : ''} /><span>La paix<small>suivie d'une trêve de ${DIPLOMACY.truceDays} jours</small></span></label>`;
   }
