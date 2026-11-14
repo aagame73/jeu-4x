@@ -1,0 +1,18 @@
+{
+  "name": "L'Arche des Veilleurs",
+  "short_name": "Arche des Veilleurs",
+  "description": "Jeu de stratégie spatiale : explorer, coloniser et conquérir un amas d'étoiles.",
+  "lang": "fr",
+  "start_url": ".",
+  "scope": ".",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#04060f",
+  "theme_color": "#04060f",
+  "icons": [
+    { "src": "icone-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icone-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icone-adaptative-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "icone.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}
