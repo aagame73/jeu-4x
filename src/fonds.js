@@ -1,9 +1,8 @@
 // Fonds peints (images de Gemini, public/fonds/) : une couche qui dérive lentement, sous un voile sombre.
 // fond('victoire.jpg', 0.5) renvoie le HTML de la couche, à placer en premier dans un écran en
-// position relative/fixed ; l'image ne se charge qu'à l'affichage de l'écran.
-import './styles/fonds.css';
+// position relative/fixed ; l'image ne se charge qu'à l'affichage de l'écran. Styles : styles/fonds.css (importé par main.js).
 
-export const fondUrl = (nom) => `${import.meta.env.BASE_URL}fonds/${nom}`;
+export const fondUrl = (nom) => `${import.meta.env?.BASE_URL ?? '/'}fonds/${nom}`;
 
 // voile : opacité du voile sombre (0 = image pure, 1 = noir) ; classe : variante de placement.
 export function fond(nom, voile = 0.6, classe = '') {

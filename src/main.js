@@ -6,6 +6,7 @@ import './styles/recherche.css';
 import './styles/systeme.css';
 import './styles/especes.css';
 import './styles/diplomatie.css';
+import './styles/fonds.css';
 import { CONFIG, COMBAT, SPECIES, DEFAULT_SPECIES } from './config.js';
 import { createSpeciesView } from './speciesView.js';
 import { createGame, tick, currentDay, sendShip, startAnalysis, selectedShip, foundColony, startShipyard, startResearch } from './game.js';

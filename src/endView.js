@@ -7,6 +7,7 @@ import { startEndingFx } from './endingFx.js';
 import { currentSpecies } from './species.js';
 import { settingsLabel } from './difficulty.js';
 import { progress, rivalLabel } from './victory.js';
+import { fond } from './fonds.js';
 
 const REASONS = {
   expansion: () => 'Vos colonies occupent la plus grande partie de l\'amas.',
@@ -82,6 +83,7 @@ export function createEndView(game, { onNewGame, onMenu, isBusy }) {
     el.setAttribute('aria-label', won ? 'Victoire' : 'Défaite');
     el.style.setProperty('--sp', species.accent);
     el.innerHTML = `
+      ${fond(won ? 'victoire.jpg' : 'defaite.jpg', won ? 0.15 : 0.3, 'fond-fixe')}
       <canvas class="ending-fx"></canvas>
       <div class="ending-stage">
         <canvas class="ending-portrait"></canvas>

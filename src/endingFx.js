@@ -9,11 +9,14 @@ const rand = (a, b) => a + Math.random() * (b - a);
 const ease = (x) => 1 - (1 - Math.min(1, Math.max(0, x))) ** 3;
 
 // Fond commun : nuit, lueur à la couleur de l'espèce (qui monte en victoire, s'éteint en défaite),
-// poussière d'étoiles.
+// poussière d'étoiles. La nuit est semi-transparente : l'image de victoire ou de défaite
+// (public/fonds/, posée sous le canvas par endView.js) se devine derrière la scène.
 function backdrop(ctx, w, h, t, color, won, stars) {
-  ctx.globalAlpha = 1;
+  ctx.clearRect(0, 0, w, h);
+  ctx.globalAlpha = won ? 0.45 : 0.55;
   ctx.fillStyle = won ? '#03040c' : '#020205';
   ctx.fillRect(0, 0, w, h);
+  ctx.globalAlpha = 1;
   const glow = ctx.createRadialGradient(w / 2, h * (won ? 0.42 : 0.75), 0, w / 2, h / 2, Math.hypot(w, h) * 0.6);
   glow.addColorStop(0, color);
   glow.addColorStop(1, 'transparent');

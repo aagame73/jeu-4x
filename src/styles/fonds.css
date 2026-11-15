@@ -7,6 +7,9 @@
   z-index: 0;
   border-radius: inherit;
 }
+.fond.fond-fixe {
+  position: fixed; /* écran qui défile (fin de partie) : le fond reste en place */
+}
 .fond-image {
   position: absolute;
   inset: -4%; /* marge pour que la dérive ne découvre jamais les bords */
