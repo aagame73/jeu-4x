@@ -35,6 +35,7 @@ export function spaceEnv() {
     ctx.fillRect(0, 0, w, h);
   });
   spaceEnvTexture.mapping = THREE.EquirectangularReflectionMapping;
+  spaceEnvTexture.userData.shared = true; // partagée par tous les vaisseaux
   return spaceEnvTexture;
 }
 
@@ -479,7 +480,12 @@ export function finish(P, o = {}) {
 }
 
 export function cachedSet(key, make) {
-  if (!SETS.has(key)) SETS.set(key, make());
+  if (!SETS.has(key)) {
+    const set = make();
+    // textures partagées par tous les vaisseaux de l'espèce : disposeShip ne les libère pas
+    for (const v of Object.values(set)) if (v?.isTexture) v.userData.shared = true;
+    SETS.set(key, set);
+  }
   return SETS.get(key);
 }
 

@@ -24,5 +24,6 @@ export function glowTexture() {
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, s, s);
   });
+  glow.userData.shared = true; // partagée : jamais libérée avec un objet
   return glow;
 }

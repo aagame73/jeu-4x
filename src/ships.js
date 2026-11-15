@@ -21,6 +21,22 @@ export function createShip(seed, accent, registry = '', kind = 'sonde', style = 
   return createClassicShip(seed, accent, registry, kind);
 }
 
+// Libère la mémoire graphique d'un vaisseau retiré de la scène (géométries, matériaux et textures
+// qui lui sont propres). Les ressources partagées (marquées userData.shared : jets, reflets, jeux de
+// textures d'espèce) restent en place pour les autres vaisseaux.
+export function disposeShip(object) {
+  object.traverse((o) => {
+    if (o.geometry && !o.geometry.userData.shared) o.geometry.dispose();
+    for (const m of [o.material].flat()) {
+      if (!m || m.userData.shared) continue;
+      for (const value of Object.values(m)) {
+        if (value?.isTexture && !value.userData.shared) value.dispose();
+      }
+      m.dispose();
+    }
+  });
+}
+
 // Vignettes des vaisseaux pour l'interface, rendues une seule fois.
 // style : style d'espèce commun à toutes les vignettes (chaque spec peut aussi porter le sien).
 // Un seul moteur de rendu pour toutes les vignettes : en créer un par appel rechargeait toutes les
@@ -56,7 +72,9 @@ export function renderShipThumbnails(specs, width = 120, height = 72, style = nu
     scene.add(ship);
     renderer.clear();
     renderer.render(scene, camera);
-    return renderer.domElement.toDataURL();
+    const url = renderer.domElement.toDataURL();
+    disposeShip(ship); // l'image est prise : le modèle ne sert plus
+    return url;
   });
   return urls;
 }

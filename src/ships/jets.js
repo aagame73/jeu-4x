@@ -22,6 +22,7 @@ function jetTexture() {
     }
     ctx.putImageData(img, 0, 0);
   });
+  jetTex.userData.shared = true; // partagés par tous les jets : jamais libérés avec un vaisseau
   return jetTex;
 }
 function jetGeometry() {
@@ -29,6 +30,7 @@ function jetGeometry() {
     jetGeo = new THREE.CylinderGeometry(0.3, 1, 1, 16, 1, true);
     jetGeo.rotateX(-Math.PI / 2);
     jetGeo.translate(0, 0, -0.5); // de z = 0 (tuyère) à z = -1 (queue)
+    jetGeo.userData.shared = true;
   }
   return jetGeo;
 }
@@ -37,10 +39,12 @@ function jetMaterials(color) {
   if (!jetMats.has(key)) {
     const c = new THREE.Color(color);
     const opts = { map: jetTexture(), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide };
-    jetMats.set(key, [
+    const mats = [
       new THREE.MeshBasicMaterial({ ...opts, color: c, opacity: 0.45 }),
       new THREE.MeshBasicMaterial({ ...opts, color: c.clone().lerp(new THREE.Color('#ffffff'), 0.65), opacity: 0.85 }),
-    ]);
+    ];
+    for (const m of mats) m.userData.shared = true;
+    jetMats.set(key, mats);
   }
   return jetMats.get(key);
 }

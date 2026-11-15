@@ -7,7 +7,7 @@ import { reachableStars, shipProgress, selectedShip } from './game.js';
 import { currentSpecies, knownRival, rivalInfo } from './species.js';
 import { SPECIES } from './config.js';
 import { createSky } from './skybox.js';
-import { animateShip, createShip, shipScale } from './ships.js';
+import { animateShip, createShip, disposeShip, shipScale } from './ships.js';
 import { canvasTexture, glowTexture } from './textures.js';
 
 const PROBE_COLOR = 0x7cff9e; // lignes de portée
@@ -123,6 +123,10 @@ export function createGalaxyView(container, game, callbacks) {
     for (const [id, v] of shipViews) {
       if (game.ships.some((s) => s.id === id)) continue;
       scene.remove(v.holder, v.marker, v.trail);
+      disposeShip(v.holder); // libère la mémoire graphique du modèle
+      v.marker.material.dispose();
+      v.trail.geometry.dispose();
+      v.trail.material.dispose();
       shipViews.delete(id);
       if (followId === id) followId = null;
     }
@@ -148,6 +152,7 @@ export function createGalaxyView(container, game, callbacks) {
     for (const [id, v] of convoyViews) {
       if (game.convoys.some((c) => c.id === id)) continue;
       scene.remove(v.holder);
+      disposeShip(v.holder);
       convoyViews.delete(id);
     }
     for (const convoy of game.convoys) {
@@ -186,6 +191,7 @@ export function createGalaxyView(container, game, callbacks) {
     for (const [id, v] of fleetViews) {
       if (game.fleets.some((f) => f.id === id)) continue;
       scene.remove(v.holder, v.marker);
+      disposeShip(v.holder);
       v.marker.material.dispose();
       fleetViews.delete(id);
     }

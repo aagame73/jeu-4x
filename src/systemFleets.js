@@ -4,7 +4,7 @@
 import * as THREE from 'three';
 import { SPECIES } from './config.js';
 import { SHIP_KINDS } from './game.js';
-import { animateShip, createShip } from './ships.js';
+import { animateShip, createShip, disposeShip } from './ships.js';
 import { currentSpecies, rivalInfo } from './species.js';
 
 const SHIP_SCALE = 0.45; // taille d'un vaisseau dans la vue du système
@@ -29,12 +29,12 @@ function modelFor(key, seed, accent, kind, style, entry) {
   return models.get(key);
 }
 
-// Les matériaux des vaisseaux sont partagés (textures en cache) : on ne libère que les géométries.
+// Libère le modèle (disposeShip garde les ressources partagées : jets, textures d'espèce).
 function forget(key) {
   const view = models.get(key);
   if (!view) return;
   view.holder.removeFromParent();
-  view.holder.traverse((o) => o.geometry?.dispose());
+  disposeShip(view.holder);
   models.delete(key);
 }
 
