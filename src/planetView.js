@@ -643,7 +643,9 @@ export function createPlanetView(root, game, actions) {
   let controls;
   let board = null;
   let state = null;
-  const clock = new THREE.Clock();
+  // Temps écoulé depuis l'ouverture du jeu, en secondes (THREE.Clock est obsolète depuis r183).
+  const start = performance.now();
+  const elapsed = () => (performance.now() - start) / 1000;
   const noise = noiseTexture();
   const raycaster = new THREE.Raycaster();
 
@@ -654,7 +656,7 @@ export function createPlanetView(root, game, actions) {
     renderer.setClearColor(0x000000, 0);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.shadowMap.type = THREE.PCFShadowMap; // doux depuis Three.js r182 (PCFSoftShadowMap obsolète)
     host.appendChild(renderer.domElement);
     scene = new THREE.Scene();
     camera = new THREE.PerspectiveCamera(42, 1, 0.1, 200);
@@ -1231,7 +1233,7 @@ export function createPlanetView(root, game, actions) {
 
   // --- Boucle ----------------------------------------------------------------------
   function frame() {
-    const time = clock.getElapsedTime();
+    const time = elapsed();
     controls.update();
     const dt = Math.min(time - (state.lastTime ?? time), 0.1);
     state.lastTime = time;

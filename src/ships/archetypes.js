@@ -559,7 +559,7 @@ function buildCristal(c) {
   const crystal = new THREE.MeshPhysicalMaterial({
     map: m.hull.map, emissiveMap: m.hull.emissiveMap, normalMap: m.hull.normalMap, roughnessMap: m.hull.roughnessMap, emissive: c.glow, emissiveIntensity: 0.9,
     color: m.hull.color.clone().multiply(new THREE.Color('#8aa6d0')), metalness: 0.05, roughness: 0.1, clearcoat: 1, clearcoatRoughness: 0.04,
-    iridescence: 1, iridescenceIOR: 1.6, iridescenceThicknessRange: [250, 900], transparent: true, opacity: 0.6, flatShading: true,
+    iridescence: 1, iridescenceIOR: 1.6, iridescenceThicknessMinimum: 250, iridescenceThicknessMaximum: 900, transparent: true, opacity: 0.6, flatShading: true,
     envMap: spaceEnv(), envMapIntensity: 1.3, side: THREE.DoubleSide,
   });
   m.crystal = crystal;

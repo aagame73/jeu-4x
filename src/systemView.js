@@ -354,7 +354,9 @@ export function createSystemView(root, game, actions) {
   let controls;
   let sky = null;
   let state = null;
-  const clock = new THREE.Clock();
+  // Temps écoulé depuis l'ouverture du jeu, en secondes (THREE.Clock est obsolète depuis r183).
+  const start = performance.now();
+  const elapsed = () => (performance.now() - start) / 1000;
   const raycaster = new THREE.Raycaster();
   const focusGoal = new THREE.Vector3();
   const focusStep = new THREE.Vector3();
@@ -681,7 +683,7 @@ export function createSystemView(root, game, actions) {
     controls.minDistance = 3;
     controls.maxDistance = Math.max(30, edge * 2.6);
     state.key = sceneKey(star);
-    placeBodies(clock.getElapsedTime());
+    placeBodies(elapsed());
     fleets.attach(scene, star, bodies, edge, state.starView.radius);
   }
 
@@ -743,7 +745,7 @@ export function createSystemView(root, game, actions) {
   }
 
   function frame() {
-    const time = clock.getElapsedTime();
+    const time = elapsed();
     const dt = Math.min(time - (state.lastTime ?? time), 0.1);
     state.lastTime = time;
     placeBodies(time);

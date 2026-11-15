@@ -462,10 +462,11 @@ export function createGalaxyView(container, game, callbacks) {
   });
 
   let active = true;
-  const clock = new THREE.Clock();
-  renderer.setAnimationLoop(() => {
-    const dt = Math.min(clock.getDelta(), 0.1);
-    const time = clock.elapsedTime;
+  const timer = new THREE.Timer(); // remplace THREE.Clock (obsolète depuis Three.js r183)
+  renderer.setAnimationLoop((timestamp) => {
+    timer.update(timestamp);
+    const dt = Math.min(timer.getDelta(), 0.1);
+    const time = timer.getElapsed();
     callbacks.onFrame(dt);
     if (!active) return; // vue d'une planète ouverte : le temps avance, l'amas n'est pas dessiné
 

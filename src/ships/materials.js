@@ -579,7 +579,7 @@ function prepareUV(geometry, mode) {
       return;
     }
     case 'CapsuleGeometry':
-      return scaleUV(geometry, around(p.radius), (p.length + p.radius * 2) / TILE);
+      return scaleUV(geometry, around(p.radius), ((p.height ?? p.length) + p.radius * 2) / TILE); // length → height (Three.js r176)
     case 'SphereGeometry':
       return scaleUV(geometry, around((p.radius * p.phiLength) / (2 * Math.PI)), Math.max(0.25, (p.radius * p.thetaLength) / TILE));
     case 'TorusGeometry':
