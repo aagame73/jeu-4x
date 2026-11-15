@@ -13,6 +13,7 @@
   display: none;
 }
 .diplomacy.panel {
+  position: relative; /* au-dessus du fond (salle du conseil) */
   font-family: 'Exo 2', 'Segoe UI', system-ui, sans-serif;
   box-sizing: border-box;
   padding: 14px 16px;

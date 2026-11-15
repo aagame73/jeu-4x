@@ -4,6 +4,7 @@
 import * as rules from './game.js';
 import { BRANCHES, TECHS, techCost } from './research.js';
 import { ICONS } from './icons.js';
+import { fond } from './fonds.js';
 
 const fmt = (x) => Math.floor(x).toLocaleString('fr-FR');
 const fmt1 = (x) => (Math.round(x * 10) / 10).toLocaleString('fr-FR');
@@ -37,6 +38,7 @@ function perDay(game) {
 
 export function createResearchView(root, game, actions) {
   root.innerHTML = `
+    ${fond('recherche.jpg', 0.3)}
     <div class="research panel" role="dialog" aria-label="Recherche">
       <header class="rs-head">
         <h2 class="rs-title">${ICONS.recherche}Recherche</h2>

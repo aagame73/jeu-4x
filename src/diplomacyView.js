@@ -8,6 +8,7 @@ import { RESOURCE_LABELS } from './economy.js';
 import { acceptPeace, declareWarOn, refuseProposal, signDeal } from './game.js';
 import { TECHS } from './research.js';
 import { rivalInfo } from './species.js';
+import { fond } from './fonds.js';
 
 const MATERIALS = Object.keys(DIPLOMACY.values);
 
@@ -318,6 +319,7 @@ export function createDiplomacyView(root, game, actions) {
   });
 
   root.innerHTML = `
+    ${fond('diplomatie.jpg', 0.3)}
     <div class="diplomacy panel" role="dialog" aria-label="Diplomatie">
       <header class="dp-head"><h2>Diplomatie</h2><button data-dp="close" title="Fermer (D)">Fermer</button></header>
       <div class="dp-body">
