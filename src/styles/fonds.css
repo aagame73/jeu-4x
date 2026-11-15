@@ -1,0 +1,34 @@
+/* Fonds peints (src/fonds.js) : image qui dérive lentement, sous un voile sombre. */
+.fond {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+  border-radius: inherit;
+}
+.fond-image {
+  position: absolute;
+  inset: -4%; /* marge pour que la dérive ne découvre jamais les bords */
+  background-size: cover;
+  background-position: center;
+  animation: fond-derive 60s ease-in-out infinite alternate, fond-entree 1.2s ease-out both;
+}
+.fond::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(3, 6, 14, var(--voile, 0.6));
+}
+@keyframes fond-derive {
+  from { transform: scale(1) translate(-1.5%, 0.5%); }
+  to { transform: scale(1.06) translate(1.5%, -0.5%); }
+}
+@keyframes fond-entree {
+  from { opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fond-image {
+    animation: none;
+  }
+}
