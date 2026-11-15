@@ -19,3 +19,6 @@ Thumbs.db
 desktop.ini
 .vscode
 .idea
+
+# Images sources de Gemini (lourdes) : seules les copies recompressées de public/ sont publiées
+images/
