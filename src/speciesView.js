@@ -1,5 +1,6 @@
 // Écran de choix de l'espèce, entre « Nouvelle partie » et l'arrivée de l'Arche.
 import { SPECIES, RIVALS, DIFFICULTY, MAP_SIZES, RESOURCE_LEVELS } from './config.js';
+import { fond, mondeNatal } from './fonds.js';
 import { gameSettings, imposedSettings, difficultyLevel } from './difficulty.js';
 import { playableSpecies } from './species.js';
 import { PLANET_TYPES } from './galaxy.js';
@@ -22,10 +23,16 @@ const habitatLabel = (type) => (type === 'lune' ? 'Lunes habitables' : PLANET_TY
 
 // onChoose(clé, réglages) lance la partie (réglages : difficulty, mapSize, resourceLevel, rivals, contraintes
 // du niveau appliquées) ; onBack (facultatif) revient à l'écran d'accueil.
+// Voile sombre sur le monde natal, plus fort pour les images claires (désert blanc des Orrhaïdes).
+const MONDE_VOILE = { orrhaides: 0.72, keltirr: 0.6, ashkari: 0.6 };
+
 export function createSpeciesView(root, { onChoose, onBack }) {
   let portraits = [];
   let selected = null;
   let choices = gameSettings(); // réglages choisis par le joueur (sans les contraintes du niveau)
+  // Fond fixe (la salle des cryocapsules de l'Arche) : seul le contenu est redessiné, le fond ne clignote pas.
+  root.innerHTML = `${fond('arche-interieur.jpg', 0.35)}<div class="sp-body"></div>`;
+  const body = root.querySelector('.sp-body');
 
   function card(key) {
     const s = SPECIES[key];
@@ -41,6 +48,7 @@ export function createSpeciesView(root, { onChoose, onBack }) {
     const s = SPECIES[key];
     return `
       <div class="sp-detail" style="--sp:${s.accent}">
+        ${fond(mondeNatal(key), MONDE_VOILE[key] ?? 0.5)}
         <canvas class="sp-portrait big"></canvas>
         <div class="sp-detail-text">
           <h2>${s.label}</h2>
@@ -87,7 +95,7 @@ export function createSpeciesView(root, { onChoose, onBack }) {
   function render() {
     stopPortraits();
     const keys = playableSpecies();
-    root.innerHTML = `
+    body.innerHTML = `
       <div class="species panel" role="dialog" aria-label="Choix de l'espèce">
         <h1 class="menu-title">Choisissez votre espèce</h1>
         <p class="muted">L'Arche emporte une seule espèce. Chacune a une force et une faiblesse ; aucune n'est meilleure que les autres.</p>
