@@ -3,6 +3,7 @@
 // annonce aussi le contact par le journal.
 import { createAlienPortrait } from './aliens.js';
 import { rivalInfo } from './species.js';
+import { fond } from './fonds.js';
 
 const DURATION_MS = 9000;
 const SPEAK_FROM_MS = 1800;
@@ -30,6 +31,10 @@ function startWarp(canvas, color) {
     const t = (now - start) / 1000;
     const speed = calm ? 0 : 0.06 + 1.5 * Math.exp(-t * 1.1);
     const reach = Math.hypot(w, h) / 2;
+    // Nuit d'abord opaque pendant le saut, puis l'image de la rencontre (contact.jpg, sous le canvas)
+    // apparaît quand le vaisseau ralentit.
+    ctx.clearRect(0, 0, w, h);
+    ctx.globalAlpha = calm ? 0.4 : 0.4 + 0.6 * Math.exp(-t * 0.9);
     ctx.fillStyle = '#02030a';
     ctx.fillRect(0, 0, w, h);
     const glow = ctx.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, reach * 0.8);
@@ -107,6 +112,7 @@ export function createContactView(game, onEnd) {
     el.setAttribute('aria-label', `Premier contact : ${rival.empire}`);
     el.style.setProperty('--empire', rival.accent);
     el.innerHTML = `
+      ${fond('contact.jpg', 0.2)}
       <canvas class="contact-warp"></canvas>
       <div class="contact-band top"></div>
       <div class="contact-stage">
