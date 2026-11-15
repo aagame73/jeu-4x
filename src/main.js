@@ -22,6 +22,7 @@ import { startConstruction, demolish, startUpgrade } from './economy.js';
 import { restore, readSlot, writeSlot, takePendingLoad, takeNewGameRequest, takeSettingsRequest, newGameAndRestart } from './save.js';
 import { settingsFromParams, settingsQuery } from './difficulty.js';
 import { createMenu } from './menu.js';
+import { createTitleView } from './titleView.js';
 import { installTooltips } from './tooltips.js';
 
 // Au démarrage : une sauvegarde à charger (menu), sinon une nouvelle partie.
@@ -317,6 +318,10 @@ if (showStart) menu.open(true);
 if (loadError) menu.notice(`Chargement impossible : ${loadError}`);
 else if (needsSpecies) speciesView.open();
 endView.update(); // une partie finie rechargée rouvre son écran de fin
+// Page titre à l'ouverture du jeu, posée sur l'accueil ou le choix d'espèce (pas après
+// « Nouvelle partie », ni pour une partie de test lancée par ?graine= ou ?espece=).
+const showTitle = !pending && !wantsNewGame && !urlSeed && !chosenSpecies;
+if (showTitle) createTitleView(document.getElementById('title')).open();
 
 // Dernière sauvegarde automatique quand on quitte ou cache la page.
 const saveOnLeave = () => autosave && writeSlot('auto', game);
