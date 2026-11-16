@@ -272,6 +272,25 @@ body.system-open .advisor-portrait {
   border-color: color-mix(in srgb, var(--accent) 80%, transparent);
   box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 30%, transparent);
 }
+/* Tutoriel : halo pulsant sur l'élément à utiliser (tutorial.js, applyHalos). Ombres intérieures
+   comprises, pour rester visible sur les boutons aux coins coupés (clip-path). */
+.tuto-halo {
+  animation: tuto-halo 1.3s ease-in-out infinite;
+}
+@keyframes tuto-halo {
+  0%, 100% {
+    box-shadow: inset 0 0 0 2px rgba(124, 255, 158, 0.9), inset 0 0 10px rgba(124, 255, 158, 0.35), 0 0 6px rgba(124, 255, 158, 0.5);
+  }
+  50% {
+    box-shadow: inset 0 0 0 2px rgba(124, 255, 158, 0.35), inset 0 0 18px rgba(124, 255, 158, 0.6), 0 0 18px rgba(124, 255, 158, 0.9);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tuto-halo {
+    animation: none;
+    box-shadow: inset 0 0 0 2px rgba(124, 255, 158, 0.9), 0 0 10px rgba(124, 255, 158, 0.7);
+  }
+}
 /* Tutoriel : objectif en cours sous la bulle */
 .advisor-goal {
   grid-column: 1 / -1;

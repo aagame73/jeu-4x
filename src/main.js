@@ -24,7 +24,7 @@ import { restore, readSlot, writeSlot, takePendingLoad, takeNewGameRequest, take
 import { settingsFromParams, settingsQuery } from './difficulty.js';
 import { createMenu } from './menu.js';
 import { createTitleView } from './titleView.js';
-import { initTutorial, announceStep, updateTutorial, skipStep, hideTutorial } from './tutorial.js';
+import { initTutorial, announceStep, updateTutorial, skipStep, hideTutorial, applyHalos } from './tutorial.js';
 import { installTooltips } from './tooltips.js';
 
 // Au démarrage : une sauvegarde à charger (menu), sinon une nouvelle partie.
@@ -337,6 +337,8 @@ const speciesView = createSpeciesView(document.getElementById('species'), {
   onBack: showStart ? () => menu.open(true) : null,
 });
 installTooltips();
+// Tutoriel : halos sur les éléments à utiliser, remis à jour régulièrement (l'interface se redessine souvent).
+setInterval(() => applyHalos(game), 300);
 if (showStart) menu.open(true);
 if (loadError) menu.notice(`Chargement impossible : ${loadError}`);
 else if (needsSpecies) speciesView.open();
