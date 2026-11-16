@@ -22,3 +22,13 @@ desktop.ini
 
 # Images sources de Gemini (lourdes) : seules les copies recompressées de public/ sont publiées
 images/
+
+# Fichiers de travail privés (assistant, plans, état du projet) : restent sur le PC, jamais publiés
+CLAUDE.md
+.claude/
+docs/etat.md
+docs/plan-*.md
+docs/prompts-gemini.md
+
+# Sauvegardes du dépôt
+*.bundle
