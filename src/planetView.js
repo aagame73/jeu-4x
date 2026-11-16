@@ -544,6 +544,58 @@ function buildingMesh(type, ghost, level = 1) {
         };
       }
       break;
+    case 'spatioport': {
+      // Spatioport : aire de lancement hexagonale balisée, tour de lancement avec une fusée-sonde
+      // prête à partir, petit poste de contrôle. Balises en chenillard, feu de tour, vapeur au pied.
+      add(new THREE.CylinderGeometry(0.5, 0.54, 0.06, 6), m('#5b5f66', { roughness: 0.8 }), 0, 0.03);
+      add(new THREE.CylinderGeometry(0.3, 0.3, 0.012, 6), m('#d9b44a', { roughness: 0.6 }), 0.08, 0.066); // marquage jaune
+      add(new THREE.CylinderGeometry(0.26, 0.26, 0.014, 6), m('#3e444b', { roughness: 0.7 }), 0.08, 0.068);
+      // Balises lumineuses sur le pourtour de l'aire.
+      const beacons = [];
+      for (let i = 0; i < 6; i++) {
+        const a = (i / 6) * Math.PI * 2 + Math.PI / 6;
+        beacons.push(add(new THREE.SphereGeometry(0.022, 6, 4), light('#ffb347'), Math.cos(a) * 0.44, 0.075, Math.sin(a) * 0.44));
+      }
+      // Fusée-sonde : corps blanc, bande d'accent, coiffe, ailerons, posée sur la croix centrale.
+      const rx = 0.08;
+      add(new THREE.CylinderGeometry(0.045, 0.05, 0.32, 10), m('#eef1f4', { metalness: 0.3, roughness: 0.35 }), rx, 0.24, 0);
+      add(new THREE.CylinderGeometry(0.047, 0.047, 0.04, 10), light('#5fe3ff'), rx, 0.3, 0);
+      add(new THREE.ConeGeometry(0.045, 0.12, 10), m('#c9cfd6', { metalness: 0.4 }), rx, 0.46, 0);
+      for (let i = 0; i < 3; i++) {
+        const a = (i / 3) * Math.PI * 2;
+        const fin = add(new THREE.BoxGeometry(0.012, 0.08, 0.06), m('#9aa3ad', { metalness: 0.5 }), rx + Math.cos(a) * 0.05, 0.12, Math.sin(a) * 0.05);
+        fin.rotation.y = -a;
+      }
+      // Tour de lancement : mât en treillis (quatre montants), bras qui tient la fusée, feu au sommet.
+      const tx = -0.13;
+      for (const [dx, dz] of [[-0.04, -0.04], [0.04, -0.04], [-0.04, 0.04], [0.04, 0.04]]) {
+        add(new THREE.BoxGeometry(0.014, 0.56, 0.014), m('#b0503a', { metalness: 0.5 }), tx + dx, 0.34, dz);
+      }
+      for (let y = 0.14; y < 0.6; y += 0.1) add(new THREE.BoxGeometry(0.095, 0.012, 0.095), m('#8a4030', { metalness: 0.5 }), tx, y, 0);
+      add(new THREE.BoxGeometry(0.17, 0.02, 0.03), m('#7d8794', { metalness: 0.6 }), (tx + rx) / 2 - 0.01, 0.36, 0);
+      const towerLight = add(new THREE.SphereGeometry(0.025, 6, 4), light('#ff4040'), tx, 0.64, 0);
+      // Poste de contrôle : bloc bas et vitrage cyan, du côté opposé à la tour.
+      add(new THREE.BoxGeometry(0.16, 0.1, 0.12), m('#dfe3e8', { metalness: 0.3, roughness: 0.45 }), 0.02, 0.11, 0.3);
+      const glass = add(new THREE.BoxGeometry(0.165, 0.03, 0.125), light('#7ff0ff'), 0.02, 0.13, 0.3);
+      let glow = null;
+      if (!ghost) {
+        glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(), color: '#ff5050', transparent: true, opacity: 0.4, depthWrite: false, blending: THREE.AdditiveBlending }));
+        glow.position.set(tx, 0.64, 0);
+        glow.scale.setScalar(0.3);
+        g.add(glow);
+      }
+      const vent = every(2.2, (fx) => fx.puff(g, rx, 0.1, 0, '#e8eef4'));
+      tick = (time, dt, fx) => {
+        const step = Math.floor(time * 6) % beacons.length;
+        beacons.forEach((b, i) => (b.material.emissiveIntensity = i === step ? 2.2 : 0.35));
+        const blink = Math.sin(time * 3) > 0.2;
+        towerLight.material.emissiveIntensity = blink ? 1.8 : 0.2;
+        if (glow) glow.material.opacity = blink ? 0.55 : 0.05;
+        glass.material.emissiveIntensity = 0.6 + Math.sin(time * 1.5) * 0.2;
+        vent(time, dt, fx);
+      };
+      break;
+    }
     case 'batterie': {
       // Batterie planétaire : socle hexagonal, tourelle qui pivote lentement, double canon, feu rouge.
       add(new THREE.CylinderGeometry(0.4, 0.46, 0.1, 6), m('#5b5f66', { metalness: 0.4 }), 0, 0.05);
