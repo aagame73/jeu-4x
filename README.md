@@ -16,7 +16,7 @@ Un **tutoriel** guide les débuts : le conseiller de votre espèce annonce chaqu
 2. **Analyser le système** : l'Arche, le vaisseau colonie, arrive avec des moteurs de saut cassés. Cliquez sur son étoile, puis sur **Analyser avec l'Arche**.
 3. **Fonder la colonie** : à la fin de l'analyse, choisissez une planète (**Fonder une colonie ici**), puis la case où poser le centre de la colonie.
 4. **Construire** : cliquez sur une case de la surface pour voir ce qu'on peut y bâtir. Commencez par un **laboratoire** pour faire avancer la recherche.
-5. **Rechercher** (touche **R**) : *Moteurs de saut* et *Mécanique orbitale* débloquent le **spatioport**, à construire sur une plaine ou un désert.
+5. **Rechercher** (touche **R**) : *Métallurgie*, puis *Mécanique orbitale*, qui débloque le **spatioport** (à construire sur une plaine ou un désert), puis *Moteurs de saut*, qui débloquent la sonde.
 6. **Lancer une sonde** : dans la colonie (**Gérer la colonie**), le panneau du chantier spatial propose la sonde. Une fois construite, elle apparaît dans le panneau **Flotte**, en haut à gauche. Sélectionnez-la, cliquez sur une étoile de la carte, puis sur **Envoyer**.
 7. **Explorer et s'étendre** : les sondes découvrent les systèmes et les empires rivaux. Le dock spatial permet ensuite de construire des vaisseaux colonie, des vaisseaux de guerre et des défenses.
 
