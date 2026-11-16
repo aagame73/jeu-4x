@@ -1,5 +1,7 @@
 // Portraits animés des espèces, dessinés en Canvas 2D (aucune image externe).
 // Usage : const p = createAlienPortrait(canvas, 'vaskhar'); p.setSpeaking(true); p.destroy();
+// Les espèces qui ont un portrait peint (paintedPortrait.js) l'affichent à la place du dessin.
+import { PAINTED, createPaintedPortrait } from './paintedPortrait.js';
 // Repère de dessin : unité = moitié du plus petit côté du canevas, origine au centre,
 // y vers le bas ; la tête est vers y ≈ -0.2, le buste descend jusqu'au bas (s.bot).
 
@@ -3648,7 +3650,7 @@ const resolveKey = (key) => (DRAWERS[key] ? key : 'sans-espece');
 
 // ---------- Portrait animé ----------
 
-export function createAlienPortrait(canvas, speciesKey) {
+function createDrawnPortrait(canvas, speciesKey) {
   const ctx = canvas.getContext('2d');
   let key = resolveKey(speciesKey);
   let speaking = false;
@@ -3792,5 +3794,30 @@ export function createAlienPortrait(canvas, speciesKey) {
       s.cache.clear();
     },
     destroy,
+  };
+}
+
+// Point d'entrée : portrait peint si l'espèce en a un, sinon portrait dessiné.
+// setSpecies passe de l'un à l'autre si besoin, sur le même canevas.
+export function createAlienPortrait(canvas, speciesKey) {
+  const make = (k) => {
+    const key = resolveKey(k);
+    return PAINTED.has(key) ? createPaintedPortrait(canvas, key, ACCENTS[key]) : createDrawnPortrait(canvas, key);
+  };
+  let current = make(speciesKey);
+  let speaking = false;
+  return {
+    setSpeaking(v) {
+      speaking = !!v;
+      current.setSpeaking(v);
+    },
+    setSpecies(k) {
+      current.destroy();
+      current = make(k);
+      current.setSpeaking(speaking);
+    },
+    destroy() {
+      current.destroy();
+    },
   };
 }
