@@ -10,6 +10,8 @@ Il suffit d'un navigateur récent (Chrome, Edge, Firefox ou Safari de 2023 ou pl
 
 ## Premiers pas
 
+Un **tutoriel** guide les débuts : le conseiller de votre espèce annonce chaque objectif, et un halo montre où cliquer. On peut le désactiver sur l'écran du choix de l'espèce, le passer ou le masquer, et le relancer depuis l'aide (bouton **?** ou touche **H**). Les étapes :
+
 1. **Choisir son espèce** : chacune a une force et une faiblesse. Choisir aussi la difficulté, la taille de la carte et le nombre d'adversaires.
 2. **Analyser le système** : l'Arche, le vaisseau colonie, arrive avec des moteurs de saut cassés. Cliquez sur son étoile, puis sur **Analyser avec l'Arche**.
 3. **Fonder la colonie** : à la fin de l'analyse, choisissez une planète (**Fonder une colonie ici**), puis la case où poser le centre de la colonie.
@@ -30,6 +32,7 @@ Le conseiller de votre espèce, en bas à gauche, commente les événements de l
 | + / − | Vitesse du temps (×1, ×2, ×4) |
 | R | Recherche |
 | D | Diplomatie |
+| H | Aide (commandes, premiers pas, relancer le tutoriel) |
 | F | Plein écran |
 | Échap | Menu (sauvegarder, charger) ou retour |
 | 1 à 9 | Choisir un vaisseau |

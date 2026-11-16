@@ -24,7 +24,8 @@ import { restore, readSlot, writeSlot, takePendingLoad, takeNewGameRequest, take
 import { settingsFromParams, settingsQuery } from './difficulty.js';
 import { createMenu } from './menu.js';
 import { createTitleView } from './titleView.js';
-import { initTutorial, announceStep, updateTutorial, skipStep, hideTutorial, applyHalos } from './tutorial.js';
+import { initTutorial, announceStep, updateTutorial, skipStep, hideTutorial, restartTutorial, applyHalos } from './tutorial.js';
+import { createHelpView } from './helpView.js';
 import { installTooltips } from './tooltips.js';
 
 // Au démarrage : une sauvegarde à charger (menu), sinon une nouvelle partie.
@@ -129,6 +130,9 @@ const view = createGalaxyView(document.getElementById('scene'), game, {
 });
 
 const actions = {
+  onOpenHelp() {
+    helpView.open();
+  },
   onTutorialSkip() {
     skipStep(game);
     refresh();
@@ -311,6 +315,25 @@ function watchBattles() {
 let pausedBeforeResearch = true;
 let pausedBeforeDiplomacy = true;
 
+// L'aide (touche H, bouton « ? ») met aussi la partie en pause le temps de la lire.
+let pausedBeforeHelp = true;
+const helpView = createHelpView(document.getElementById('help'), game, {
+  onOpen() {
+    pausedBeforeHelp = game.paused;
+    game.paused = true;
+    ui.renderLive();
+  },
+  onClose() {
+    game.paused = pausedBeforeHelp || !!game.ended;
+    ui.renderLive();
+  },
+  onRestartTutorial() {
+    restartTutorial(game);
+    game.paused = true;
+    refresh();
+  },
+});
+
 // Le menu met la partie en pause et rétablit l'état d'avant à sa fermeture.
 let pausedBeforeMenu = true;
 const menu = createMenu(document.getElementById('menu'), game, {
@@ -361,6 +384,14 @@ window.addEventListener('keydown', (e) => {
   if (speciesView.isOpen) return;
   if (menu.isOpen) {
     if (e.key === 'Escape' && !document.getElementById('menu').classList.contains('start')) menu.close();
+    return;
+  }
+  if (helpView.isOpen) {
+    if (e.key === 'Escape' || e.code === 'KeyH') helpView.close();
+    return;
+  }
+  if (e.code === 'KeyH' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    if (!document.querySelector('.contact') && !document.querySelector('.ending')) helpView.open();
     return;
   }
   if (diplomacyView.isOpen) {

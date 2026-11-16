@@ -291,6 +291,87 @@ body.system-open .advisor-portrait {
     box-shadow: inset 0 0 0 2px rgba(124, 255, 158, 0.9), 0 0 10px rgba(124, 255, 158, 0.7);
   }
 }
+/* Écran d'aide (helpView.js) */
+#help {
+  position: fixed;
+  inset: 0;
+  z-index: 55;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(2, 4, 10, 0.6);
+  backdrop-filter: blur(4px);
+}
+#help[hidden] {
+  display: none;
+}
+.help-view.panel {
+  width: min(980px, 100%);
+  max-height: 100%;
+  overflow: auto;
+  padding: 16px 20px;
+}
+.help-cols {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 24px;
+}
+@media (max-width: 760px) {
+  .help-cols {
+    grid-template-columns: 1fr;
+  }
+}
+.help-steps {
+  margin: 0;
+  padding-left: 22px;
+  font-size: 12.5px;
+}
+.help-steps li {
+  margin-bottom: 7px;
+  color: var(--muted);
+}
+.help-steps li b {
+  display: block;
+  color: var(--text);
+}
+.help-steps li.done b::after {
+  content: ' ✓';
+  color: var(--accent);
+}
+.help-steps li.current {
+  color: var(--text);
+}
+.help-steps li.current b {
+  color: var(--accent);
+}
+.help-keys {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+.help-keys th {
+  width: 40%;
+  padding: 3px 8px 3px 0;
+  text-align: left;
+  font-weight: normal;
+  white-space: nowrap;
+}
+.help-keys td {
+  padding: 3px 0;
+}
+.help-keys kbd {
+  padding: 1px 6px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  font-family: inherit;
+}
+.help-btn {
+  font-family: 'Orbitron', 'Exo 2', sans-serif;
+  font-weight: 700;
+  font-size: 15px;
+}
 /* Tutoriel : objectif en cours sous la bulle */
 .advisor-goal {
   grid-column: 1 / -1;
