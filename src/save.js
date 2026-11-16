@@ -52,6 +52,7 @@ export function serialize(game) {
     milestones: game.milestones,
     rivalWarnings: game.rivalWarnings,
     record: game.record,
+    tutorial: game.tutorial ?? null,
   };
 }
 
@@ -107,6 +108,9 @@ export function restore(data) {
   game.milestones = validMilestones(data.milestones);
   game.rivalWarnings = validRivalWarnings(data.rivalWarnings); // ancienne sauvegarde : aucun avertissement donné
   game.record = validRecord(data.record);
+  // Tutoriel : une partie d'avant le tutoriel (ou une valeur illisible) n'en a pas.
+  const tuto = data.tutorial;
+  game.tutorial = tuto && Number.isInteger(tuto.step) && tuto.step >= 0 ? { on: !!tuto.on, step: tuto.step } : { on: false, step: 0 };
   game.research = data.research ?? { current: null, progress: 0, done: impliedTechs(game), bank: 0, partial: {}, paid: [] };
   // L'arbre a grandi : une technologie acquise reçoit aussi ses nouveaux prérequis.
   game.research.done = withRequirements(game.research.done.filter((k) => TECHS[k]));

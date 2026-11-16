@@ -30,6 +30,7 @@ export function createSpeciesView(root, { onChoose, onBack }) {
   let portraits = [];
   let selected = null;
   let choices = gameSettings(); // réglages choisis par le joueur (sans les contraintes du niveau)
+  let tutorial = true; // tutoriel guidé par le conseiller (tutorial.js)
   // Fond fixe (la salle des cryocapsules de l'Arche) : seul le contenu est redessiné, le fond ne clignote pas.
   root.innerHTML = `${fond('arche-interieur.jpg', 0.35)}<div class="sp-body"></div>`;
   const body = root.querySelector('.sp-body');
@@ -84,7 +85,8 @@ export function createSpeciesView(root, { onChoose, onBack }) {
       ${picker('difficulty', 'Difficulté', Object.entries(DIFFICULTY.levels).map(([k, l]) => [k, l.label]), shown, false)}
       <p class="sp-hint-level small muted" aria-live="polite">${difficultyLevel(shown.difficulty).hint}</p>
       ${picker('mapSize', 'Taille de carte', Object.entries(MAP_SIZES.sizes).map(([k, m]) => [k, `${m.label} · ${m.starCount}`, `${m.starCount} systèmes`]), shown, 'mapSize' in imposed)}
-      ${picker('resourceLevel', 'Ressources', Object.entries(RESOURCE_LEVELS.levels).map(([k, r]) => [k, r.label]), shown, 'resourceLevel' in imposed)}`;
+      ${picker('resourceLevel', 'Ressources', Object.entries(RESOURCE_LEVELS.levels).map(([k, r]) => [k, r.label]), shown, 'resourceLevel' in imposed)}
+      <label class="sp-setting sp-tuto"><span class="sp-setting-label">Tutoriel</span><input type="checkbox" data-tuto ${tutorial ? 'checked' : ''} /> Le conseiller guide les premiers pas (jusqu'à la première sonde)</label>`;
   }
 
   function stopPortraits() {
@@ -139,13 +141,18 @@ export function createSpeciesView(root, { onChoose, onBack }) {
     const action = e.target.closest('[data-sp]')?.dataset.sp;
     if (action === 'start' && selected) {
       stopPortraits();
-      onChoose(selected, gameSettings(choices));
+      onChoose(selected, { ...gameSettings(choices), tutorial });
     } else if (action === 'back') close();
+  });
+
+  root.addEventListener('change', (e) => {
+    if (e.target.matches('[data-tuto]')) tutorial = e.target.checked;
   });
 
   function open() {
     selected = null;
     choices = gameSettings(); // à chaque ouverture : Standard, carte moyenne, ressources normales, 4 adversaires
+    tutorial = true;
     root.hidden = false;
     render();
   }

@@ -348,7 +348,7 @@ export function foundColony(game, ship, starId, planetIndex, tileIndex) {
       : `${ship.name} fonde une nouvelle colonie sur ${planet.name}.`,
     'discovery',
   );
-  if (first) addLog(game, 'Construisez un laboratoire pour faire avancer la recherche (touche R) : moteurs de saut, spatioport, fonderie…');
+  if (first && !game.tutorial?.on) addLog(game, 'Construisez un laboratoire pour faire avancer la recherche (touche R) : moteurs de saut, spatioport, fonderie…');
   removeShip(game, ship);
   return true;
 }

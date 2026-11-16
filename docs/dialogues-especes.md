@@ -169,3 +169,151 @@ Généré par `docs/outils/liste-dialogues.mjs` à partir de `src/dialogues.js` 
 | Perd une flotte | Une flotte perdue, une dette de plus. Nous la recouvrerons. |
 | Convoi de ravitaillement pillé | Des pillards ! Toute la route saura qui a volé nos caisses. |
 | Propose la paix (il perd la guerre) | Cette guerre nous ruine, voyageur. Signons la paix, et rouvrons les routes du commerce. |
+
+# Tutoriel : répliques du conseiller
+
+Chaque réplique est suivie de la marche à suivre, la même pour toutes les espèces (`src/tutorial.js`).
+
+## Vaskhar
+
+| Objectif | Réplique |
+|---|---|
+| 1. Analyser le système de l'Arche | Avant de creuser, on écoute la roche. |
+| 2. Laisser passer le temps | La pierre ne se presse pas, mais elle n'attend pas non plus. |
+| 3. Fonder la colonie | Le système a parlé. Choisissons le sol qui portera nos galeries. |
+| 4. Construire un laboratoire | Une galerie pour penser : il faut comprendre la roche avant de la fendre. |
+| 5. Rechercher la Métallurgie | Le minerai brut ne suffit pas. Apprenons à le fondre. |
+| 6. Rechercher la Mécanique orbitale | Il faut lancer la pierre vers le ciel sans qu'elle retombe. |
+| 7. Construire un spatioport | Taillons une aire de basalte d'où partiront nos sondes. |
+| 8. Rechercher les Moteurs de saut | Nos sondes devront franchir le vide entre les étoiles. |
+| 9. Construire une sonde | Le spatioport est prêt. Forgeons notre premier éclaireur. |
+| 10. Envoyer la sonde | L'éclaireur est forgé. Qu'il aille sonder les roches lointaines. |
+| Fin du tutoriel | Tu sais maintenant creuser ton chemin. La roche te suivra. |
+
+## Ondésiens
+
+| Objectif | Réplique |
+|---|---|
+| 1. Analyser le système de l'Arche | Laissons nos filaments goûter les courants de ce système. |
+| 2. Laisser passer le temps | Le courant porte ceux qui savent attendre. |
+| 3. Fonder la colonie | Les eaux sont connues. Choisissons où déposer nos premières cloches. |
+| 4. Construire un laboratoire | Une cloche calme, pour écouter et comprendre. |
+| 5. Rechercher la Métallurgie | Les métaux nous sont étrangers. Apprenons leur chant. |
+| 6. Rechercher la Mécanique orbitale | Il faut apprendre à flotter au-dessus du monde, comme sous la surface. |
+| 7. Construire un spatioport | Préparons un bassin d'envol vers les étoiles. |
+| 8. Rechercher les Moteurs de saut | Pour traverser le grand vide, il faut un nouveau courant. |
+| 9. Construire une sonde | Le bassin est prêt. Faisons naître une petite lueur voyageuse. |
+| 10. Envoyer la sonde | Notre lueur est née. Qu'elle dérive vers les autres étoiles. |
+| Fin du tutoriel | Tu connais les courants, maintenant. Nous chantons avec toi. |
+
+## Kel-Tirr
+
+| Objectif | Réplique |
+|---|---|
+| 1. Analyser le système de l'Arche | Vite, vite, regardons tout ce qu'il y a autour ! |
+| 2. Laisser passer le temps | Allez, on ne reste pas perchés ! Le temps doit filer ! |
+| 3. Fonder la colonie | On a tout vu ! Choisissons l'arbre où poser le premier nid ! |
+| 4. Construire un laboratoire | Un nid à idées ! On réfléchit mieux tous ensemble ! |
+| 5. Rechercher la Métallurgie | Du métal, pour des ailes solides ! Cherchons ! |
+| 6. Rechercher la Mécanique orbitale | Monter, encore plus haut, et rester là-haut ! |
+| 7. Construire un spatioport | Une piste d'envol ! Le plus beau perchoir de tous ! |
+| 8. Rechercher les Moteurs de saut | Sauter d'étoile en étoile, comme de branche en branche ! |
+| 9. Construire une sonde | La piste est prête ! Construisons notre premier petit éclaireur ! |
+| 10. Envoyer la sonde | Il est prêt ! Envoyons-le, vite, loin, plus loin ! |
+| Fin du tutoriel | Tu voles tout seul, maintenant ! L'essaim te suit ! |
+
+## Synodes
+
+| Objectif | Réplique |
+|---|---|
+| 1. Analyser le système de l'Arche | Nous devons d'abord sentir ce système, filament par filament. |
+| 2. Laisser passer le temps | Le réseau pousse lentement. Laissons-le croître. |
+| 3. Fonder la colonie | Le système est compris. Choisissons le sol où étendre notre réseau. |
+| 4. Construire un laboratoire | Un nœud de pensée, pour que le réseau réfléchisse plus vite. |
+| 5. Rechercher la Métallurgie | Le réseau doit apprendre à transformer le métal. |
+| 6. Rechercher la Mécanique orbitale | Penser plus haut que le sol : le ciel aussi peut porter nos spores. |
+| 7. Construire un spatioport | Préparons le lieu d'où nos spores partiront vers les étoiles. |
+| 8. Rechercher les Moteurs de saut | Pour relier les étoiles, il faut franchir le vide. |
+| 9. Construire une sonde | Le lieu d'envol est prêt. Formons une première spore voyageuse. |
+| 10. Envoyer la sonde | La spore est formée. Envoyons-la étendre notre pensée. |
+| Fin du tutoriel | Tu fais désormais partie du réseau. Nous pensons ensemble. |
+
+## Orrhaïdes
+
+| Objectif | Réplique |
+|---|---|
+| 1. Analyser le système de l'Arche | Laissons la lumière de ce système traverser nos facettes. |
+| 2. Laisser passer le temps | Chaque aube nous éclaire davantage. Laissons-la venir. |
+| 3. Fonder la colonie | La lumière a révélé ce monde. Choisissons où croître. |
+| 4. Construire un laboratoire | Un cristal clair, pour mieux voir et comprendre. |
+| 5. Rechercher la Métallurgie | Le métal aussi a sa note. Apprenons-la. |
+| 6. Rechercher la Mécanique orbitale | Monter vers la lumière, et y demeurer. |
+| 7. Construire un spatioport | Taillons un prisme d'où partiront nos éclats. |
+| 8. Rechercher les Moteurs de saut | Pour atteindre les autres étoiles, il faut sauter comme la lumière. |
+| 9. Construire une sonde | Le prisme est prêt. Faisons naître un premier éclat voyageur. |
+| 10. Envoyer la sonde | L'éclat brille. Qu'il aille chanter près d'autres étoiles. |
+| Fin du tutoriel | Tu as trouvé ta note. Tout l'amas peut maintenant t'entendre. |
+
+## Thrennes
+
+| Objectif | Réplique |
+|---|---|
+| 1. Analyser le système de l'Arche | Un guerrier reconnaît le terrain avant de combattre. |
+| 2. Laisser passer le temps | L'attente fait partie du combat. Que le temps avance. |
+| 3. Fonder la colonie | Le terrain est connu. Choisissons où planter notre bannière. |
+| 4. Construire un laboratoire | Une forge à stratégies. La victoire se prépare. |
+| 5. Rechercher la Métallurgie | Des coques fortes demandent un métal fort. |
+| 6. Rechercher la Mécanique orbitale | Tenir le ciel au-dessus de nos terres : c'est là que se gagnent les guerres. |
+| 7. Construire un spatioport | Dressons un bastion d'où nos vaisseaux s'élanceront. |
+| 8. Rechercher les Moteurs de saut | Pour porter nos armes au loin, il faut franchir le vide. |
+| 9. Construire une sonde | Le bastion est debout. Forgeons notre premier éclaireur. |
+| 10. Envoyer la sonde | L'éclaireur est prêt. Qu'il trouve nos futurs ennemis. |
+| Fin du tutoriel | Tu as gagné ta première gravure. D'autres suivront. |
+
+## Liseurs de Vey
+
+| Objectif | Réplique |
+|---|---|
+| 1. Analyser le système de l'Arche | Toute chose est un texte. Lisons d'abord ce système. |
+| 2. Laisser passer le temps | La lecture demande du temps. Laissons les jours passer. |
+| 3. Fonder la colonie | Le système est déchiffré. Choisissons la page où écrire notre colonie. |
+| 4. Construire un laboratoire | Une salle d'étude, pour lire plus vite et plus loin. |
+| 5. Rechercher la Métallurgie | Les Veilleurs connaissaient le métal. Retrouvons leur savoir. |
+| 6. Rechercher la Mécanique orbitale | Les Veilleurs écrivaient aussi dans le ciel. Apprenons leur grammaire. |
+| 7. Construire un spatioport | Bâtissons un portail d'où partiront nos messagers. |
+| 8. Rechercher les Moteurs de saut | Pour lire les autres étoiles, il faut d'abord les atteindre. |
+| 9. Construire une sonde | Le portail est prêt. Préparons notre premier messager. |
+| 10. Envoyer la sonde | Le messager est prêt. Qu'il aille chercher de nouveaux glyphes. |
+| Fin du tutoriel | Tu sais lire, maintenant. Le reste de l'amas t'attend. |
+
+## Ashkari
+
+| Objectif | Réplique |
+|---|---|
+| 1. Analyser le système de l'Arche | Un bon marchand regarde la marchandise avant de s'installer. |
+| 2. Laisser passer le temps | Les routes se parcourent au rythme des jours. En avant. |
+| 3. Fonder la colonie | Le système est inventorié. Choisissons notre premier comptoir. |
+| 4. Construire un laboratoire | Un atelier de cartes et de calculs : le savoir, ça se monnaye. |
+| 5. Rechercher la Métallurgie | Du métal pour nos coques, et pour le commerce. |
+| 6. Rechercher la Mécanique orbitale | Toute caravane commence par un quai. Apprenons à en bâtir dans le ciel. |
+| 7. Construire un spatioport | Construisons le quai d'où partiront nos navires. |
+| 8. Rechercher les Moteurs de saut | Les meilleures routes passent entre les étoiles. |
+| 9. Construire une sonde | Le quai est prêt. Armons notre premier éclaireur. |
+| 10. Envoyer la sonde | L'éclaireur est prêt. Qu'il ouvre la première route. |
+| Fin du tutoriel | Tu connais le métier. Les routes de l'amas sont à toi. |
+
+## Colons de l'Arche
+
+| Objectif | Réplique |
+|---|---|
+| 1. Analyser le système de l'Arche | Commandant, avant tout : savoir où nous sommes. |
+| 2. Laisser passer le temps | L'analyse prend quelques jours. Laissons le temps s'écouler. |
+| 3. Fonder la colonie | Le système est cartographié. Choisissons notre nouveau foyer. |
+| 4. Construire un laboratoire | Il nous faut des scientifiques au travail. |
+| 5. Rechercher la Métallurgie | Première priorité de recherche : travailler le métal. |
+| 6. Rechercher la Mécanique orbitale | Ensuite, la mécanique orbitale : c'est elle qui nous rouvrira l'espace. |
+| 7. Construire un spatioport | Nous pouvons construire un spatioport. |
+| 8. Rechercher les Moteurs de saut | Il faut maintenant des moteurs capables de sauter entre les étoiles. |
+| 9. Construire une sonde | Le spatioport est opérationnel. Construisons une sonde. |
+| 10. Envoyer la sonde | La sonde est prête à partir. |
+| Fin du tutoriel | Bon travail, commandant. La suite vous appartient. |

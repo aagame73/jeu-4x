@@ -4,7 +4,8 @@ import { writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { resolve } from 'node:path';
 const root = resolve(process.argv[2] ?? '.');
-const { DIALOGUES } = await import(pathToFileURL(`${root}/src/dialogues.js`).href);
+const { DIALOGUES, TUTORIAL } = await import(pathToFileURL(`${root}/src/dialogues.js`).href);
+const { TUTORIAL_STEPS } = await import(pathToFileURL(`${root}/src/tutorial.js`).href);
 const { SPECIES } = await import(pathToFileURL(`${root}/src/config.js`).href);
 const SITUATIONS = {
   accueil: 'Accueil (ouverture de la fiche)',
@@ -28,6 +29,12 @@ let md = '# Répliques des espèces rivales\n\nGénéré par `docs/outils/liste-
 for (const [key, lines] of Object.entries(DIALOGUES)) {
   md += `\n## ${SPECIES[key].label} · ${SPECIES[key].empire}\n\n| Situation | Réplique |\n|---|---|\n`;
   for (const [situation, label] of Object.entries(SITUATIONS)) md += `| ${label} | ${lines[situation]} |\n`;
+}
+md += '\n# Tutoriel : répliques du conseiller\n\nChaque réplique est suivie de la marche à suivre, la même pour toutes les espèces (`src/tutorial.js`).\n';
+const steps = [...TUTORIAL_STEPS.map((s, i) => [s.key, `${i + 1}. ${s.title}`]), ['fin', 'Fin du tutoriel']];
+for (const [key, lines] of Object.entries(TUTORIAL)) {
+  md += `\n## ${SPECIES[key].label}\n\n| Objectif | Réplique |\n|---|---|\n`;
+  for (const [step, label] of steps) md += `| ${label} | ${lines[step]} |\n`;
 }
 writeFileSync(`${root}/docs/dialogues-especes.md`, md);
 console.log('docs/dialogues-especes.md écrit');

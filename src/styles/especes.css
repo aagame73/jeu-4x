@@ -136,6 +136,13 @@
 .sp-setting-label {
   min-width: 130px;
 }
+.sp-tuto {
+  cursor: pointer;
+  font-size: 13px;
+}
+.sp-tuto input {
+  accent-color: var(--accent);
+}
 .sp-setting button {
   padding: 6px 12px;
   text-align: center;
@@ -260,6 +267,49 @@ body.system-open .advisor-portrait {
   50% {
     opacity: 0;
   }
+}
+.advisor-bubble.log-tuto {
+  border-color: color-mix(in srgb, var(--accent) 80%, transparent);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 30%, transparent);
+}
+/* Tutoriel : objectif en cours sous la bulle */
+.advisor-goal {
+  grid-column: 1 / -1;
+  padding: 7px 10px;
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  border-left: 3px solid var(--accent);
+  border-radius: 4px;
+  background: rgba(8, 26, 40, 0.8);
+}
+.advisor-goal[hidden] {
+  display: none;
+}
+.goal-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.goal-count {
+  flex: none;
+  font-family: 'Orbitron', 'Exo 2', sans-serif;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.goal-how {
+  margin: 4px 0 6px;
+  font-size: 12px;
+  line-height: 1.35;
+}
+.goal-actions {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+}
+.goal-actions button {
+  padding: 2px 8px;
+  font-size: 11px;
 }
 .advisor-queue {
   margin-top: 3px;

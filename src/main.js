@@ -24,6 +24,7 @@ import { restore, readSlot, writeSlot, takePendingLoad, takeNewGameRequest, take
 import { settingsFromParams, settingsQuery } from './difficulty.js';
 import { createMenu } from './menu.js';
 import { createTitleView } from './titleView.js';
+import { initTutorial, announceStep, updateTutorial, skipStep, hideTutorial } from './tutorial.js';
 import { installTooltips } from './tooltips.js';
 
 // Au démarrage : une sauvegarde à charger (menu), sinon une nouvelle partie.
@@ -49,6 +50,16 @@ if (pending) {
   }
 }
 game ??= createGame(urlSeed || Math.floor(Math.random() * 1e6), chosenSpecies ?? DEFAULT_SPECIES, chosenSettings.rivals, chosenSettings);
+// Tutoriel (tutorial.js) : pour une nouvelle partie lancée depuis l'écran des espèces, sauf s'il a été décoché.
+// Pas pour une partie de test (?graine=, ?espece=). Une partie chargée garde son état.
+if (!pending) {
+  const tutorialOn = !!newGameRequest && !urlSeed && chosenSettings.tutorial !== false;
+  initTutorial(game, tutorialOn);
+  if (tutorialOn) {
+    game.log = game.log.filter((e) => !e.text.startsWith('Analysez le système')); // l'objectif 1 le dit déjà
+    announceStep(game);
+  }
+}
 // L'écran d'accueil propose de continuer la partie enregistrée ; tant que le joueur n'a pas
 // choisi, la sauvegarde automatique est suspendue pour ne pas l'écraser.
 const showStart = !!loadError || (!pending && !wantsNewGame && !urlSeed && !!readSlot('auto'));
@@ -70,6 +81,7 @@ function selectNextIdleShip() {
 }
 
 function refresh() {
+  updateTutorial(game); // objectif atteint : le suivant est annoncé et le jeu se met en pause
   view.update();
   ui.render();
   contactView.update();
@@ -90,6 +102,8 @@ function advanceTime(dt) {
   const speed = slowedByBattle ? COMBAT.battleSpeed : CONFIG.speeds[game.speedIndex];
   tick(game, (dt * speed) / CONFIG.secondsPerDay);
   if (game.log.length !== logLength) {
+    refresh();
+  } else if (updateTutorial(game)) {
     refresh();
   } else if (currentDay(game) !== day) {
     ui.renderLive();
@@ -115,6 +129,14 @@ const view = createGalaxyView(document.getElementById('scene'), game, {
 });
 
 const actions = {
+  onTutorialSkip() {
+    skipStep(game);
+    refresh();
+  },
+  onTutorialHide() {
+    hideTutorial(game);
+    refresh();
+  },
   onSelectShip(id) {
     game.selectedShipId = id;
     refresh();

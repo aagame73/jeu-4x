@@ -7,6 +7,7 @@ import { colonyReport } from './economy.js';
 import { ICONS } from './icons.js';
 import { TECHS, techCost } from './research.js';
 import { createAdvisor } from './advisor.js';
+import { TUTORIAL_STEPS, currentStep } from './tutorial.js';
 import { currentSpecies, speciesHabitat, rivalInfo } from './species.js';
 import { treatyConflicts } from './diplomacy.js';
 import { shipHealth, warReport } from './combat.js';
@@ -61,6 +62,7 @@ export function createUI(root, game, actions) {
         <div class="advisor-bubble" id="advisor-bubble" title="Clic : passer"></div>
         <div class="advisor-queue" id="advisor-queue"></div>
       </div>
+      <div class="advisor-goal" id="advisor-goal" hidden></div>
       <div class="advisor-history" id="journal" hidden></div>
     </section>
     <div class="help">Espace : pause · R : recherche · D : diplomatie · F : plein écran · + / − : vitesse · Clic : sélectionner · Double-clic : centrer · Glisser : pivoter · Clic droit : déplacer · Molette : zoom · 1 à 9 : choisir un vaisseau · Graine ${game.seed}</div>
@@ -86,6 +88,8 @@ export function createUI(root, game, actions) {
     else if (action === 'diplomacy') actions.onOpenDiplomacy?.();
     else if (action === 'fullscreen') actions.onToggleFullscreen();
     else if (action === 'journal') $('journal').hidden = !$('journal').hidden;
+    else if (action === 'tuto-skip') actions.onTutorialSkip();
+    else if (action === 'tuto-hide') actions.onTutorialHide();
     else if (action === 'objectives') {
       $('objectives').hidden = !$('objectives').hidden;
       el.setAttribute('aria-expanded', String(!$('objectives').hidden));
@@ -518,10 +522,23 @@ export function createUI(root, game, actions) {
     renderClock();
   }
 
+  // Tutoriel : objectif en cours, rappelé sous la bulle du conseiller (tutorial.js).
+  function renderGoal() {
+    const step = currentStep(game);
+    const el = $('advisor-goal');
+    el.hidden = !step;
+    if (!step) return;
+    el.innerHTML = `
+      <div class="goal-head"><span class="goal-count">Objectif ${game.tutorial.step + 1}/${TUTORIAL_STEPS.length}</span><b>${step.title}</b></div>
+      <p class="goal-how">${step.how}</p>
+      <div class="goal-actions"><button data-action="tuto-skip" title="Passer à l'objectif suivant">Passer</button><button data-action="tuto-hide" title="Arrêter le tutoriel (il se relance depuis l'aide)">Masquer le tutoriel</button></div>`;
+  }
+
   function render() {
     renderLive();
     renderInfo();
     renderJournal();
+    renderGoal();
   }
 
   render();
