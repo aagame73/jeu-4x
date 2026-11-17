@@ -40,6 +40,9 @@ const WATER_PER_COLONIST = 0.1; // eau bue par colon et par jour
 const DIG_DAYS = 25; // jours de fouille pour trouver un artefact (moitié moins avec le lexique des Veilleurs)
 const ARTIFACTS_PER_RUIN = 3;
 const ECOPE_PER_DAY = 3; // deutérium puisé par une écope gazeuse
+// La fonderie s'arrête seule quand le minerai devient rare, et repart quand le stock est refait.
+export const FOUNDRY_STOP = 40;
+export const FOUNDRY_RESUME = 50;
 
 // Fragments d'histoire des Veilleurs, révélés un par un par les artefacts.
 const LORE = [
@@ -233,7 +236,7 @@ export const BUILDINGS = {
 };
 
 function isActive(tile, type) {
-  return tile.building?.type === type && tile.building.done;
+  return tile.building?.type === type && tile.building.done && !isStopped(tile.building);
 }
 
 function depositBonus(tile, resource) {
@@ -282,9 +285,22 @@ export const SHIPYARD = {
   colonie: { label: 'Vaisseau colonie', kind: 'ship', category: 'civil', size: 'moyen', requires: 'dock', tech: ['coques-moyennes', 'habitats-scelles'], cost: { minerais: 80, alliages: 25, biomasse: 30, eau: 20 }, days: 25, desc: 'Fonde une nouvelle colonie dans un système analysé. Emporte 2 colons.' },
 };
 
+// --- Pause d'un bâtiment ---
+// Se met en pause tout bâtiment construit par le joueur, sauf ceux qui logent les colons.
+export const isPausable = (type) => BUILDINGS[type]?.buildable !== false && !BUILDINGS[type]?.housing;
+// À l'arrêt : mis en pause par le joueur, ou fonderie arrêtée faute de minerai.
+export const isStopped = (building) => !!(building?.paused || building?.starved);
+
+export function togglePause(game, colony, surface, tile) {
+  const b = tile.building;
+  if (!b?.done || !isPausable(b.type)) return false;
+  b.paused = !b.paused;
+  return true;
+}
+
 // Bilan d'une colonie pour un jour : production, énergie, main-d'œuvre.
 export function colonyReport(colony, surface) {
-  const built = surface.tiles.filter((t) => t.building?.done);
+  const built = surface.tiles.filter((t) => t.building?.done && !isStopped(t.building));
   let housing = 0;
   let workers = 0;
   let energyUse = 0;
@@ -411,6 +427,18 @@ export function demolish(game, colony, surface, tile) {
 // Avance une colonie de `days` jours. Renvoie les messages pour le journal.
 export function tickColony(game, colony, surface, days) {
   const events = [];
+  // Fonderies : arrêt automatique sous FOUNDRY_STOP minerais, reprise à FOUNDRY_RESUME.
+  for (const tile of surface.tiles) {
+    const b = tile.building;
+    if (b?.type !== 'fonderie' || !b.done) continue;
+    if (!b.starved && game.resources.minerais < FOUNDRY_STOP) {
+      b.starved = true;
+      if (!b.paused) events.push(`La fonderie de ${colony.name} s'arrête : moins de ${FOUNDRY_STOP} minerais en stock. Elle repartira seule à ${FOUNDRY_RESUME}.`);
+    } else if (b.starved && game.resources.minerais >= FOUNDRY_RESUME) {
+      b.starved = false;
+      if (!b.paused) events.push(`La fonderie de ${colony.name} repart : le stock de minerais est refait.`);
+    }
+  }
   const report = colonyReport(colony, surface);
   // Une fonderie sans minerais ne coule rien : on ne crée pas d'alliages à partir de rien.
   if (game.resources.minerais <= 0 && report.perDay.minerais < 0) report.perDay.alliages = Math.min(0, report.perDay.alliages);
@@ -439,7 +467,7 @@ export function tickColony(game, colony, surface, days) {
   }
 
   for (const tile of surface.tiles) {
-    if (tile.deposit && tile.building?.done && BUILDINGS[tile.building.type].deposit) {
+    if (tile.deposit && tile.building?.done && !isStopped(tile.building) && BUILDINGS[tile.building.type].deposit) {
       tile.yield = Math.max(yieldFloor(), tile.yield - DEPLETION_PER_DAY * days * report.staffing * report.power);
     }
   }

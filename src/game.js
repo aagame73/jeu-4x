@@ -256,6 +256,9 @@ export function canAnalyse(ship, star) {
   return !!ship && SHIP_KINDS[ship.kind].analyse && ship.state === 'idle' && ship.starId === star.id && star.level === 2;
 }
 
+// Un vaisseau capable d'analyser qui attend à cette étoile (sélectionné ou non).
+export const analyserAt = (game, star) => game.ships.find((s) => canAnalyse(s, star)) ?? null;
+
 export function startAnalysis(game, ship) {
   const star = game.stars[ship.starId];
   if (!canAnalyse(ship, star)) return false;
@@ -439,6 +442,35 @@ function tickResearch(game, days) {
   checkResearchDone(game);
 }
 
+// --- Pénuries : le conseiller prévient quand une ressource tombe à zéro, et dit pourquoi ---
+const SHORTAGE_HINTS = {
+  minerais: "La consommation dépasse l'extraction : mettez une fonderie en pause, ou construisez un puits de forage sur un gisement de minerais.",
+  biomasse: 'Les colons mangent plus que ce que produisent fermes et serres : construisez-en, ou la colonie souffrira de famine.',
+  eau: "Les colons boivent plus que ce qui est pompé : construisez une pompe ou un captage d'eau.",
+  alliages: 'Construisez une fonderie, ou mettez en pause ce qui consomme des alliages.',
+  deuterium: 'Construisez une pompe à deutérium, ou limitez les sauts.',
+};
+export function resourcesPerDay(game) {
+  const perDay = {};
+  for (const colony of game.colonies) {
+    const report = colonyReport(colony, getSurface(game, colony.starId, colony.planetIndex));
+    for (const [res, v] of Object.entries(report.perDay)) perDay[res] = (perDay[res] ?? 0) + v;
+  }
+  return perDay;
+}
+function checkShortages(game) {
+  game.shortages ??= {};
+  const perDay = resourcesPerDay(game);
+  for (const res of Object.keys(SHORTAGE_HINTS)) {
+    const stock = game.resources[res] ?? 0;
+    if (stock < 1 && (perDay[res] ?? 0) < 0 && !game.shortages[res]) {
+      game.shortages[res] = true;
+      const name = RESOURCE_LABELS[res].toLowerCase();
+      addLog(game, `Plus ${/^[aeéiou]/.test(name) ? "d'" : 'de '}${name} ! ${SHORTAGE_HINTS[res]}`, 'alert');
+    } else if (stock >= 20) game.shortages[res] = false;
+  }
+}
+
 // --- Chantier spatial (sondes, vaisseaux colonie, structures orbitales, améliorations) -----
 
 export function shipyardProblem(game, colony, key) {
@@ -567,7 +599,7 @@ export function tick(game, days) {
   if (game.log.length !== logLength) changed = true;
   for (const colony of game.colonies) {
     for (const text of tickColony(game, colony, getSurface(game, colony.starId, colony.planetIndex), days)) {
-      addLog(game, text, 'build');
+      addLog(game, text, text.includes('fonderie') ? 'alert' : 'build');
       changed = true;
     }
     if (colony.shipyard) {
@@ -578,6 +610,9 @@ export function tick(game, days) {
       }
     }
   }
+  const before = game.log.length;
+  checkShortages(game);
+  if (game.log.length !== before) changed = true;
   for (const m of newMilestones(game)) {
     addLog(game, `Vos colonies occupent au moins ${Math.round(m * 100)} % des systèmes colonisables. La victoire est à ${Math.round(VICTORY.share * 100)} %.`, 'discovery');
     changed = true;
@@ -699,6 +734,11 @@ function arrive(game, ship) {
     if (livingHome(game, star)) addLog(game, `Des signaux artificiels émanent de ${star.name}. Une autre espèce vit ici.`, 'alert');
   } else {
     addLog(game, `${ship.name} arrive à ${star.name}.`);
+  }
+  // Une sonde arrive dans un système pas encore analysé : on la sélectionne et on le dit.
+  if (star.level === 2 && SHIP_KINDS[ship.kind].analyse && ship.kind !== 'arche') {
+    game.selectedShipId = ship.id;
+    addLog(game, `${ship.name} peut analyser ${star.name} : cliquez sur l'étoile, puis sur « Analyser avec ${ship.name} ».`, 'alert');
   }
   const seen = sense(game, star);
   if (seen > 0) addLog(game, `${seen} ${seen > 1 ? 'nouvelles lueurs' : 'nouvelle lueur'} autour de ${star.name}.`);

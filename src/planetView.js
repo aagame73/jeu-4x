@@ -3,7 +3,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { TERRAINS, HEX_DIRECTIONS, hexKey } from './surface.js';
-import { BUILDINGS, RESOURCE_LABELS, SHIPYARD, depositName, buildableTypes, lockedTypes, colonyReport, previewBuilding, canAfford } from './economy.js';
+import { BUILDINGS, RESOURCE_LABELS, SHIPYARD, depositName, buildableTypes, lockedTypes, colonyReport, previewBuilding, canAfford, isPausable, isStopped, FOUNDRY_RESUME } from './economy.js';
 import { PLANET_TYPES, PLANET_SIZES } from './galaxy.js';
 import { getSurface, colonyOn, shipyardProblem } from './game.js';
 import { createRng } from './rng.js';
@@ -283,6 +283,20 @@ function depositMarker(deposit, top) {
 
 // --- Bâtiments -----------------------------------------------------------------------
 const ghostMaterial = new THREE.MeshBasicMaterial({ color: '#7cd8ff', wireframe: true, transparent: true, opacity: 0.55 });
+
+// Bâtiment à l'arrêt (en pause, ou fonderie sans minerai) : couleurs ternies, lueurs éteintes.
+// Les matériaux de buildingMesh sont propres à chaque bâtiment : on peut les modifier sans risque.
+function dimBuilding(group) {
+  group.traverse((o) => {
+    const mats = o.material ? (Array.isArray(o.material) ? o.material : [o.material]) : [];
+    for (const mat of mats) {
+      if (mat === ghostMaterial || mat.userData?.shared) continue;
+      mat.color?.lerp(new THREE.Color('#3a3f4a'), 0.6);
+      if (mat.emissive) mat.emissiveIntensity = (mat.emissiveIntensity ?? 1) * 0.15;
+      if (mat.blending === THREE.AdditiveBlending) o.visible = false; // lueurs éteintes (leur animation ne touche qu'à l'opacité)
+    }
+  });
+}
 
 function buildingMesh(type, ghost, level = 1) {
   const g = new THREE.Group();
@@ -886,13 +900,15 @@ export function createPlanetView(root, game, actions) {
   function syncBuildings() {
     for (const view of state.tileViews) {
       const b = view.tile.building;
-      const key = b ? `${b.type}:${b.done}:${levelOf(b)}` : '';
+      const stopped = isStopped(b);
+      const key = b ? `${b.type}:${b.done}:${levelOf(b)}:${stopped}` : '';
       if (key === view.buildingKey) continue;
       if (view.building) view.decor.remove(view.building);
       view.building = null;
       view.buildingKey = key;
       if (!b) continue;
       view.building = buildingMesh(b.type, !b.done, levelOf(b));
+      if (stopped) dimBuilding(view.building);
       view.building.position.y = view.top;
       view.decor.add(view.building);
     }
@@ -965,6 +981,7 @@ export function createPlanetView(root, game, actions) {
     if (action === 'close') actions.onClosePlanet();
     else if (action === 'build') actions.onBuild(state.colony, state.surface, state.selected, el.dataset.type);
     else if (action === 'demolish') actions.onDemolish(state.colony, state.surface, state.selected);
+    else if (action === 'pause') actions.onToggleBuilding(state.colony, state.surface, state.selected);
     else if (action === 'upgrade') actions.onUpgrade?.(state.colony, state.surface, state.selected);
     else if (action === 'found') actions.onFoundColony(state.founding, state.star.id, state.planetIndex, state.selected.index);
     else if (action === 'shipyard') actions.onShipyard(state.colony, el.dataset.key);
@@ -1228,11 +1245,13 @@ export function createPlanetView(root, game, actions) {
         : '<p class="muted small">Choisissez une case de terre sans gisement de minerais ni de Vélarine.</p>';
     } else if (tile.building) {
       const def = BUILDINGS[tile.building.type];
-      html += `<div class="building-line" title="${def.desc}"><span class="big-icon">${icon(tile.building.type)}</span><div><b>${def.label}</b>${tile.building.done ? '' : '<div class="muted small">en construction</div>'}</div></div>`;
+      const b = tile.building;
+      const state = !b.done ? 'en construction' : b.paused ? 'en pause : ne produit ni ne consomme' : b.starved ? `arrêtée : pas assez de minerais (reprise à ${FOUNDRY_RESUME})` : '';
+      html += `<div class="building-line${isStopped(b) ? ' stopped' : ''}" title="${def.desc}"><span class="big-icon">${icon(b.type)}</span><div><b>${def.label}</b>${state ? `<div class="muted small">${state}</div>` : ''}</div></div>`;
       if (tile.building.done && colony) {
         const out = colonyReport(colony, surface).perTile.get(tile.index) || {};
         const gains = Object.fromEntries(RESOURCES.map((res) => [res, out[res] || 0]));
-        gains.energie -= def.energy || 0;
+        if (!isStopped(tile.building)) gains.energie -= def.energy || 0; // à l'arrêt : il ne consomme pas d'énergie
         const chips = gainChips(gains);
         const housing = (def.housing ? gainChips({ housing: def.housing * levelOf(tile.building) }) : '') + defenseChip(tile.building.type, levelOf(tile.building));
         if (chips || housing) html += `<div class="chips">${chips}${chips ? '<span class="muted small">/ jour</span>' : ''}${housing}</div>`;
@@ -1246,6 +1265,11 @@ export function createPlanetView(root, game, actions) {
           : '<p class="muted small">Le site est épuisé : plus aucun artefact à trouver.</p>';
       }
       if (tile.building.done && colony && isUpgradable(tile.building.type)) html += levelBlock(tile);
+      if (tile.building.done && colony && isPausable(tile.building.type)) {
+        html += tile.building.paused
+          ? `<button class="icon-btn" data-pv="pause" title="Le bâtiment reprend sa production">${icon('lecture')}Reprendre</button>`
+          : `<button class="icon-btn" data-pv="pause" title="Arrête la production et la consommation sans démolir">${icon('pause')}Mettre en pause</button>`;
+      }
       if (def.buildable !== false && colony) html += `<button class="icon-btn" data-pv="demolish" title="Démolir (rembourse la moitié du coût)">${icon('demolir')}Démolir</button>`;
     } else if (!colony) {
       html += '<p class="muted small">Pas de colonie sur cette planète.</p>';

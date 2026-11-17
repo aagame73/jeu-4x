@@ -19,7 +19,7 @@ import { createContactView } from './contactView.js';
 import { createEndView } from './endView.js';
 import { playerBattles } from './combat.js';
 import { createPlanetView } from './planetView.js';
-import { startConstruction, demolish, startUpgrade } from './economy.js';
+import { startConstruction, demolish, startUpgrade, togglePause } from './economy.js';
 import { restore, readSlot, writeSlot, takePendingLoad, takeNewGameRequest, takeSettingsRequest, newGameAndRestart } from './save.js';
 import { settingsFromParams, settingsQuery } from './difficulty.js';
 import { createMenu } from './menu.js';
@@ -149,8 +149,11 @@ const actions = {
     if (sendShip(game, selectedShip(game), game.stars[game.selectedStarId])) selectNextIdleShip();
     refresh();
   },
-  onAnalyse() {
-    startAnalysis(game, selectedShip(game));
+  onAnalyse(shipId = null) {
+    const ship = shipId !== null ? game.ships.find((s) => s.id === shipId) : selectedShip(game);
+    if (!ship) return;
+    game.selectedShipId = ship.id;
+    startAnalysis(game, ship);
     refresh();
   },
   onTogglePause() {
@@ -228,6 +231,9 @@ const actions = {
   },
   onDemolish(colony, surface, tile) {
     if (demolish(game, colony, surface, tile)) refresh();
+  },
+  onToggleBuilding(colony, surface, tile) {
+    if (togglePause(game, colony, surface, tile)) refresh();
   },
   onUpgrade(colony, surface, tile) {
     if (startUpgrade(game, colony, surface, tile)) refresh();

@@ -1,7 +1,7 @@
 // Interface HTML par-dessus la vue 3D : barre du haut, sondes, fiche du système, journal.
 import { CONFIG } from './config.js';
 import { STAR_TYPES, PLANET_TYPES, PLANET_SIZES, starDistance } from './galaxy.js';
-import { LEVEL_LABELS, canReach, canAnalyse, starLabel, stats, currentDay, daysLeft, visiblePlanets, getSurface, colonyOn, selectedShip, SHIP_KINDS, lifespan, foundingProblem } from './game.js';
+import { LEVEL_LABELS, canReach, canAnalyse, analyserAt, starLabel, stats, currentDay, daysLeft, visiblePlanets, getSurface, colonyOn, selectedShip, SHIP_KINDS, lifespan, foundingProblem } from './game.js';
 import { renderShipThumbnails } from './ships.js';
 import { colonyReport } from './economy.js';
 import { ICONS } from './icons.js';
@@ -104,11 +104,14 @@ export function createUI(root, game, actions) {
     else if (action === 'speed') actions.onSetSpeed(Number(id));
     else if (action === 'select-ship') actions.onSelectShip(Number(id));
     else if (action === 'send') actions.onSend();
-    else if (action === 'analyse') actions.onAnalyse();
+    else if (action === 'analyse') actions.onAnalyse(id !== undefined ? Number(id) : null);
     else if (action === 'focus') actions.onFocusStar(Number(id));
     else if (action === 'open-system') actions.onOpenSystem(Number(id));
     else if (action === 'open-planet') actions.onOpenPlanet(Number(el.dataset.star), Number(el.dataset.planet));
   });
+
+  // Ressources indispensables : épuisées, elles sont signalées même si rien ne les consomme.
+  const ESSENTIAL = ['minerais', 'biomasse', 'eau'];
 
   // Stock commun et variation par jour, toutes colonies confondues.
   function renderStats() {
@@ -131,7 +134,12 @@ export function createUI(root, game, actions) {
       }
       const day = perDay[res] ?? 0;
       const flat = Math.abs(day) < 0.05;
-      return `<span class="res res-${res}" title="${label} : stock commun et variation par jour">${ICONS[res]}<span class="res-body">
+      // Halo d'alerte : rouge clignotant si la ressource est épuisée, orange si elle le sera dans moins de 30 jours.
+      const empty = value < 1 && day < 0.05 && (ESSENTIAL.includes(res) || day < 0);
+      const low = !empty && day < -0.05 && value / -day < 30;
+      const alert = empty ? ' res-empty' : low ? ' res-low' : '';
+      const why = empty ? ' — ÉPUISÉ' : low ? ` — épuisé dans ${Math.ceil(value / -day)} jours` : '';
+      return `<span class="res res-${res}${alert}" title="${label} : stock commun et variation par jour${why}">${ICONS[res]}<span class="res-body">
         <b>${value}</b><small class="${day < 0 ? 'down' : flat ? 'flat' : ''}">${rate(day)}</small>
         ${gauge(value / (value + 200))}</span></span>`;
     };
@@ -221,6 +229,8 @@ export function createUI(root, game, actions) {
     if (button.hasAttribute('data-tip')) button.dataset.tip = tip;
     else button.title = tip;
     button.classList.toggle('idle', !tech);
+    // Halo pulsé seulement quand des points de recherche sont produits sans projet pour les recevoir.
+    button.classList.toggle('waiting', !tech && rules.researchPerDay(game) > 0);
     button.querySelector('.rs-meter i').style.width = tech ? `${Math.min(100, (progress / techCost(tech)) * 100).toFixed(1)}%` : '0%';
   }
 
@@ -446,12 +456,16 @@ export function createUI(root, game, actions) {
   function renderActions(star) {
     const ship = selectedShip(game);
     const parts = [];
+    // Analyse : proposée avec tout vaisseau capable qui attend ici, même s'il n'est pas sélectionné.
+    const analyser = ship && canAnalyse(ship, star) ? ship : analyserAt(game, star);
+    if (analyser) {
+      parts.push(`<button class="primary" data-action="analyse" data-id="${analyser.id}">Analyser avec ${analyser.name} · ${plural(CONFIG.analyseDays, 'jour')}</button>`);
+    } else if (ship && star.level === 2 && ship.starId === star.id && ship.state === 'idle' && !SHIP_KINDS[ship.kind].analyse) {
+      parts.push(`<p class="muted small">${ship.name} ne peut pas analyser : il faut une sonde (ou l'Arche).</p>`);
+    }
     if (!ship) {
       parts.push('<p class="muted small">Aucun vaisseau sélectionné.</p>');
     } else {
-      if (canAnalyse(ship, star)) {
-        parts.push(`<button class="primary" data-action="analyse">Analyser avec ${ship.name} · ${plural(CONFIG.analyseDays, 'jour')}</button>`);
-      }
       const r = canReach(game, ship, star);
       if (r.ok) {
         // Coût en deutérium (si les règles le fournissent) : nombre suivi de l'icône
