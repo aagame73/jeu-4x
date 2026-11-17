@@ -55,6 +55,30 @@ body {
   color: #7cff9e;
   text-shadow: 0 0 6px rgba(124, 255, 158, 0.8);
 }
+.star-label.colony {
+  color: #a8ffbe;
+}
+/* Colonie en famine ou en soif : point rouge qui clignote */
+.star-label.alert::after {
+  content: ' ⚠';
+  color: #ff6b6b;
+  animation: label-blink 1.2s ease-in-out infinite;
+}
+/* Sonde qui attend pour analyser le système */
+.star-label.waiting {
+  color: #5fe3ff;
+  animation: label-blink 1.6s ease-in-out infinite;
+}
+.star-label.waiting::after {
+  content: ' ◎';
+}
+@keyframes label-blink {
+  50% { opacity: 0.45; }
+}
+/* De loin : on n'affiche que l'essentiel */
+.labels.far .star-label:not(.home):not(.colony):not(.rival):not(.favored):not(.alert):not(.waiting):not(.selected) {
+  opacity: 0;
+}
 .star-label.ruins::after {
   content: ' ◆';
   color: var(--gold);

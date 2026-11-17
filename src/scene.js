@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 import { STAR_TYPES, starDistance } from './galaxy.js';
-import { reachableStars, shipProgress, selectedShip, visiblePlanets, colonyOn } from './game.js';
+import { reachableStars, shipProgress, selectedShip, visiblePlanets, colonyOn, canAnalyse } from './game.js';
 import { currentSpecies, knownRival, rivalInfo, speciesHabitat } from './species.js';
 import { SPECIES } from './config.js';
 import { createSky } from './skybox.js';
@@ -322,7 +322,12 @@ export function createGalaxyView(container, game, callbacks) {
       if (rival) el.style.setProperty('--empire', rival.accent);
       // Planète libre au milieu favorable à votre espèce : petite coche verte devant le nom.
       const favored = known && visiblePlanets(star).some((p) => p.size && !p.inhabitedBy && speciesHabitat(p) === 'favored' && !colonyOn(game, star.id, star.planets.indexOf(p)));
-      el.className = 'star-label' + (star.id === game.homeId ? ' home' : '') + (occupant ? ' rival' : '') + (star.hasRuins && star.level === 3 ? ' ruins' : '') + (favored ? ' favored' : '');
+      // Alertes sur la carte : colonie en famine ou en soif ; sonde qui attend pour analyser.
+      const colonies = game.colonies.filter((c) => c.starId === star.id);
+      const alert = colonies.some((c) => c.famine || c.thirst);
+      const waiting = star.level === 2 && game.ships.some((s) => canAnalyse(s, star));
+      el.className = 'star-label' + (star.id === game.homeId ? ' home' : '') + (occupant ? ' rival' : '') + (star.hasRuins && star.level === 3 ? ' ruins' : '') +
+        (favored ? ' favored' : '') + (colonies.length ? ' colony' : '') + (alert ? ' alert' : '') + (waiting ? ' waiting' : '') + (star.id === game.selectedStarId ? ' selected' : '');
       el.title = favored ? 'Une planète libre y est favorable à votre espèce' : '';
     }
 
@@ -536,6 +541,8 @@ export function createGalaxyView(container, game, callbacks) {
     updateFleets(dt, time);
     updateBattles(dt);
     ring.material.rotation += dt * 0.4;
+    // Vue de loin : seules les étiquettes importantes restent (colonies, rivaux, alertes…).
+    labelRenderer.domElement.classList.toggle('far', camera.position.distanceTo(controls.target) > 140);
     renderer.render(scene, camera);
     labelRenderer.render(scene, camera);
   });
