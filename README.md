@@ -15,12 +15,12 @@ Un **tutoriel** guide les débuts : le conseiller de votre espèce annonce chaqu
 1. **Choisir son espèce** : chacune a une force et une faiblesse. Choisir aussi la difficulté, la taille de la carte et le nombre d'adversaires.
 2. **Analyser le système** : l'Arche, le vaisseau colonie, arrive avec des moteurs de saut cassés. Cliquez sur son étoile, puis sur **Analyser avec l'Arche**.
 3. **Fonder la colonie** : à la fin de l'analyse, choisissez une planète (**Fonder une colonie ici**), puis la case où poser le centre de la colonie.
-4. **Construire** : cliquez sur une case de la surface pour voir ce qu'on peut y bâtir. Commencez par un **laboratoire** pour faire avancer la recherche.
-5. **Rechercher** (touche **R**) : *Métallurgie*, puis *Mécanique orbitale*, qui débloque le **spatioport** (à construire sur une plaine ou un désert), puis *Moteurs de saut*, qui débloquent la sonde.
-6. **Lancer une sonde** : dans la colonie (**Gérer la colonie**), le panneau du chantier spatial propose la sonde. Une fois construite, elle apparaît dans le panneau **Flotte**, en haut à gauche. Sélectionnez-la, cliquez sur une étoile de la carte, puis sur **Envoyer**.
+4. **Construire** : cliquez sur une case de la surface pour voir ce qu'on peut y bâtir (seul ce que la recherche a débloqué apparaît). Commencez par un **laboratoire** : chacun ajoute des points de recherche. Un bâtiment peut être **mis en pause** sans le démolir.
+5. **Rechercher** (touche **R**) : un tiroir à droite montre la recherche en cours, la file d'attente (3 recherches qui s'enchaînent seules) et ce qu'on peut chercher maintenant. Sans recherche en cours, les points sont perdus. Commencez par *Métallurgie*, puis *Mécanique orbitale*, qui débloque le **spatioport** (sur une plaine ou un désert), puis *Moteurs de saut*, qui débloquent la sonde.
+6. **Lancer une sonde** : dans la colonie (**Gérer la colonie**), cliquez sur le **spatioport** : le chantier spatial propose la sonde. Une fois construite, elle apparaît dans le panneau **Flotte**, en haut à gauche. Sélectionnez-la, cliquez sur une étoile de la carte, puis sur **Envoyer**. Arrivée dans un système inconnu, elle propose de l'**analyser**.
 7. **Explorer et s'étendre** : les sondes découvrent les systèmes et les empires rivaux. Le dock spatial permet ensuite de construire des vaisseaux colonie, des vaisseaux de guerre et des défenses.
 
-Le conseiller de votre espèce, en bas à gauche, commente les événements de la partie.
+Le conseiller de votre espèce, en bas à gauche, commente les événements de la partie et prévient des pénuries ; une ressource épuisée clignote en rouge dans le bandeau. Les propositions des autres empires s'ouvrent dans une fenêtre (le jeu se met en pause). Dans la vue d'un système, les planètes **favorables** ou **hostiles** à votre espèce sont signalées ; sur la carte, une coche verte marque les systèmes où une planète favorable est libre.
 
 **Victoire** : occuper 80 % des systèmes colonisables, ou qu'il ne reste plus aucun rival. **Défaite** : plus aucune colonie, ni de vaisseau pour en fonder une.
 
@@ -30,7 +30,7 @@ Le conseiller de votre espèce, en bas à gauche, commente les événements de l
 |---|---|
 | Espace | Pause / reprise |
 | + / − | Vitesse du temps (×1, ×2, ×4) |
-| R | Recherche |
+| R | Recherche (tiroir ; arbre complet depuis le tiroir) |
 | D | Diplomatie |
 | H | Aide (commandes, premiers pas, relancer le tutoriel) |
 | F | Plein écran |
