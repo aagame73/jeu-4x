@@ -294,9 +294,47 @@
   min-height: 0;
   overflow: auto;
   padding-right: 4px;
+  display: grid;
+  grid-template-columns: 170px 1fr;
+  gap: 12px;
+  align-items: start;
+}
+.rs-rows {
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+/* Vignette peinte de la branche */
+.rs-art {
+  position: sticky;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  text-align: center;
+}
+.rs-art img {
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--branch) 50%, transparent);
+  box-shadow: 0 0 18px color-mix(in srgb, var(--branch) 30%, transparent);
+  object-fit: cover;
+}
+.rs-art b {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  color: var(--branch);
+}
+.rs-art small {
+  font-size: 11px;
+  color: #8794b8;
+}
+@media (max-width: 900px) {
+  .rs-tree { grid-template-columns: 1fr; }
+  .rs-art { display: none; }
 }
 .rs-row {
   display: grid;

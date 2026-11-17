@@ -10,6 +10,7 @@ const fmt = (x) => Math.floor(x).toLocaleString('fr-FR');
 const fmt1 = (x) => (Math.round(x * 10) / 10).toLocaleString('fr-FR');
 const plural = (n, word) => `${n} ${word}${n > 1 ? 's' : ''}`;
 const TIERS = [1, 2, 3, 4];
+const VIGNETTE = (branch) => `${import.meta.env?.BASE_URL ?? '/'}recherche/${branch}.jpg`;
 const branchOf = (key) => BRANCHES.find((b) => b.key === TECHS[key]?.branch);
 const branchKeys = (branch) => Object.keys(TECHS).filter((k) => TECHS[k].branch === branch);
 
@@ -201,7 +202,17 @@ export function createResearchView(root, game, actions) {
     }).join('');
     const tree = $('rs-tree');
     tree.className = `rs-tree rs-b-${branch}`;
-    tree.innerHTML = rows;
+    const b = BRANCHES.find((x) => x.key === branch);
+    const keys = branchKeys(branch);
+    const done = keys.filter((k) => status(game, k) === 'done').length;
+    // Vignette peinte de la branche (Gemini, docs/outils/vignettes.py), en colonne à gauche des paliers.
+    tree.innerHTML = `
+      <aside class="rs-art">
+        <img src="${VIGNETTE(branch)}" alt="" loading="lazy" decoding="async">
+        <b>${b.label}</b>
+        <small>${done} / ${keys.length} acquises</small>
+      </aside>
+      <div class="rs-rows">${rows}</div>`;
     renderLive(true);
   }
 
