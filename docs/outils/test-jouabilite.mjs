@@ -6,6 +6,9 @@ const root = process.argv[2];
 const imp = (f) => import(pathToFileURL(`${root}/src/${f}`).href);
 const G = await imp('game.js');
 const E = await imp('economy.js');
+const R = await imp('research.js');
+const { RESEARCH } = await imp('config.js');
+const { restore, serialize } = await imp('save.js');
 
 let fails = 0;
 const check = (ok, msg) => {
@@ -73,6 +76,42 @@ const corvette = { id: 901, kind: 'corvette', name: 'Corvette Test', state: 'idl
 game.ships.push(probe, corvette);
 game.selectedShipId = corvette.id;
 check(!G.canAnalyse(corvette, target) && G.analyserAt(game, target) === probe, 'analyse trouvée avec la sonde, corvette sélectionnée');
+
+// --- Recherche (lot 2) : plus de points mis de côté, file d'attente ---
+const lab = free[1];
+lab.building = { type: 'laboratoire', done: true };
+// Production de base, avant énergie, main-d'œuvre et bonus d'espèce.
+const labRate = E.BUILDINGS.laboratoire.output(lab, [], colony).recherche;
+check(labRate === RESEARCH.lab, `laboratoire seul : ${labRate} recherche par jour`);
+const r = game.research;
+r.current = null;
+r.queue = [];
+r.done = r.done.filter((k) => !['metallurgie', 'cartographie'].includes(k));
+R.bindResearch(r);
+run(game, 10);
+check(r.bank === undefined && !r.current && (r.carry ?? 0) === 0, 'sans projet : aucun point mis de côté');
+check(G.queueResearch(game, 'metallurgie') && r.current === 'metallurgie', 'aucun projet : la recherche démarre tout de suite');
+check(G.queueResearch(game, 'cartographie') && r.queue[0] === 'cartographie', 'projet en cours : la suivante rejoint la file');
+check(!G.queueResearch(game, 'cartographie'), 'pas deux fois la même dans la file');
+check(G.researchStatus(game, 'cartographie') === 'queued', 'statut « en file »');
+r.progress = R.techCost(R.TECHS.metallurgie) - 0.01;
+run(game, 1);
+check(R.hasTech('metallurgie') && r.current === 'cartographie' && r.queue.length === 0, 'fin de recherche : la suivante de la file démarre seule');
+r.progress = R.techCost(R.TECHS.cartographie) - 0.01;
+game.log.length = 0;
+run(game, 1);
+check(!r.current && game.log.some((l) => l.text.startsWith('Aucune recherche en cours')), 'file vide : le conseiller demande de choisir');
+const old = serialize(game);
+old.research.bank = 3752;
+const back = restore(JSON.parse(JSON.stringify(old)));
+check(back.research.bank === undefined && Array.isArray(back.research.queue), 'ancienne sauvegarde : points mis de côté abandonnés');
+
+// Rythme indicatif : jours pour finir chaque palier avec 1, 3 et 6 laboratoires (bonus non comptés).
+const tierTotal = [1, 2, 3, 4].map((t) => Object.values(R.TECHS).filter((x) => x.tier === t).reduce((a, x) => a + R.techCost(x), 0));
+for (const labs of [1, 3, 6]) {
+  const rate = 1 + labs * RESEARCH.lab;
+  console.log(`     ${labs} labo(s), ${rate} pts/j : paliers 1 à 4 en ${tierTotal.map((n) => Math.round(n / rate)).join(' / ')} jours`);
+}
 
 console.log(fails ? `\n${fails} échec(s)` : '\nTout est bon.');
 process.exit(fails ? 1 : 0);

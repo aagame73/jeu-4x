@@ -583,3 +583,20 @@
 .rs-card.locked .rs-lock {
   color: #8794b8;
 }
+
+/* Recherche en file d'attente */
+.rs-card.queued {
+  border-style: dashed;
+}
+.rs-foot.rs-queued {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--branch);
+}
+.rs-unqueue {
+  font-size: 11px;
+  padding: 2px 8px;
+}

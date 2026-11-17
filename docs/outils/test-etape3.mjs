@@ -5,6 +5,7 @@ const imp = (f) => import(pathToFileURL(`${root}/src/${f}`).href);
 const G = await imp('game.js');
 const E = await imp('economy.js');
 const R = await imp('research.js');
+const { RESEARCH } = await imp('config.js');
 const S = await imp('species.js');
 const { restore, serialize } = await imp('save.js');
 
@@ -84,8 +85,9 @@ check(S.productionFactor('recherche', 'foret', null) <= 1.5, 'plafond 1,5 respec
   G.createGame(42, 'ashkari');
   check(near(G.shipStats(G.createGame(42, 'ashkari'), probe).fuelFactor, sN.fuelFactor * 0.75), 'ashkari : carburant × 0,75');
   G.createGame(42, 'liseurs');
-  check(R.techCost(R.TECHS.fouilles) === Math.ceil(R.TECHS.fouilles.cost * 0.7), `liseurs : Fouilles de base à ${R.techCost(R.TECHS.fouilles)} points`);
-  check(R.techCost(R.TECHS.metallurgie) === R.TECHS.metallurgie.cost, 'liseurs : Métallurgie au prix normal');
+  const tier = (t) => RESEARCH.tierCost[t.tier - 1];
+  check(R.techCost(R.TECHS.fouilles) === Math.ceil(R.TECHS.fouilles.cost * tier(R.TECHS.fouilles) * 0.7), `liseurs : Fouilles de base à ${R.techCost(R.TECHS.fouilles)} points`);
+  check(R.techCost(R.TECHS.metallurgie) === Math.ceil(R.TECHS.metallurgie.cost * tier(R.TECHS.metallurgie)), 'liseurs : Métallurgie au prix normal');
 }
 
 // (c) Planètes hostiles.

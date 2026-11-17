@@ -5,6 +5,7 @@ import * as rules from './game.js';
 import { BRANCHES, TECHS, techCost } from './research.js';
 import { ICONS } from './icons.js';
 import { fond } from './fonds.js';
+import { RESEARCH } from './config.js';
 
 const fmt = (x) => Math.floor(x).toLocaleString('fr-FR');
 const fmt1 = (x) => (Math.round(x * 10) / 10).toLocaleString('fr-FR');
@@ -17,7 +18,7 @@ const branchKeys = (branch) => Object.keys(TECHS).filter((k) => TECHS[k].branch 
 // Les règles (game.js) sont écrites en parallèle : chaque appel a une solution de repli.
 function research(game) {
   const r = game.research ?? {};
-  return { current: r.current ?? null, progress: r.progress ?? 0, done: r.done ?? [], bank: r.bank ?? 0 };
+  return { current: r.current ?? null, progress: r.progress ?? 0, done: r.done ?? [], queue: r.queue ?? [] };
 }
 function status(game, key) {
   if (typeof rules.researchStatus === 'function') return rules.researchStatus(game, key);
@@ -47,8 +48,8 @@ export function createResearchView(root, game, actions) {
           <span class="rs-fig" title="Points de recherche : produits chaque jour par les laboratoires">
             <small>Par jour</small><b id="rs-perday"></b>
           </span>
-          <span class="rs-fig" title="Points mis de côté : produits sans projet en cours, ils seront versés au prochain projet">
-            <small>De côté</small><b id="rs-bank"></b>
+          <span class="rs-fig" title="File d'attente : ces recherches démarrent seules, l'une après l'autre">
+            <small>En file</small><b id="rs-queue"></b>
           </span>
         </div>
         <div class="rs-project" id="rs-project"></div>
@@ -70,7 +71,12 @@ export function createResearchView(root, game, actions) {
     if (action === 'close') actions.onCloseResearch?.();
     else if (action === 'branch' && el.dataset.branch) showBranch(el.dataset.branch, key);
     else if (action === 'start' && key && status(game, key) === 'available' && !problem(game, key)) {
-      actions.onStartResearch?.(key);
+      // Sans projet en cours, la recherche démarre ; sinon elle rejoint la file d'attente.
+      if (research(game).current) actions.onQueueResearch?.(key);
+      else actions.onStartResearch?.(key);
+      render();
+    } else if (action === 'unqueue' && key) {
+      actions.onUnqueueResearch?.(key);
       render();
     }
   });
@@ -115,7 +121,7 @@ export function createResearchView(root, game, actions) {
 
   // Signature des états : si elle change (technologie acquise, projet changé), on redessine tout.
   const computeSignature = () =>
-    Object.keys(TECHS).map((k) => `${status(game, k)}${problem(game, k) ? '!' : ''}`).join('') + (game.resources?.artefacts ?? 0);
+    Object.keys(TECHS).map((k) => `${status(game, k)}${problem(game, k) ? '!' : ''}`).join('') + (game.resources?.artefacts ?? 0) + research(game).queue.join(',') + !!research(game).current;
 
   function costHtml(tech) {
     const arte = tech.artefacts
@@ -149,15 +155,22 @@ export function createResearchView(root, game, actions) {
           <span class="rs-bar"><i style="width:0%"></i></span>
           <span class="rs-count"></span>
         </div>`;
+    } else if (st === 'queued') {
+      const n = research(game).queue.indexOf(key) + 1;
+      foot = `<div class="rs-foot rs-queued"><span>En file d'attente · n° ${n}</span>
+          <button class="rs-unqueue" data-research="unqueue" data-key="${key}" title="Retirer de la file d'attente">Retirer</button></div>`;
     } else if (st === 'available') {
-      const why = problem(game, key);
+      const busy = !!research(game).current;
+      const full = busy && research(game).queue.length >= RESEARCH.queueSize;
+      const why = problem(game, key) ?? (full ? `File d'attente pleine (${RESEARCH.queueSize}).` : null);
+      const label = busy ? 'Mettre en file' : 'Rechercher';
       foot = why
-        ? `<div class="rs-foot"><button class="rs-start" disabled>Rechercher</button></div><div class="rs-why">${why}</div>`
-        : `<div class="rs-foot"><button class="rs-start primary" data-research="start" data-key="${key}">${ICONS.recherche}Rechercher</button></div>`;
+        ? `<div class="rs-foot"><button class="rs-start" disabled>${label}</button></div><div class="rs-why">${why}</div>`
+        : `<div class="rs-foot"><button class="rs-start primary" data-research="start" data-key="${key}">${ICONS.recherche}${label}</button></div>`;
     } else {
       foot = `<div class="rs-foot rs-lock">${ICONS.cadenas}Prérequis manquants</div>`;
     }
-    const clickable = st === 'available' && !problem(game, key);
+    const clickable = st === 'available' && !problem(game, key) && !(research(game).current && research(game).queue.length >= RESEARCH.queueSize);
     return `
       <article class="rs-card ${st}" data-key="${key}" ${clickable ? `data-research="start" role="button" tabindex="0"` : ''}>
         <div class="rs-card-head"><span class="rs-name">${tech.label}</span>${costHtml(tech)}</div>
@@ -225,7 +238,7 @@ export function createResearchView(root, game, actions) {
     const r = research(game);
     const rate = perDay(game);
     $('rs-perday').textContent = `+${fmt1(rate)}`;
-    $('rs-bank').textContent = fmt(r.bank);
+    $('rs-queue').textContent = `${r.queue.length} / ${RESEARCH.queueSize}`;
 
     const tech = r.current ? TECHS[r.current] : null;
     const project = $('rs-project');

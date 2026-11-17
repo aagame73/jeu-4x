@@ -11,6 +11,16 @@ export const CONFIG = {
   speeds: [1, 2, 4],
 };
 
+// Recherche (docs/plan-jouabilite.md, A) : points de départ, à ajuster après des parties de test.
+// Aucun point n'est mis de côté : sans projet en cours, la production de recherche est perdue.
+export const RESEARCH = {
+  tierCost: [1.5, 3, 4, 5], // multiplicateur du coût de base des technologies, par palier (1 à 4)
+  lab: 1.5, // recherche par jour d'un laboratoire (la colonie elle-même en donne 1)
+  labPerRuin: 1, // en plus, par case de ruines voisine
+  labPerLab: 0.5, // en plus, par laboratoire voisin
+  queueSize: 3, // recherches en file d'attente après celle en cours
+};
+
 // Réglages de la partie, choisis au début et fixes ensuite (docs/plan-difficulte.md).
 // Taille de carte : la moyenne est l'amas d'avant ce choix (mêmes systèmes pour une même graine).
 // Le rayon suit la racine carrée du nombre de systèmes (amas plat, même densité) ; ruines et courants en proportion.

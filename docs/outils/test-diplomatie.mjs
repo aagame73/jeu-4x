@@ -317,11 +317,11 @@ for (const species of ['ondesiens', 'ashkari', 'vaskhar']) {
   empire.power = 100;
   const key = D.buyableTechs(game, empire)[0];
   game.research.partial[key] = 37;
-  game.research.bank = 5;
+  game.research.carry = 5;
   game.resources.minerais = 5000;
   empire.stocks.minerais = 0;
   const ok = G.signDeal(game, empire, deal({ resources: { minerais: 5000 } }, { techs: [key] })).ok;
-  check(ok && game.research.bank === 42 && !(key in game.research.partial), 'technologie obtenue par échange : ses points partiels passent de côté');
+  check(ok && game.research.carry === 42 && !(key in game.research.partial), 'technologie obtenue par échange : ses points partiels passent à la recherche suivante');
 }
 
 // Note auprès des rivaux du partenaire.

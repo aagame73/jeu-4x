@@ -3,6 +3,7 @@
 // stock commun ; l'énergie ne se stocke pas : chaque colonie doit produire ce qu'elle consomme.
 import { neighbors } from './surface.js';
 import { hasTech } from './research.js';
+import { RESEARCH } from './config.js';
 import { reactToDig } from './diplomacy.js';
 import { productionFactor, growthFactor, speciesBonus, speciesExtra } from './species.js';
 
@@ -194,13 +195,15 @@ export const BUILDINGS = {
   },
   laboratoire: {
     label: 'Laboratoire de recherche',
-    desc: '+3 recherche, +2 par case de ruines voisine, +1 par laboratoire voisin.',
+    desc: `+${RESEARCH.lab} recherche, +${RESEARCH.labPerRuin} par case de ruines voisine, +${RESEARCH.labPerLab} par laboratoire voisin.`.replaceAll('.5', ',5'),
     terrains: ['plaine', 'desert', 'foret'],
     cost: { minerais: 25 },
     days: 8,
     workers: 1,
     energy: 1,
-    output: (tile, near) => ({ recherche: 3 + 2 * near.filter((n) => n.terrain === 'ruines').length + near.filter((n) => isActive(n, 'laboratoire')).length }),
+    output: (tile, near) => ({
+      recherche: RESEARCH.lab + RESEARCH.labPerRuin * near.filter((n) => n.terrain === 'ruines').length + RESEARCH.labPerLab * near.filter((n) => isActive(n, 'laboratoire')).length,
+    }),
   },
   fouille: {
     label: 'Fouille archéologique',

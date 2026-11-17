@@ -3,6 +3,7 @@
 // Chaque technologie débloque un bâtiment, un vaisseau, une commande spatiale ou une amélioration.
 
 import { speciesBonus } from './species.js';
+import { RESEARCH } from './config.js';
 
 export const BRANCHES = [
   { key: 'propulsion', label: 'Propulsion et navigation' },
@@ -91,7 +92,8 @@ export const hasTech = (key) => acquired.has(key);
 // en artefacts) profitent du bonus d'espèce veilleursTechCost.
 export function techCost(tech) {
   const veilleurs = tech.branch === 'veilleurs' || tech.artefacts;
-  return Math.ceil(tech.cost * (veilleurs ? speciesBonus('veilleursTechCost') : 1));
+  const tier = RESEARCH.tierCost[tech.tier - 1] ?? 1;
+  return Math.ceil(tech.cost * tier * (veilleurs ? speciesBonus('veilleursTechCost') : 1));
 }
 
 export function markTech(research, key) {

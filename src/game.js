@@ -8,7 +8,7 @@
 // Début de partie : l'Arche, un vaisseau colonie aux moteurs de saut cassés, arrive dans un
 // système. Le joueur l'analyse, choisit une planète et y pose la colonie ; il construit ensuite
 // un spatioport, des sondes (qui s'usent), un dock spatial, des défenses, des vaisseaux colonie.
-import { CONFIG } from './config.js';
+import { CONFIG, RESEARCH } from './config.js';
 import { generateCluster, starDistance, STAR_TYPES } from './galaxy.js';
 import { SHIP_NAMES, SHIP_ACCENTS } from './ships.js';
 import { generateSurface, hexDistance } from './surface.js';
@@ -93,7 +93,7 @@ export function createGame(seed, species = DEFAULT_SPECIES, rivals = RIVALS.defa
     resources: { ...STARTING_RESOURCES }, // la cargaison de l'Arche
     lore: 0, // fragments d'histoire des Veilleurs déjà révélés
     upgrades: { moteurs: false, blindage: false }, // posées par les technologies
-    research: { current: null, progress: 0, done: [], bank: 0, partial: {}, paid: [] },
+    research: { current: null, progress: 0, done: [], queue: [], carry: 0, partial: {}, paid: [] },
     surfaces: new Map(), // surfaces générées à la demande, clé "étoile-planète"
     colonies: [],
     empires: createEmpires(galaxy.stars),
@@ -365,6 +365,7 @@ export function researchPerDay(game) {
 export function researchStatus(game, key) {
   if (hasTech(key)) return 'done';
   if (game.research.current === key) return 'current';
+  if (game.research.queue?.includes(key)) return 'queued';
   return TECHS[key].requires.every(hasTech) ? 'available' : 'locked';
 }
 
@@ -372,6 +373,7 @@ export function researchProblem(game, key) {
   const tech = TECHS[key];
   if (hasTech(key)) return 'Déjà acquise.';
   if (game.research.current === key) return 'Recherche en cours.';
+  if (game.research.queue?.includes(key)) return "Déjà dans la file d'attente.";
   const missing = tech.requires.filter((k) => !hasTech(k));
   if (missing.length) return `Demande : ${missing.map((k) => TECHS[k].label).join(', ')}.`;
   if (tech.artefacts && !game.research.paid.includes(key) && (game.resources.artefacts ?? 0) < tech.artefacts) {
@@ -391,12 +393,45 @@ export function startResearch(game, key) {
     r.paid.push(key);
   }
   r.current = key;
-  r.progress = (r.partial[key] ?? 0) + r.bank;
-  r.bank = 0;
+  r.progress = (r.partial[key] ?? 0) + (r.carry ?? 0);
+  r.carry = 0;
   delete r.partial[key];
+  r.queue = (r.queue ?? []).filter((k) => k !== key);
   addLog(game, `Recherche lancée : ${tech.label}.`);
-  checkResearchDone(game);
   return true;
+}
+
+// File d'attente : sans projet en cours, la recherche démarre tout de suite ; sinon elle attend son tour.
+export function queueProblem(game, key) {
+  const r = game.research;
+  if (!r.current) return researchProblem(game, key);
+  const why = researchProblem(game, key);
+  if (why) return why;
+  if ((r.queue ?? []).length >= RESEARCH.queueSize) return `File d'attente pleine (${RESEARCH.queueSize}).`;
+  return null;
+}
+export function queueResearch(game, key) {
+  const r = game.research;
+  if (!r.current) return startResearch(game, key);
+  if (queueProblem(game, key)) return false;
+  (r.queue ??= []).push(key);
+  return true;
+}
+export function unqueueResearch(game, key) {
+  const r = game.research;
+  const before = (r.queue ?? []).length;
+  r.queue = (r.queue ?? []).filter((k) => k !== key);
+  return r.queue.length !== before;
+}
+
+// Prochaine recherche de la file encore possible (une technologie qui demande des artefacts manquants est sautée).
+function startNextQueued(game) {
+  const r = game.research;
+  while ((r.queue ?? []).length) {
+    const key = r.queue.shift();
+    if (!researchProblem(game, key)) return startResearch(game, key);
+  }
+  return false;
 }
 
 function checkResearchDone(game) {
@@ -404,12 +439,16 @@ function checkResearchDone(game) {
   const tech = TECHS[r.current];
   if (!tech || r.progress < techCost(tech)) return;
   const key = r.current;
-  r.bank = r.progress - techCost(tech); // le surplus n'est pas perdu
+  r.carry = r.progress - techCost(tech); // le surplus d'un jour passe à la recherche suivante de la file
   r.current = null;
   r.progress = 0;
   markTech(r, key);
   applyTech(game, key);
   addLog(game, `Recherche terminée : ${tech.label}. ${tech.unlocks}`, 'discovery');
+  if (!startNextQueued(game)) {
+    r.carry = 0;
+    if (!game.tutorial?.on) addLog(game, 'Aucune recherche en cours : choisissez la prochaine (touche R). Sans projet, les points de recherche sont perdus.', 'alert');
+  }
 }
 
 // Défense d'une colonie : anneaux de défense et batteries planétaires, renforcés par la recherche.
@@ -434,12 +473,9 @@ function applyTech(game, key) {
 function tickResearch(game, days) {
   const points = researchPerDay(game) * days;
   const r = game.research;
-  if (!r.current) {
-    r.bank += points;
-    return;
-  }
+  if (!r.current && !startNextQueued(game)) return; // aucun projet : les points sont perdus
   r.progress += points;
-  checkResearchDone(game);
+  checkResearchDone(game); // une recherche au plus se termine par pas de temps
 }
 
 // --- Pénuries : le conseiller prévient quand une ressource tombe à zéro, et dit pourquoi ---
@@ -644,17 +680,19 @@ export function signDeal(game, empire, offer) {
   const { techs, convoy } = applyDeal(game, empire, offer, answer);
   for (const key of techs) {
     const r = game.research;
-    // L'effort déjà fourni sur cette technologie n'est pas perdu : il part dans les points de côté.
+    // L'effort déjà fourni sur cette technologie n'est pas perdu : il passe à la recherche suivante.
     if (r.current === key) {
-      r.bank = (r.bank ?? 0) + r.progress;
+      r.carry = (r.carry ?? 0) + r.progress;
       r.current = null;
       r.progress = 0;
     }
     if (r.partial?.[key]) {
-      r.bank = (r.bank ?? 0) + r.partial[key];
+      r.carry = (r.carry ?? 0) + r.partial[key];
       delete r.partial[key];
     }
+    r.queue = (r.queue ?? []).filter((k) => k !== key);
     markTech(r, key);
+    if (!r.current) startNextQueued(game);
     applyTech(game, key);
     addLog(game, `Technologie obtenue par échange : ${TECHS[key].label}. ${TECHS[key].unlocks}`, 'discovery');
   }

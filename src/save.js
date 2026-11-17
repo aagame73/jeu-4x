@@ -111,9 +111,14 @@ export function restore(data) {
   // Tutoriel : une partie d'avant le tutoriel (ou une valeur illisible) n'en a pas.
   const tuto = data.tutorial;
   game.tutorial = tuto && Number.isInteger(tuto.step) && tuto.step >= 0 ? { on: !!tuto.on, step: tuto.step } : { on: false, step: 0 };
-  game.research = data.research ?? { current: null, progress: 0, done: impliedTechs(game), bank: 0, partial: {}, paid: [] };
+  game.research = data.research ?? { current: null, progress: 0, done: impliedTechs(game), partial: {}, paid: [] };
+  // Depuis le 17/11/2026, plus de points mis de côté : ceux des anciennes sauvegardes sont abandonnés.
+  delete game.research.bank;
+  game.research.queue = (game.research.queue ?? []).filter((k) => typeof k === 'string');
+  game.research.carry = game.research.carry ?? 0;
   // L'arbre a grandi : une technologie acquise reçoit aussi ses nouveaux prérequis.
   game.research.done = withRequirements(game.research.done.filter((k) => TECHS[k]));
+  game.research.queue = game.research.queue.filter((k) => TECHS[k] && !game.research.done.includes(k) && k !== game.research.current);
   bindResearch(game.research);
   return game;
 }

@@ -9,7 +9,7 @@ import './styles/diplomatie.css';
 import './styles/fonds.css';
 import { CONFIG, COMBAT, SPECIES, DEFAULT_SPECIES } from './config.js';
 import { createSpeciesView } from './speciesView.js';
-import { createGame, tick, currentDay, sendShip, startAnalysis, selectedShip, foundColony, startShipyard, startResearch } from './game.js';
+import { createGame, tick, currentDay, sendShip, startAnalysis, selectedShip, foundColony, startShipyard, startResearch, queueResearch, unqueueResearch } from './game.js';
 import { createResearchView } from './researchView.js';
 import { createDiplomacyView } from './diplomacyView.js';
 import { createSystemView } from './systemView.js';
@@ -277,6 +277,12 @@ const actions = {
   refresh,
   onStartResearch(key) {
     if (startResearch(game, key)) refresh();
+  },
+  onQueueResearch(key) {
+    if (queueResearch(game, key)) refresh();
+  },
+  onUnqueueResearch(key) {
+    if (unqueueResearch(game, key)) refresh();
   },
   onToggleFullscreen() {
     if (document.fullscreenElement) document.exitFullscreen();
