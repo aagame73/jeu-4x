@@ -3,14 +3,14 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { TERRAINS, HEX_DIRECTIONS, hexKey } from './surface.js';
-import { BUILDINGS, RESOURCE_LABELS, SHIPYARD, depositName, buildableTypes, lockedTypes, colonyReport, previewBuilding, canAfford, isPausable, isStopped, FOUNDRY_RESUME } from './economy.js';
+import { BUILDINGS, RESOURCE_LABELS, SHIPYARD, depositName, buildableTypes, colonyReport, previewBuilding, canAfford, isPausable, isStopped, FOUNDRY_RESUME } from './economy.js';
 import { PLANET_TYPES, PLANET_SIZES } from './galaxy.js';
 import { getSurface, colonyOn, shipyardProblem } from './game.js';
 import { createRng } from './rng.js';
 import { canvasTexture, glowTexture } from './textures.js';
 import { createSurfaceFx } from './surfaceFx.js';
 import { icon } from './icons.js';
-import { TECHS } from './research.js';
+import { TECHS, hasTech } from './research.js';
 // Règles arrivées plus tard (niveaux, défense, tailles) : lues via l'espace de noms pour
 // tolérer leur absence (un import nommé manquant casserait le module).
 import * as ECO from './economy.js';
@@ -971,6 +971,7 @@ export function createPlanetView(root, game, actions) {
       state.selection.position.set(view.mesh.position.x, view.top + 0.01, view.mesh.position.z);
     }
     renderTilePanel();
+    renderYard(); // le bouton « Ouvrir le chantier spatial » dépend de la case choisie
   }
 
   root.addEventListener('click', (e) => {
@@ -982,6 +983,7 @@ export function createPlanetView(root, game, actions) {
     else if (action === 'build') actions.onBuild(state.colony, state.surface, state.selected, el.dataset.type);
     else if (action === 'demolish') actions.onDemolish(state.colony, state.surface, state.selected);
     else if (action === 'pause') actions.onToggleBuilding(state.colony, state.surface, state.selected);
+    else if (action === 'open-yard') selectTile(spaceport());
     else if (action === 'upgrade') actions.onUpgrade?.(state.colony, state.surface, state.selected);
     else if (action === 'found') actions.onFoundColony(state.founding, state.star.id, state.planetIndex, state.selected.index);
     else if (action === 'shipyard') actions.onShipyard(state.colony, el.dataset.key);
@@ -1119,26 +1121,41 @@ export function createPlanetView(root, game, actions) {
 
   // Commandes du chantier spatial. Les boutons ne sont recréés qu'après un événement ;
   // chaque jour, refreshButtons met seulement à jour leur état.
+  // Panneau de gauche : un simple accès au chantier spatial ; la liste des commandes s'ouvre dans
+  // le panneau de droite quand on clique sur le spatioport (docs/plan-jouabilite.md, C).
+  const spaceport = () => state.surface?.tiles.find((t) => t.building?.type === 'spatioport' && t.building.done) ?? null;
   function renderYard() {
     const { colony } = state;
     if (!colony) {
       $('pv-yard').innerHTML = '';
       return;
     }
-    let html = section('Commandes spatiales');
-    if (!state.surface.tiles.some((t) => t.building?.type === 'spatioport' && t.building.done)) {
+    let html = section('Chantier spatial');
+    if (!spaceport()) {
       $('pv-yard').innerHTML = `${html}<p class="muted small">Construisez un spatioport (sur une plaine ou un désert) pour lancer des sondes, un dock spatial et des défenses.</p>`;
       return;
     }
+    const open = state.selected === spaceport();
+    html += open
+      ? '<p class="muted small">Les commandes du chantier sont dans le panneau de droite.</p>'
+      : `<button class="primary pv-open-yard" data-pv="open-yard">${yardIcon('sonde')}Ouvrir le chantier spatial</button>`;
+    $('pv-yard').innerHTML = html;
+  }
+
+  // Liste des commandes du chantier spatial (vaisseaux et structures orbitales débloqués).
+  function yardHtml() {
+    let html = '<div class="pv-tile-yard">';
     // Liste compacte : la description passe dans l'infobulle ; le motif de refus
     // (`.reason`, juste après le bouton) est rempli chaque jour par refreshButtons.
     const groups = new Map(YARD_CATEGORIES.map(([cat]) => [cat, []]));
     for (const [key, order] of Object.entries(SHIPYARD)) {
+      if (![order.tech ?? []].flat().every(hasTech)) continue; // pas encore débloqué par la recherche : caché
       const cat = order.category ?? (order.kind === 'orbital' ? 'orbital' : 'civil');
       if (!groups.has(cat)) groups.set(cat, []);
       groups.get(cat).push([key, order]);
     }
     const labels = Object.fromEntries(YARD_CATEGORIES);
+    if (![...groups.values()].some((orders) => orders.length)) html += "<p class='muted small'>Rien à construire pour l’instant : la recherche Moteurs de saut débloque la sonde.</p>";
     for (const [cat, orders] of groups) {
       if (!orders.length) continue;
       html += `<div class="yard-cat">${labels[cat] ?? cat}</div>`;
@@ -1166,8 +1183,7 @@ export function createPlanetView(root, game, actions) {
           </div>`;
       }
     }
-    $('pv-yard').innerHTML = html;
-    refreshButtons();
+    return `${html}</div>`;
   }
 
   function refreshButtons() {
@@ -1265,6 +1281,8 @@ export function createPlanetView(root, game, actions) {
           : '<p class="muted small">Le site est épuisé : plus aucun artefact à trouver.</p>';
       }
       if (tile.building.done && colony && isUpgradable(tile.building.type)) html += levelBlock(tile);
+      // Spatioport : le menu du chantier spatial s'ouvre ici (vaisseaux, dock, défenses).
+      if (tile.building.type === 'spatioport' && tile.building.done && colony) html += section('Chantier spatial') + yardHtml();
       if (tile.building.done && colony && isPausable(tile.building.type)) {
         html += tile.building.paused
           ? `<button class="icon-btn" data-pv="pause" title="Le bâtiment reprend sa production">${icon('lecture')}Reprendre</button>`
@@ -1275,8 +1293,9 @@ export function createPlanetView(root, game, actions) {
       html += '<p class="muted small">Pas de colonie sur cette planète.</p>';
     } else {
       const types = buildableTypes(tile, surface);
-      const locked = lockedTypes(tile, surface);
-      if (!types.length && !locked.length) html += '<p class="muted small">Rien à construire ici.</p>';
+      // Ce qui attend encore une recherche n'est pas montré (docs/plan-jouabilite.md, D).
+      const locked = [];
+      if (!types.length) html += "<p class=\"muted small\">Rien à construire ici pour l'instant.</p>";
       html += '<div class="build-grid">';
       for (const type of types) {
         const def = BUILDINGS[type];

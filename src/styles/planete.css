@@ -292,20 +292,23 @@
 }
 
 /* Titres de rubrique */
-#pv-colony .pv-sec {
+#pv-colony .pv-sec,
+#pv-tile .pv-sec {
   display: flex;
   align-items: center;
   gap: 8px;
   margin-top: 6px;
 }
-#pv-colony .pv-sec span {
+#pv-colony .pv-sec span,
+#pv-tile .pv-sec span {
   font-family: 'Orbitron', sans-serif;
   font-size: 10px;
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: #8794b8;
 }
-#pv-colony .pv-sec i {
+#pv-colony .pv-sec i,
+#pv-tile .pv-sec i {
   flex: 1;
   height: 1px;
   background: linear-gradient(90deg, rgba(120, 170, 255, 0.35), transparent);
@@ -550,7 +553,7 @@
 #pv-yard {
   gap: 4px;
 }
-#pv-yard .yard-cat {
+.pv-tile-yard .yard-cat {
   margin: 5px 0 1px;
   font-size: 10.5px;
   font-weight: 600;
@@ -558,7 +561,7 @@
   text-transform: uppercase;
   color: #8794b8;
 }
-#pv-yard .yard-option {
+.pv-tile-yard .yard-option {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -570,15 +573,15 @@
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(120, 170, 255, 0.14);
 }
-#pv-yard .yard-icon {
+.pv-tile-yard .yard-icon {
   display: flex;
   color: #5fe3ff;
 }
-#pv-yard .yard-icon .icon-svg {
+.pv-tile-yard .yard-icon .icon-svg {
   width: 17px;
   height: 17px;
 }
-#pv-yard .yard-name {
+.pv-tile-yard .yard-name {
   flex: 1;
   min-width: 0;
   overflow: hidden;
@@ -587,7 +590,7 @@
   white-space: nowrap;
   text-overflow: ellipsis;
 }
-#pv-yard .yard-size {
+.pv-tile-yard .yard-size {
   padding: 0 5px;
   border-radius: 3px;
   border: 1px solid rgba(135, 148, 184, 0.4);
@@ -596,57 +599,57 @@
   letter-spacing: 0.03em;
   color: #aab4d4;
 }
-#pv-yard .yard-size.size-moyen { border-color: rgba(95, 227, 255, 0.45); color: #8fe9ff; }
-#pv-yard .yard-size.size-grand { border-color: rgba(201, 167, 255, 0.5); color: #c9a7ff; }
-#pv-yard .yard-size.size-gigantesque { border-color: rgba(255, 209, 102, 0.55); color: #ffd166; }
-#pv-yard .yard-stat {
+.pv-tile-yard .yard-size.size-moyen { border-color: rgba(95, 227, 255, 0.45); color: #8fe9ff; }
+.pv-tile-yard .yard-size.size-grand { border-color: rgba(201, 167, 255, 0.5); color: #c9a7ff; }
+.pv-tile-yard .yard-size.size-gigantesque { border-color: rgba(255, 209, 102, 0.55); color: #ffd166; }
+.pv-tile-yard .yard-stat {
   display: inline-flex;
   align-items: center;
   gap: 2px;
   font-family: 'Orbitron', sans-serif;
   font-size: 10.5px;
 }
-#pv-yard .yard-stat .icon-svg {
+.pv-tile-yard .yard-stat .icon-svg {
   width: 11px;
   height: 11px;
 }
-#pv-yard .yard-stat.atk { color: #ff8a8a; }
-#pv-yard .yard-stat.def { color: #7fc8ff; }
-#pv-yard .yard-days {
+.pv-tile-yard .yard-stat.atk { color: #ff8a8a; }
+.pv-tile-yard .yard-stat.def { color: #7fc8ff; }
+.pv-tile-yard .yard-days {
   min-width: 26px;
   font-family: 'Orbitron', sans-serif;
   font-size: 10px;
   text-align: right;
   color: #8794b8;
 }
-#pv-yard .yard-main {
+.pv-tile-yard .yard-main {
   flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 3px;
 }
-#pv-yard .yard-main b {
+.pv-tile-yard .yard-main b {
   font-size: 13px;
   font-weight: 600;
 }
-#pv-yard .yard-main .chip {
+.pv-tile-yard .yard-main .chip {
   padding: 1px 7px 1px 5px;
   font-family: 'Orbitron', sans-serif;
   font-size: 10.5px;
 }
-#pv-yard .chip.res-minerais { background: rgba(210, 166, 121, 0.14); color: #d2a679; }
-#pv-yard .chip.res-biomasse { background: rgba(123, 216, 143, 0.14); color: #7bd88f; }
-#pv-yard .chip.res-velarine { background: rgba(199, 125, 255, 0.14); color: #c77dff; }
-#pv-yard .chip.res-alliages { background: rgba(159, 180, 200, 0.14); color: #9fb4c8; }
-#pv-yard .chip.res-deuterium { background: rgba(95, 227, 255, 0.14); color: #5fe3ff; }
-#pv-yard .chip.res-eau { background: rgba(74, 168, 255, 0.14); color: #4aa8ff; }
-#pv-yard .chip.res-artefacts { background: rgba(255, 209, 102, 0.14); color: #ffd166; }
-#pv-yard .chip .icon-svg {
+.pv-tile-yard .chip.res-minerais { background: rgba(210, 166, 121, 0.14); color: #d2a679; }
+.pv-tile-yard .chip.res-biomasse { background: rgba(123, 216, 143, 0.14); color: #7bd88f; }
+.pv-tile-yard .chip.res-velarine { background: rgba(199, 125, 255, 0.14); color: #c77dff; }
+.pv-tile-yard .chip.res-alliages { background: rgba(159, 180, 200, 0.14); color: #9fb4c8; }
+.pv-tile-yard .chip.res-deuterium { background: rgba(95, 227, 255, 0.14); color: #5fe3ff; }
+.pv-tile-yard .chip.res-eau { background: rgba(74, 168, 255, 0.14); color: #4aa8ff; }
+.pv-tile-yard .chip.res-artefacts { background: rgba(255, 209, 102, 0.14); color: #ffd166; }
+.pv-tile-yard .chip .icon-svg {
   width: 11px;
   height: 11px;
 }
-#pv-yard button[data-pv='shipyard'] {
+.pv-tile-yard button[data-pv='shipyard'] {
   padding: 2px 8px;
   border-radius: 3px;
   border: 1px solid rgba(124, 255, 158, 0.6);
@@ -655,24 +658,24 @@
   font-size: 11.5px;
   font-weight: 700;
 }
-#pv-yard button[data-pv='shipyard']:hover:not(:disabled) {
+.pv-tile-yard button[data-pv='shipyard']:hover:not(:disabled) {
   background: rgba(124, 255, 158, 0.22);
 }
-#pv-yard button[data-pv='shipyard']:disabled {
+.pv-tile-yard button[data-pv='shipyard']:disabled {
   opacity: 1;
   border-color: rgba(135, 148, 184, 0.35);
   background: transparent;
   color: #8794b8;
 }
 /* Motif de refus : sur sa propre ligne, sous la commande, seulement s'il y en a un. */
-#pv-yard .reason {
+.pv-tile-yard .reason {
   flex-basis: 100%;
   padding-left: 24px;
   font-size: 10.5px;
   line-height: 1.25;
   color: #8794b8;
 }
-#pv-yard .reason:empty {
+.pv-tile-yard .reason:empty {
   display: none;
 }
 
@@ -823,3 +826,22 @@
 #pv-colony .pv-orbit .chip.pv-defense .icon-svg { color: #ff8a8a; }
 #pv-colony .pv-orbit .chip.pv-defense.none { color: #8794b8; }
 #pv-colony .pv-orbit .chip.pv-defense.none .icon-svg { color: #8794b8; }
+
+/* Chantier spatial : accès depuis le panneau de gauche, liste dans le panneau du spatioport */
+.pv-open-yard {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  justify-content: center;
+}
+.pv-open-yard svg {
+  width: 16px;
+  height: 16px;
+}
+.pv-tile-yard {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 4px;
+}

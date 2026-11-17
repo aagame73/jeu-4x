@@ -76,9 +76,9 @@ export const TUTORIAL_STEPS = [
   {
     key: 'sonde',
     title: 'Construire une sonde',
-    how: 'Dans la colonie (« Gérer la colonie »), le panneau « Chantier spatial » propose la sonde : cliquez sur « Sonde ».',
+    how: 'Dans la colonie (« Gérer la colonie »), cliquez sur le spatioport (ou sur « Ouvrir le chantier spatial ») : le chantier propose la sonde, cliquez sur « Lancer ».',
     done: (game) => probes(game).length > 0,
-    targets: () => [MANAGE, '[data-pv="shipyard"][data-key="sonde"]'],
+    targets: () => [MANAGE, '[data-pv="open-yard"]', '[data-pv="shipyard"][data-key="sonde"]'],
   },
   {
     key: 'envoyer',
