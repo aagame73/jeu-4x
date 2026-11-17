@@ -4,7 +4,7 @@
 // Même interface que les portraits dessinés (aliens.js) : setSpeaking, setSpecies, destroy.
 
 // Espèces dont le portrait peint existe ; les autres gardent le portrait dessiné.
-export const PAINTED = new Set(['vaskhar', 'ondesiens', 'keltirr', 'synodes', 'orrhaides', 'thrennes', 'liseurs', 'ashkari']);
+export const PAINTED = new Set(['vaskhar', 'ondesiens', 'keltirr', 'synodes', 'orrhaides', 'thrennes', 'liseurs', 'ashkari', 'sans-espece']);
 
 // Particules : couleur, nombre, vitesse verticale (négative = elles montent), taille, scintillement.
 const PARTICLES = {
@@ -16,6 +16,7 @@ const PARTICLES = {
   liseurs: { color: '255,215,120', count: 12, vy: -0.03, size: 0.009, twinkle: 1.2 }, // poussière de glyphes
   keltirr: { color: '255,245,170', count: 14, vy: 0.03, size: 0.008, twinkle: 0.6 }, // pollen
   ashkari: { color: '255,200,140', count: 12, vy: -0.02, size: 0.008, twinkle: 0.4 }, // poussière
+  'sans-espece': { color: '140,255,190', count: 10, vy: -0.025, size: 0.007, twinkle: 1.0 }, // voyants du poste de pilotage
 };
 
 const FPS_MAX = 30;

@@ -21,7 +21,7 @@ PORTRAITS = {
     'thrennes': ('Portrait Threnne.jpg', 0.46, 0.0),
     'liseurs': ('Portrait Liseur de Vey.jpg', 0.5, 0.0),
     'ashkari': ('Portrait Ashkari.jpg', 0.5, 0.0),
-    'sans-espece': ('Portrait Colons.jpg', 0.5, 0.0),
+    'sans-espece': ('Portrait Colons.jpg', 0.43, 0.0),
 }
 TAILLE = 512
 
