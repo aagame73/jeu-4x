@@ -7,6 +7,7 @@ import './styles/systeme.css';
 import './styles/especes.css';
 import './styles/diplomatie.css';
 import './styles/fonds.css';
+import './styles/proposition.css';
 import { CONFIG, COMBAT, SPECIES, DEFAULT_SPECIES } from './config.js';
 import { createSpeciesView } from './speciesView.js';
 import { createGame, tick, currentDay, sendShip, startAnalysis, selectedShip, foundColony, startShipyard, startResearch, queueResearch, unqueueResearch } from './game.js';
@@ -17,6 +18,7 @@ import { createGalaxyView } from './scene.js';
 import { createUI } from './ui.js';
 import { createContactView } from './contactView.js';
 import { createEndView } from './endView.js';
+import { createProposalView } from './proposalView.js';
 import { playerBattles } from './combat.js';
 import { createPlanetView } from './planetView.js';
 import { startConstruction, demolish, startUpgrade, togglePause } from './economy.js';
@@ -86,6 +88,7 @@ function refresh() {
   view.update();
   ui.render();
   contactView.update();
+  proposalView.update();
   endView.update();
   planetView.update();
   systemView.update();
@@ -261,11 +264,11 @@ const actions = {
     ui.renderLive();
   },
   // Comme la recherche, la diplomatie met la partie en pause.
-  onOpenDiplomacy() {
+  onOpenDiplomacy(species = null) {
     if (diplomacyView.isOpen || researchView.isOpen) return;
     pausedBeforeDiplomacy = game.paused;
     game.paused = true;
-    diplomacyView.open();
+    diplomacyView.open(species);
     ui.renderLive();
   },
   onCloseDiplomacy() {
@@ -296,6 +299,12 @@ const endView = createEndView(game, {
   onNewGame: () => newGameAndRestart(),
   onMenu: () => menu.open(),
   isBusy: () => menu.isOpen || speciesView.isOpen || !!document.querySelector('.contact'),
+});
+// Proposition d'un rival : fenêtre au centre, jeu en pause, dès qu'aucun autre écran n'occupe le joueur.
+const proposalView = createProposalView(game, {
+  canShow: () => !game.ended && !menu.isOpen && !speciesView.isOpen && !document.querySelector('.contact') && !diplomacyView.isOpen && !researchView.isOpen,
+  onChange: () => ui.renderLive(),
+  onOpenDiplomacy: (species) => actions.onOpenDiplomacy(species),
 });
 const planetView = createPlanetView(document.getElementById('planet-view'), game, actions);
 const researchView = createResearchView(document.getElementById('research'), game, actions);
@@ -373,7 +382,10 @@ const speciesView = createSpeciesView(document.getElementById('species'), {
 });
 installTooltips();
 // Tutoriel : halos sur les éléments à utiliser, remis à jour régulièrement (l'interface se redessine souvent).
-setInterval(() => applyHalos(game), 300);
+setInterval(() => {
+  applyHalos(game);
+  proposalView.update(); // une proposition arrivée pendant un autre écran s’ouvre dès qu’il se ferme
+}, 300);
 if (showStart) menu.open(true);
 if (loadError) menu.notice(`Chargement impossible : ${loadError}`);
 else if (needsSpecies) speciesView.open();

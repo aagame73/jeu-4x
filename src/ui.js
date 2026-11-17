@@ -9,7 +9,7 @@ import { TECHS, techCost } from './research.js';
 import { createAdvisor } from './advisor.js';
 import { TUTORIAL_STEPS, currentStep } from './tutorial.js';
 import { currentSpecies, speciesHabitat, rivalInfo } from './species.js';
-import { treatyConflicts } from './diplomacy.js';
+import { treatyConflicts, pendingProposal } from './diplomacy.js';
 import { shipHealth, warReport } from './combat.js';
 import { empireName, leadingKnownRival, progress, rivalGoal } from './victory.js';
 import { COMBAT } from './config.js';
@@ -536,6 +536,22 @@ export function createUI(root, game, actions) {
     renderStats();
     renderProbes();
     renderClock();
+    renderDiplomacyBadge();
+  }
+
+  // Pastille sur le bouton Diplomatie : nombre de propositions qui attendent une réponse.
+  function renderDiplomacyBadge() {
+    const button = root.querySelector('[data-action="diplomacy"]');
+    if (!button) return;
+    const waiting = game.empires.filter((e) => pendingProposal(game, e)).length;
+    let badge = button.querySelector('.dp-count');
+    if (!waiting) return badge?.remove();
+    if (!badge) {
+      badge = document.createElement('i');
+      badge.className = 'dp-count';
+      button.append(badge);
+    }
+    badge.textContent = waiting;
   }
 
   // Tutoriel : objectif en cours, rappelé sous la bulle du conseiller (tutorial.js).

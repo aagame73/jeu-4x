@@ -13,7 +13,7 @@ import { fond } from './fonds.js';
 const MATERIALS = Object.keys(DIPLOMACY.values);
 
 // Raison précise d'un refus, affichée sous la réplique de l'espèce (dialogues.js).
-const REFUSALS = {
+export const REFUSALS = {
   'nothing-free': 'Rien n\'est gratuit : chacun doit donner quelque chose.',
   hostile: 'Nous n\'avons rien à vous dire.',
   invalid: 'Cette offre n\'a aucun sens.',
@@ -336,11 +336,13 @@ export function createDiplomacyView(root, game, actions) {
     get isOpen() {
       return !root.hidden;
     },
-    open() {
+    // species : empire à afficher (depuis la fenêtre d'une proposition), sinon le dernier vu.
+    open(species = null) {
       root.hidden = false;
       renderList();
       const empires = metEmpires(game);
-      select(empires.includes(selected) ? selected : (empires[0] ?? null));
+      const wanted = species ? empires.find((e) => e.species === species) : null;
+      select(wanted ?? (empires.includes(selected) ? selected : (empires[0] ?? null)));
     },
     close() {
       root.hidden = true;

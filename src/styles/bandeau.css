@@ -560,3 +560,23 @@ body.battle-slow .topbar .clock::after {
     box-shadow: 0 0 0 1px rgba(255, 90, 90, 0.9);
   }
 }
+
+/* Propositions des rivaux en attente : pastille sur le bouton Diplomatie */
+.topbar [data-action="diplomacy"] {
+  position: relative;
+}
+.topbar .dp-count {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: #ff7a3c;
+  color: #10131c;
+  font: 700 10px/16px 'Exo 2', sans-serif;
+  font-style: normal;
+  text-align: center;
+  box-shadow: 0 0 8px rgba(255, 122, 60, 0.8);
+}

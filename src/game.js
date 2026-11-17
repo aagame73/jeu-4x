@@ -616,7 +616,7 @@ export function tick(game, days) {
     else if (event.type === 'attitude') {
       addLog(game, `Les ${label} vous jugent désormais : ${event.attitude.label.toLowerCase()}. « ${line(empire.species, event.better ? 'plusAmical' : 'plusHostile')} »`, event.better ? 'info' : 'alert');
     } else if (event.type === 'proposal') {
-      addLog(game, `Les ${label} proposent ${describeOffer(event.proposal.offer)}. « ${line(empire.species, 'proposition')} » Répondez dans la diplomatie (D).`, 'alert');
+      addLog(game, `Les ${label} vous proposent un échange : ${describeOffer(event.proposal.offer)}.`, 'alert');
     } else if (event.type === 'peace-offer') {
       addLog(game, `Les ${label} perdent la guerre et vous proposent la paix, sans condition. « ${line(empire.species, 'offrePaix')} » Répondez dans la diplomatie (D).`, 'alert');
     } else if (event.type === 'expired') addLog(game, event.peace ? `L'offre de paix des ${label} a expiré : la guerre continue.` : `La proposition des ${label} a expiré.`, 'info');

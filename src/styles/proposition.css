@@ -1,0 +1,87 @@
+/* Fenêtre d'une proposition d'un empire rival (src/proposalView.js) */
+.proposal {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(2, 4, 12, 0.55);
+  opacity: 0;
+  transition: opacity 0.25s;
+}
+.proposal.visible {
+  opacity: 1;
+}
+.pr-box {
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  gap: 20px;
+  align-items: center;
+  max-width: 720px;
+  width: 100%;
+  padding: 22px;
+  border: 1px solid color-mix(in srgb, var(--empire) 60%, transparent);
+  box-shadow: 0 0 40px color-mix(in srgb, var(--empire) 30%, transparent);
+}
+.pr-portrait {
+  width: 180px;
+  height: 180px;
+  border-radius: 50%;
+  border: 2px solid var(--empire);
+  box-shadow: 0 0 24px color-mix(in srgb, var(--empire) 45%, transparent);
+}
+.pr-text {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.pr-text p {
+  margin: 0;
+}
+.pr-kicker {
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--empire);
+}
+.pr-text strong {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 20px;
+}
+.pr-quote {
+  font-style: italic;
+  color: #cfd8f0;
+}
+.pr-offer b {
+  color: #ffb3a0;
+}
+.pr-offer b.get {
+  color: #9be8ab;
+}
+.pr-reply:empty {
+  display: none;
+}
+.pr-reply.bad {
+  color: #ff8a8a;
+}
+.pr-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+@media (max-width: 600px) {
+  .pr-box {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    text-align: center;
+  }
+  .pr-portrait {
+    width: 120px;
+    height: 120px;
+  }
+  .pr-actions {
+    justify-content: center;
+  }
+}
