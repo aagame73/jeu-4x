@@ -3,8 +3,8 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 import { STAR_TYPES, starDistance } from './galaxy.js';
-import { reachableStars, shipProgress, selectedShip } from './game.js';
-import { currentSpecies, knownRival, rivalInfo } from './species.js';
+import { reachableStars, shipProgress, selectedShip, visiblePlanets, colonyOn } from './game.js';
+import { currentSpecies, knownRival, rivalInfo, speciesHabitat } from './species.js';
 import { SPECIES } from './config.js';
 import { createSky } from './skybox.js';
 import { animateShip, createShip, disposeShip, shipScale } from './ships.js';
@@ -320,7 +320,10 @@ export function createGalaxyView(container, game, callbacks) {
       const occupant = star.planets.find((p) => p.inhabitedBy)?.inhabitedBy;
       const rival = knownRival(star, occupant);
       if (rival) el.style.setProperty('--empire', rival.accent);
-      el.className = 'star-label' + (star.id === game.homeId ? ' home' : '') + (occupant ? ' rival' : '') + (star.hasRuins && star.level === 3 ? ' ruins' : '');
+      // Planète libre au milieu favorable à votre espèce : petite coche verte devant le nom.
+      const favored = known && visiblePlanets(star).some((p) => p.size && !p.inhabitedBy && speciesHabitat(p) === 'favored' && !colonyOn(game, star.id, star.planets.indexOf(p)));
+      el.className = 'star-label' + (star.id === game.homeId ? ' home' : '') + (occupant ? ' rival' : '') + (star.hasRuins && star.level === 3 ? ' ruins' : '') + (favored ? ' favored' : '');
+      el.title = favored ? 'Une planète libre y est favorable à votre espèce' : '';
     }
 
     for (const v of currentViews) {

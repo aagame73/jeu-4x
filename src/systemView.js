@@ -10,7 +10,7 @@ import { createRng } from './rng.js';
 import { canvasTexture, glowTexture } from './textures.js';
 import { createSky } from './skybox.js';
 import { icon } from './icons.js';
-import { knownRival, rivalInfo } from './species.js';
+import { knownRival, rivalInfo, speciesHabitat, currentSpecies } from './species.js';
 import { createSystemFleets } from './systemFleets.js';
 import { besiegedHere, fleetShipHealth, rivalColonyHealth, shipHealth, warReport } from './combat.js';
 import { SHIP_KINDS } from './game.js';
@@ -464,6 +464,12 @@ export function createSystemView(root, game, actions) {
     } else if (body.isMoon && planet.size) {
       tags += '<em class="tag habitable">habitable</em>';
     }
+    // Milieu pour votre espèce (planètes colonisables sans colonie) : visible d'un coup d'œil.
+    const milieu = planet.size && !colony && !planet.inhabitedBy ? speciesHabitat(planet) : null;
+    if (milieu === 'favored') {
+      classes.push('favored');
+      tags += '<em class="tag favored" title="Milieu favorable à votre espèce">✓ Favorable</em>';
+    } else if (milieu === 'hostile') tags += '<em class="tag hostile" title="Milieu hostile à votre espèce">✕ Hostile</em>';
     if (planet.ruins && state.star.level >= 3) tags += '<em class="tag ruins" title="Ruines">◆</em>';
     el.className = classes.join(' ');
     el.innerHTML = `<span class="name">${planet.name}</span>${tags}`;
@@ -770,7 +776,7 @@ export function createSystemView(root, game, actions) {
       if (body.isMoon) {
         const focus = [body, body.parent].some((b) => b === state.selected || b === state.hovered);
         const near = camera.position.distanceTo(body.parent.anchor.position) < 24;
-        body.label.visible = focus || near;
+        body.label.visible = focus || near || body.label.element.classList.contains('favored');
       }
     }
     hoverRing.quaternion.copy(q);
@@ -940,6 +946,8 @@ export function createSystemView(root, game, actions) {
         !colony && p.inhabitedBy ? rivalFlag(knownRival(star, p.inhabitedBy)) : '',
         p.ruins && star.level >= 3 ? '<em class="tag ruins">◆</em>' : '',
         moon && p.size && !colony && !p.inhabitedBy ? '<em class="tag habitable">habitable</em>' : '',
+        p.size && !colony && !p.inhabitedBy && speciesHabitat(p) === 'favored' ? '<em class="tag favored" title="Milieu favorable à votre espèce">✓ Favorable</em>' : '',
+        p.size && !colony && !p.inhabitedBy && speciesHabitat(p) === 'hostile' ? '<em class="tag hostile" title="Milieu hostile à votre espèce">✕ Hostile</em>' : '',
       ].join('');
       return `<li><button class="sv-item${moon ? ' moon' : ''}${index === selected ? ' on' : ''}" data-sv="select" data-index="${index}">
         ${orb(p)}<span class="sv-item-name">${p.name}</span>${flags}</button></li>`;
@@ -986,6 +994,10 @@ export function createSystemView(root, game, actions) {
       planet.inhabitedBy ? rivalBadge(knownRival(star, planet.inhabitedBy)) : '',
       planet.ruins && star.level >= 3 ? '<span class="sv-badge ruins">◆ Ruines des Veilleurs</span>' : '',
       body.isMoon && planet.size && !colony && !planet.inhabitedBy ? '<span class="sv-badge habitable">Lune habitable</span>' : '',
+      planet.size && !colony && speciesHabitat(planet) === 'favored'
+        ? `<span class="sv-badge favored" title="Colons adaptés : +1 colon au départ, croissance +25 %, biomasse et eau consommées −50 %">✓ Milieu favorable aux ${currentSpecies().label}</span>` : '',
+      planet.size && !colony && speciesHabitat(planet) === 'hostile'
+        ? `<span class="sv-badge hostile" title="Colonie possible avec Adaptation xénobiologique : croissance −50 %, 1 colon de moins, production −15 %">✕ Milieu hostile aux ${currentSpecies().label}</span>` : '',
     ].join('');
 
     let deposits;

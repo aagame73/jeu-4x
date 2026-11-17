@@ -50,6 +50,11 @@ body {
 .star-label.rival {
   color: var(--empire, var(--rival));
 }
+.star-label.favored::before {
+  content: '✓ ';
+  color: #7cff9e;
+  text-shadow: 0 0 6px rgba(124, 255, 158, 0.8);
+}
 .star-label.ruins::after {
   content: ' ◆';
   color: var(--gold);

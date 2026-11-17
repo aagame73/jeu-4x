@@ -478,3 +478,10 @@ body.system-open .help {
   background: linear-gradient(90deg, #ff5a4a, #ffd166 50%, #7cff9e);
   background-size: 140px 100%;
 }
+
+/* Milieu favorable ou hostile à l'espèce du joueur */
+#system-view .tag.favored { color: #7cff9e; background: rgba(124, 255, 158, 0.14); text-transform: none; letter-spacing: 0; }
+#system-view .tag.hostile { color: #ff8a8a; background: rgba(255, 110, 110, 0.12); text-transform: none; letter-spacing: 0; }
+.sv-label.favored .name { color: #b8ffcb; text-shadow: 0 0 8px rgba(124, 255, 158, 0.6); }
+.sv-badge.favored { color: #7cff9e; background: rgba(124, 255, 158, 0.14); }
+.sv-badge.hostile { color: #ff8a8a; background: rgba(255, 110, 110, 0.12); }
