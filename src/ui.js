@@ -69,6 +69,11 @@ export function createUI(root, game, actions) {
     <div class="help">H : aide · Espace : pause · R : recherche · D : diplomatie · F : plein écran · + / − : vitesse · Clic : sélectionner · Double-clic : centrer · Glisser : pivoter · Clic droit : déplacer · Molette : zoom · 1 à 9 : choisir un vaisseau · Graine ${game.seed}</div>
   `;
   const $ = (id) => root.querySelector(`#${id}`);
+  // Bas du bandeau, pour que la recherche et la diplomatie s'ouvrent dessous (le bandeau reste visible).
+  const topbar = root.querySelector('.topbar');
+  const placeBelowTopbar = () => document.documentElement.style.setProperty('--topbar-bottom', `${Math.ceil(topbar.getBoundingClientRect().bottom + 6)}px`);
+  new ResizeObserver(placeBelowTopbar).observe(topbar);
+  placeBelowTopbar();
 
   // L'icône du bouton plein écran suit l'état réel (la touche Échap du navigateur en sort aussi).
   document.addEventListener('fullscreenchange', () => {

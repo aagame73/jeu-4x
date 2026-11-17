@@ -5,7 +5,7 @@ import { TUTORIAL_STEPS, tutorialActive } from './tutorial.js';
 const KEYS = [
   ['Espace', 'Pause / reprise'],
   ['+ / −', 'Vitesse du temps (×1, ×2, ×4)'],
-  ['R', 'Recherche'],
+  ['R', 'Recherche : en cours, file d’attente, disponibles (l’arbre complet s’ouvre depuis le tiroir)'],
   ['D', 'Diplomatie'],
   ['H', 'Cette aide'],
   ['F', 'Plein écran'],

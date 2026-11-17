@@ -48,16 +48,16 @@ export const TUTORIAL_STEPS = [
   {
     key: 'metallurgie',
     title: 'Rechercher la Métallurgie',
-    how: 'Ouvrez la recherche (touche R ou bouton « Recherche » en haut), branche Industrie : lancez « Métallurgie ».',
+    how: 'Ouvrez la recherche (touche R ou bouton « Recherche » en haut) : dans « Disponibles maintenant », lancez « Métallurgie ».',
     done: (game) => game.research.current === 'metallurgie' || hasTech(game, 'metallurgie'),
-    targets: () => ['.rs-btn', '.rs-tab[data-branch="industrie"]', '.rs-card[data-key="metallurgie"]'],
+    targets: () => ['.rs-btn', '.rd-item[data-key="metallurgie"] [data-rd="start"]', '.rs-tab[data-branch="industrie"]', '.rs-card[data-key="metallurgie"]'],
   },
   {
     key: 'orbitale',
     title: 'Rechercher la Mécanique orbitale',
     how: 'Une fois la Métallurgie acquise, lancez « Mécanique orbitale » (touche R) : elle débloque le spatioport.',
     done: (game) => hasTech(game, 'mecanique-orbitale'),
-    targets: () => ['.rs-btn', '.rs-tab[data-branch="industrie"]', '.rs-card[data-key="mecanique-orbitale"]'],
+    targets: () => ['.rs-btn', '.rd-item[data-key="mecanique-orbitale"] [data-rd="start"]', '.rs-tab[data-branch="industrie"]', '.rs-card[data-key="mecanique-orbitale"]'],
   },
   {
     key: 'spatioport',
@@ -69,9 +69,9 @@ export const TUTORIAL_STEPS = [
   {
     key: 'saut',
     title: 'Rechercher les Moteurs de saut',
-    how: 'Pendant le chantier, lancez « Moteurs de saut » (touche R, branche Propulsion) : ils permettent les sondes.',
+    how: 'Pendant le chantier, lancez « Moteurs de saut » (touche R) : ils permettent les sondes. Vous pouvez aussi les mettre en file d’attente.',
     done: (game) => hasTech(game, 'moteurs-saut') && anyBuilding(game, 'spatioport', true),
-    targets: () => ['.rs-btn', '.rs-tab[data-branch="propulsion"]', '.rs-card[data-key="moteurs-saut"]'],
+    targets: () => ['.rs-btn', '.rd-item[data-key="moteurs-saut"] [data-rd="start"]', '.rs-tab[data-branch="propulsion"]', '.rs-card[data-key="moteurs-saut"]'],
   },
   {
     key: 'sonde',

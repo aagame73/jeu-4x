@@ -19,6 +19,7 @@ import { createUI } from './ui.js';
 import { createContactView } from './contactView.js';
 import { createEndView } from './endView.js';
 import { createProposalView } from './proposalView.js';
+import { createResearchDrawer } from './researchDrawer.js';
 import { playerBattles } from './combat.js';
 import { createPlanetView } from './planetView.js';
 import { startConstruction, demolish, startUpgrade, togglePause } from './economy.js';
@@ -93,6 +94,7 @@ function refresh() {
   planetView.update();
   systemView.update();
   if (researchView.isOpen) researchView.render();
+  researchDrawer.renderLive();
 }
 
 // Le temps avance à chaque image, sauf en pause. L'interface n'est redessinée en entier
@@ -114,6 +116,7 @@ function advanceTime(dt) {
     planetView.renderLive();
     systemView.renderLive();
     if (researchView.isOpen) researchView.renderLive();
+    researchDrawer.renderLive();
   }
   if (autosave && currentDay(game) !== day && currentDay(game) % AUTOSAVE_DAYS === 0) writeSlot('auto', game);
 }
@@ -249,9 +252,15 @@ const actions = {
     if (diplomacyView.isOpen) actions.onCloseDiplomacy();
     menu.open();
   },
-  // L'écran de recherche met la partie en pause, comme le menu.
+  // Bouton « Recherche » et touche R : le tiroir latéral (le temps continue).
   onOpenResearch() {
+    if (researchView.isOpen) return actions.onCloseResearch();
+    researchDrawer.toggle();
+  },
+  // L'arbre complet met la partie en pause, comme le menu.
+  onOpenResearchTree() {
     if (researchView.isOpen) return;
+    researchDrawer.close();
     pausedBeforeResearch = game.paused;
     game.paused = true;
     researchView.open();
@@ -308,6 +317,7 @@ const proposalView = createProposalView(game, {
 });
 const planetView = createPlanetView(document.getElementById('planet-view'), game, actions);
 const researchView = createResearchView(document.getElementById('research'), game, actions);
+const researchDrawer = createResearchDrawer(document.getElementById('research-drawer'), game, actions);
 const diplomacyView = createDiplomacyView(document.getElementById('diplomacy'), game, actions);
 const systemView = createSystemView(document.getElementById('system-view'), game, actions);
 let returnToSystem = null; // système à rouvrir en quittant la vue d'une planète
@@ -424,6 +434,8 @@ window.addEventListener('keydown', (e) => {
   }
   if (researchView.isOpen && (e.key === 'Escape' || e.code === 'KeyR')) {
     actions.onCloseResearch();
+  } else if (researchDrawer.isOpen && e.key === 'Escape') {
+    researchDrawer.close();
   } else if (e.key === 'Escape') {
     const objectives = document.getElementById('objectives');
     if (objectives && !objectives.hidden) objectives.hidden = true; // détail des objectifs d'abord

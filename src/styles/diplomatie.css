@@ -1,13 +1,17 @@
 /* Écran de diplomatie : empires rencontrés et négociation à deux colonnes. */
+/* Sous le bandeau des ressources, qui reste visible ; la carte reste devinée derrière. */
 #diplomacy {
   position: fixed;
-  inset: 0;
+  inset: var(--topbar-bottom, 70px) 0 0 0;
   z-index: 45;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 14px;
-  background: rgba(2, 4, 10, 0.6);
+  padding: 8px 14px 14px;
+  background: rgba(2, 4, 10, 0.35);
+}
+#diplomacy > .fond {
+  opacity: 0.5;
 }
 #diplomacy[hidden] {
   display: none;
