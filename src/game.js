@@ -565,6 +565,10 @@ function completeShipyard(game, colony) {
 // --- Le temps --------------------------------------------------------------------------
 
 // Fait avancer le temps de `days` jours. Renvoie true si un événement a eu lieu.
+// Vaisseaux surveillés quand ils restent sans ordres (les vaisseaux de guerre peuvent garder un système).
+const IDLE_WATCH = ['sonde', 'colonie', 'transport'];
+const IDLE_ALERT_DAYS = 40;
+
 export function tick(game, days) {
   if (game.ended) return false; // partie terminée : le temps ne s'écoule plus
   game.time += days;
@@ -582,6 +586,19 @@ export function tick(game, days) {
         completeAnalysis(game, ship);
         changed = true;
       }
+    }
+    // Sonde ou vaisseau colonie qui attend des ordres depuis longtemps : le conseiller le rappelle, une fois.
+    if (ship.state === 'idle' && IDLE_WATCH.includes(ship.kind)) {
+      ship.idleDays = (ship.idleDays ?? 0) + days;
+      if (!ship.idleWarned && ship.idleDays >= IDLE_ALERT_DAYS) {
+        ship.idleWarned = true;
+        const what = ship.kind === 'sonde' ? 'envoyez-la explorer une étoile' : 'fondez une colonie ou envoyez-le vers un système analysé';
+        addLog(game, `${ship.name} attend vos ordres à ${starLabel(game.stars[ship.starId])} depuis ${IDLE_ALERT_DAYS} jours : ${what}.`, 'alert');
+        changed = true;
+      }
+    } else if (ship.idleDays) {
+      ship.idleDays = 0;
+      ship.idleWarned = false;
     }
     // Usure : les vaisseaux ne sont pas éternels.
     const life = lifespan(game, ship);

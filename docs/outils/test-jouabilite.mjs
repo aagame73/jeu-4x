@@ -113,5 +113,16 @@ for (const labs of [1, 3, 6]) {
   console.log(`     ${labs} labo(s), ${rate} pts/j : paliers 1 à 4 en ${tierTotal.map((n) => Math.round(n / rate)).join(' / ')} jours`);
 }
 
+// --- Vaisseau sans ordres : une alerte, une seule fois, après 40 jours ---
+game.ships = game.ships.filter((s) => s.kind !== 'sonde' && s.kind !== 'corvette');
+const idle = { id: 950, kind: 'sonde', name: 'Sonde Patiente', state: 'idle', starId: star.id, age: 0 };
+game.ships.push(idle);
+game.log.length = 0;
+run(game, 39);
+const early = game.log.filter((l) => l.text.startsWith('Sonde Patiente attend')).length;
+run(game, 30);
+const late = game.log.filter((l) => l.text.startsWith('Sonde Patiente attend')).length;
+check(early === 0 && late === 1, `sonde sans ordres : alerte à 40 jours, une seule fois (${early}, ${late})`);
+
 console.log(fails ? `\n${fails} échec(s)` : '\nTout est bon.');
 process.exit(fails ? 1 : 0);
