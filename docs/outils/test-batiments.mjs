@@ -45,7 +45,7 @@ for (const species of styles) {
 
 // Styles déjà dessinés : chaque bâtiment doit être redessiné (pas de retour au style neutre).
 const { makeKit } = await imp('buildings/kit.js');
-for (const [species, file, fn] of [['vaskhar', 'vaskhar.js', 'buildVaskhar'], ['synodes', 'synodes.js', 'buildSynodes'], ['ondesiens', 'ondesiens.js', 'buildOndesiens'], ['orrhaides', 'orrhaides.js', 'buildOrrhaides'], ['keltirr', 'keltirr.js', 'buildKeltirr']]) {
+for (const [species, file, fn] of [['vaskhar', 'vaskhar.js', 'buildVaskhar'], ['synodes', 'synodes.js', 'buildSynodes'], ['ondesiens', 'ondesiens.js', 'buildOndesiens'], ['orrhaides', 'orrhaides.js', 'buildOrrhaides'], ['keltirr', 'keltirr.js', 'buildKeltirr'], ['thrennes', 'thrennes.js', 'buildThrennes'], ['liseurs', 'liseurs.js', 'buildLiseurs'], ['ashkari', 'ashkari.js', 'buildAshkari']]) {
   const build = (await imp(`buildings/${file}`))[fn];
   const missing = BUILDING_TYPES.filter((t) => build(t, makeKit(false)) === undefined);
   check(!missing.length, `${species} : les ${BUILDING_TYPES.length} bâtiments ont leur propre modèle${missing.length ? ` (manque : ${missing.join(', ')})` : ''}`);

@@ -11,6 +11,9 @@ import { buildSynodes } from './synodes.js';
 import { buildOndesiens } from './ondesiens.js';
 import { buildOrrhaides } from './orrhaides.js';
 import { buildKeltirr } from './keltirr.js';
+import { buildThrennes } from './thrennes.js';
+import { buildLiseurs } from './liseurs.js';
+import { buildAshkari } from './ashkari.js';
 
 export { dimBuilding } from './kit.js';
 
@@ -19,7 +22,7 @@ const LEVEL_COLORS = ['#7cff9e', '#5fe3ff', '#c9a7ff', '#ffd166'];
 const isUpgradable = (type) => !!BUILDINGS[type] && BUILDINGS[type].upgradable !== false && BUILDINGS[type].buildable !== false;
 
 // Styles d'espèce : (type, kit) => animation, null (pas d'animation) ou undefined (bâtiment non redessiné).
-const STYLES = { vaskhar: buildVaskhar, synodes: buildSynodes, ondesiens: buildOndesiens, orrhaides: buildOrrhaides, keltirr: buildKeltirr };
+const STYLES = { vaskhar: buildVaskhar, synodes: buildSynodes, ondesiens: buildOndesiens, orrhaides: buildOrrhaides, keltirr: buildKeltirr, thrennes: buildThrennes, liseurs: buildLiseurs, ashkari: buildAshkari };
 
 export const BUILDING_TYPES = Object.keys(BUILDINGS);
 
