@@ -10,7 +10,7 @@ Généré par `docs/outils/liste-dialogues.mjs` à partir de `src/dialogues.js` 
 | Échange accepté | Marché scellé. Il tiendra comme le basalte. |
 | Refus (raison précise affichée dessous) | Non. La pierre ne plie pas pour si peu. |
 | Offre trop faible | Vous nous offrez du gravier. Revenez avec un filon. |
-| Empire hostile | Nos mandibules n'ont rien à vous dire. Partez. |
+| Empire hostile | La roche s'est refermée sur votre nom. Partez. |
 | Contre-offre | Moins lourd, alors. Voici ce que la roche peut céder. |
 | Proposition de l'empire | Nos creusets ont faim. Nous échangeons ce que nos galeries ont en trop. |
 | Traité de frontières rompu | Vous avez creusé sur notre seuil. Le basalte a de la mémoire. |
@@ -78,7 +78,7 @@ Généré par `docs/outils/liste-dialogues.mjs` à partir de `src/dialogues.js` 
 | Proposition de l'empire | Nos spores ont relevé un déséquilibre. Un échange le corrigerait. |
 | Traité de frontières rompu | Le réseau a enregistré votre parole brisée. Il n'oublie rien. |
 | Attitude en hausse | Le Synode révise favorablement son jugement à votre sujet. |
-| Attitude en baisse | Le Synode révise défavorablement son jugement à votre sujet. |
+| Attitude en baisse | Des filaments se rétractent dans le réseau à l'évocation de votre nom. |
 | Déclaration de guerre | Le réseau a délibéré : votre existence est devenue un problème à résoudre. |
 | Paix acceptée | Le réseau juge le conflit improductif. Il accepte de le suspendre. |
 | Prend une de vos colonies | Ce monde est absorbé dans le réseau. Ses pensées seront les nôtres. |
