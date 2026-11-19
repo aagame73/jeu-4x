@@ -214,9 +214,10 @@ export const SPECIES = {
     empire: 'Caravane ashkari',
     empireColor: '#4f7dff',
     lore: 'Nomades des géantes gazeuses, marchands et pilotes ; leurs familles vivent à bord depuis toujours.',
-    strength: 'Deutérium +25 %, sauts −25 % de carburant',
-    weakness: 'Défense des colonies −20 %, biomasse −10 %',
-    bonuses: { deuterium: 1.25, fuel: 0.75, colonyDefense: 0.8, biomasse: 0.9 },
+    strength: 'Deutérium +25 %, sauts −25 % de carburant, offres des marchands rivaux +10 %',
+    weakness: 'Défense des colonies −20 %',
+    // Équilibrage du 19/11 (docs/plan-equilibrage.md) : plus de malus de biomasse, offres d'échange +10 %.
+    bonuses: { deuterium: 1.25, fuel: 0.75, colonyDefense: 0.8, tradeOffers: 1.1 },
     habitat: { favored: ['desertique', 'tempere'], hostile: ['volcanique'] }, // peuple de caravanes
     favoredTerrains: ['ocean', 'glace'],
     accent: '#e0a070',

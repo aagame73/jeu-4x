@@ -13,7 +13,7 @@ const { SPECIES } = await imp('config.js');
 const S = await imp('species.js');
 const { PLANET_TYPES } = await imp('galaxy.js');
 
-const DAYS = 200;
+const DAYS = Number(process.env.JOURS ?? 200); // JOURS=1500 node … pour une partie plus longue
 const W = { minerais: 1, alliages: 2, biomasse: 0.3, eau: 0.3, deuterium: 0.7, energie: 0.5, recherche: 1.5 };
 const ORDER = ['puits', 'laboratoire', 'fonderie', 'puits', 'laboratoire', 'pompe', 'puits', 'laboratoire', 'centrale'];
 

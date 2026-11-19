@@ -7,6 +7,7 @@ import { RESOURCE_LABELS } from './economy.js';
 import { createRng } from './rng.js';
 import { lever } from './difficulty.js';
 import { SHIP_KINDS } from './game.js';
+import { speciesBonus } from './species.js';
 
 export const startRelation = (species) => DIPLOMACY.startRelation[species];
 
@@ -467,7 +468,9 @@ function makeProposal(game, empire) {
     if (evaluateDeal(game, empire, build(mid)).ok) low = mid;
     else high = mid - 1;
   }
-  return low > 0 ? build(low) : null;
+  // Espèce marchande (Ashkari) : les rivaux lui proposent un peu plus.
+  const generous = Math.min(Math.floor(empire.stocks[offered]), Math.round(low * speciesBonus('tradeOffers')));
+  return generous > 0 ? build(generous) : null;
 }
 
 const proposalOf = (game, empire) => game.proposals.find((p) => p.species === empire.species);
