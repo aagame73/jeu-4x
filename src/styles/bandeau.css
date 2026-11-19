@@ -580,3 +580,8 @@ body.battle-slow .topbar .clock::after {
   text-align: center;
   box-shadow: 0 0 8px rgba(255, 122, 60, 0.8);
 }
+
+/* Bouton haut-parleur : barré et atténué quand le son est coupé */
+.topbar .sound-btn.muted {
+  opacity: 0.55;
+}

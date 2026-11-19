@@ -1,6 +1,7 @@
 // Menu du jeu (Échap) et écran d'accueil : sauvegarder, charger, exporter, importer, nouvelle partie.
 import { SLOTS, readSlot, writeSlot, summary, loadAndRestart, newGameAndRestart, exportFile, importFile } from './save.js';
 import { currentDay } from './game.js';
+import { soundSettings, setVolume, toggleMuted, start as startVoice, stop as stopVoice } from './voices.js';
 
 const SLOT_LABELS = { auto: 'Sauvegarde automatique', slot1: 'Emplacement 1', slot2: 'Emplacement 2', slot3: 'Emplacement 3' };
 
@@ -62,6 +63,11 @@ export function createMenu(root, game, { onOpen, onClose, onNewGame }) {
         <button data-menu="export">Exporter la partie</button>
         <button data-menu="import">Importer un fichier…</button>
       </div>
+      <h3>Son</h3>
+      <div class="menu-row sound-row">
+        <label>Voix des espèces <input type="range" min="0" max="100" step="5" value="${Math.round(soundSettings().volume * 100)}" data-menu-volume aria-label="Volume des voix"></label>
+        <button data-menu="mute">${soundSettings().muted ? 'Remettre le son' : 'Couper le son'}</button>
+      </div>
       <h3>Partie</h3>
       <div class="menu-row">
         <button class="primary" data-menu="close">Reprendre</button>
@@ -88,9 +94,22 @@ export function createMenu(root, game, { onOpen, onClose, onNewGame }) {
       $('menu-file').click();
     } else if (action === 'new') {
       if (confirm('Commencer une nouvelle partie ? La progression non enregistrée sera perdue.')) newGameAndRestart();
+    } else if (action === 'mute') {
+      toggleMuted();
+      render();
     } else if (action === 'new-start') {
       onNewGame();
     }
+  });
+
+  // Volume : on entend un court échantillon de la voix de l'espèce en relâchant le curseur.
+  root.addEventListener('input', (e) => {
+    if (e.target.matches('[data-menu-volume]')) setVolume(Number(e.target.value) / 100);
+  });
+  root.addEventListener('change', (e) => {
+    if (!e.target.matches('[data-menu-volume]')) return;
+    startVoice(game.species ?? 'sans-espece', 'menu');
+    setTimeout(() => stopVoice('menu'), 900);
   });
 
   $('menu-file').addEventListener('change', () => {

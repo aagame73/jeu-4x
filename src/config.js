@@ -11,6 +11,20 @@ export const CONFIG = {
   speeds: [1, 2, 4],
 };
 
+// Voix des espèces (docs/plan-voix.md, src/voices.js) : recette de synthèse, hauteur (Hz), durée
+// d'une syllabe et silence entre deux (s), probabilité d'une vraie pause, volume relatif.
+export const VOICES = {
+  vaskhar: { recipe: 'growl', pitch: [55, 85], syllable: [0.18, 0.34], gap: [0.04, 0.1], pause: 0.15, gain: 0.6 },
+  ondesiens: { recipe: 'whale', pitch: [260, 480], syllable: [0.35, 0.7], gap: [0.05, 0.15], pause: 0.12, gain: 0.8 },
+  keltirr: { recipe: 'chirp', pitch: [1400, 2600], syllable: [0.06, 0.14], gap: [0.04, 0.12], pause: 0.18, gain: 2 },
+  synodes: { recipe: 'choir', pitch: [110, 170], syllable: [0.25, 0.45], gap: [0.03, 0.1], pause: 0.14, gain: 16 },
+  orrhaides: { recipe: 'chime', pitch: [700, 1500], syllable: [0.12, 0.26], gap: [0.02, 0.08], pause: 0.15, gain: 2 },
+  thrennes: { recipe: 'click', pitch: [80, 140], syllable: [0.12, 0.24], gap: [0.05, 0.12], pause: 0.16, gain: 0.6 },
+  liseurs: { recipe: 'chant', pitch: [150, 200], syllable: [0.3, 0.55], gap: [0.03, 0.08], pause: 0.12, gain: 4 },
+  ashkari: { recipe: 'nasal', pitch: [170, 260], syllable: [0.1, 0.22], gap: [0.03, 0.09], pause: 0.16, gain: 8 },
+  'sans-espece': { recipe: 'radio', pitch: [160, 260], syllable: [0.07, 0.16], gap: [0.03, 0.08], pause: 0.15, gain: 4 },
+};
+
 // Recherche (docs/plan-jouabilite.md, A) : points de départ, à ajuster après des parties de test.
 // Aucun point n'est mis de côté : sans projet en cours, la production de recherche est perdue.
 export const RESEARCH = {

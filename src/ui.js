@@ -10,6 +10,7 @@ import { createAdvisor } from './advisor.js';
 import { TUTORIAL_STEPS, currentStep } from './tutorial.js';
 import { currentSpecies, speciesHabitat, rivalInfo } from './species.js';
 import { treatyConflicts, pendingProposal } from './diplomacy.js';
+import { toggleMuted, onSoundChange, soundSettings } from './voices.js';
 import { shipHealth, warReport } from './combat.js';
 import { empireName, leadingKnownRival, progress, rivalGoal } from './victory.js';
 import { COMBAT } from './config.js';
@@ -45,6 +46,7 @@ export function createUI(root, game, actions) {
       <div class="stats" id="stats"></div>
       <button class="menu-btn fs-btn" data-action="fullscreen" title="Plein écran (F)" aria-label="Plein écran">${ICONS.pleinEcran}</button>
       <button class="menu-btn icon-only" data-action="diplomacy" title="Diplomatie (D)" aria-label="Diplomatie">${ICONS.diplomatie}</button>
+      <button class="menu-btn icon-only sound-btn" data-action="sound" title="Couper les voix (M)" aria-label="Couper les voix">${ICONS.son}</button>
       <button class="menu-btn rs-btn" data-action="research" title="Recherche (R)">${ICONS.recherche}<span class="rs-btn-label">Recherche</span><span class="rs-meter"><i></i></span><i class="rs-dot"></i></button>
       <button class="menu-btn icon-only help-btn" data-action="help" title="Aide : commandes et premiers pas (H)" aria-label="Aide">?</button>
       <button class="menu-btn icon-only" data-action="menu" title="Menu : sauvegarder, charger (Échap)" aria-label="Menu">${ICONS.menu}</button>
@@ -70,6 +72,18 @@ export function createUI(root, game, actions) {
   `;
   const $ = (id) => root.querySelector(`#${id}`);
   // Bas du bandeau, pour que la recherche et la diplomatie s'ouvrent dessous (le bandeau reste visible).
+  // Bouton haut-parleur : son coupé ou non (réglages dans voices.js, aussi dans le menu).
+  const renderSound = ({ muted }) => {
+    const b = root.querySelector('.sound-btn');
+    b.innerHTML = muted ? ICONS.sonCoupe : ICONS.son;
+    b.classList.toggle('muted', muted);
+    const tip = muted ? 'Remettre les voix (M)' : 'Couper les voix (M)';
+    if (b.hasAttribute('data-tip')) b.dataset.tip = tip;
+    else b.title = tip;
+    b.setAttribute('aria-label', tip);
+  };
+  onSoundChange(renderSound);
+  renderSound(soundSettings());
   const topbar = root.querySelector('.topbar');
   const placeBelowTopbar = () => document.documentElement.style.setProperty('--topbar-bottom', `${Math.ceil(topbar.getBoundingClientRect().bottom + 6)}px`);
   new ResizeObserver(placeBelowTopbar).observe(topbar);
@@ -93,6 +107,7 @@ export function createUI(root, game, actions) {
     else if (action === 'help') actions.onOpenHelp();
     else if (action === 'research') actions.onOpenResearch?.();
     else if (action === 'diplomacy') actions.onOpenDiplomacy?.();
+    else if (action === 'sound') toggleMuted();
     else if (action === 'fullscreen') actions.onToggleFullscreen();
     else if (action === 'journal') $('journal').hidden = !$('journal').hidden;
     else if (action === 'tuto-skip') actions.onTutorialSkip();

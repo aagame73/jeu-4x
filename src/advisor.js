@@ -6,6 +6,7 @@ import { currentSpecies } from './species.js';
 const LETTERS_PER_SECOND = 45;
 const PAUSE_AFTER_MS = 1400; // temps de lecture avant le message suivant
 const MAX_QUEUE = 4; // au-delà, les plus anciens sont sautés (ils restent dans le journal)
+const VOICED = ['alert', 'tuto']; // types de messages lus à voix haute (docs/plan-voix.md)
 
 export function createAdvisor(root, game, speciesKey) {
   const bubble = root.querySelector('#advisor-bubble');
@@ -37,7 +38,8 @@ export function createAdvisor(root, game, speciesKey) {
       return;
     }
     shown = 0;
-    portrait.setSpeaking(true);
+    // Voix seulement pour les répliques importantes (alertes, tutoriel) ; sinon la bouche bouge en silence.
+    portrait.setSpeaking(true, { silent: !VOICED.includes(entry.kind) });
     type();
   }
 

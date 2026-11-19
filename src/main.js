@@ -20,6 +20,7 @@ import { createContactView } from './contactView.js';
 import { createEndView } from './endView.js';
 import { createProposalView } from './proposalView.js';
 import { createResearchDrawer } from './researchDrawer.js';
+import { toggleMuted } from './voices.js';
 import { playerBattles } from './combat.js';
 import { createPlanetView } from './planetView.js';
 import { startConstruction, demolish, startUpgrade, togglePause } from './economy.js';
@@ -444,6 +445,8 @@ window.addEventListener('keydown', (e) => {
     else menu.open();
   } else if (e.code === 'KeyR' && !e.ctrlKey && !e.metaKey && !e.altKey) {
     actions.onOpenResearch();
+  } else if (e.code === 'KeyM' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    toggleMuted();
   } else if (e.code === 'KeyD' && !e.ctrlKey && !e.metaKey && !e.altKey) {
     actions.onOpenDiplomacy();
   } else if (e.code === 'KeyF' && !e.ctrlKey && !e.metaKey && !e.altKey) {

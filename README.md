@@ -20,7 +20,7 @@ Un **tutoriel** guide les débuts : le conseiller de votre espèce annonce chaqu
 6. **Lancer une sonde** : dans la colonie (**Gérer la colonie**), cliquez sur le **spatioport** : le chantier spatial propose la sonde. Une fois construite, elle apparaît dans le panneau **Flotte**, en haut à gauche. Sélectionnez-la, cliquez sur une étoile de la carte, puis sur **Envoyer**. Arrivée dans un système inconnu, elle propose de l'**analyser**.
 7. **Explorer et s'étendre** : les sondes découvrent les systèmes et les empires rivaux. Le dock spatial permet ensuite de construire des vaisseaux colonie, des vaisseaux de guerre et des défenses.
 
-Le conseiller de votre espèce, en bas à gauche, commente les événements de la partie et prévient des pénuries ; une ressource épuisée clignote en rouge dans le bandeau. Les propositions des autres empires s'ouvrent dans une fenêtre (le jeu se met en pause). Dans la vue d'un système, les planètes **favorables** ou **hostiles** à votre espèce sont signalées ; sur la carte, une coche verte marque les systèmes où une planète favorable est libre.
+Chaque espèce a sa voix, un babillage extraterrestre généré par le jeu (volume dans le menu, bouton haut-parleur ou touche **M** pour couper). Le conseiller de votre espèce, en bas à gauche, commente les événements de la partie et prévient des pénuries ; une ressource épuisée clignote en rouge dans le bandeau. Les propositions des autres empires s'ouvrent dans une fenêtre (le jeu se met en pause). Dans la vue d'un système, les planètes **favorables** ou **hostiles** à votre espèce sont signalées ; sur la carte, une coche verte marque les systèmes où une planète favorable est libre.
 
 **Victoire** : occuper 80 % des systèmes colonisables, ou qu'il ne reste plus aucun rival. **Défaite** : plus aucune colonie, ni de vaisseau pour en fonder une.
 
@@ -32,6 +32,7 @@ Le conseiller de votre espèce, en bas à gauche, commente les événements de l
 | + / − | Vitesse du temps (×1, ×2, ×4) |
 | R | Recherche (tiroir ; arbre complet depuis le tiroir) |
 | D | Diplomatie |
+| M | Couper / remettre les voix des espèces |
 | H | Aide (commandes, premiers pas, relancer le tutoriel) |
 | F | Plein écran |
 | Échap | Menu (sauvegarder, charger) ou retour |

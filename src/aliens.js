@@ -2,6 +2,7 @@
 // Usage : const p = createAlienPortrait(canvas, 'vaskhar'); p.setSpeaking(true); p.destroy();
 // Les espèces qui ont un portrait peint (paintedPortrait.js) l'affichent à la place du dessin.
 import { PAINTED, createPaintedPortrait } from './paintedPortrait.js';
+import { start as startVoice, stop as stopVoice } from './voices.js';
 // Repère de dessin : unité = moitié du plus petit côté du canevas, origine au centre,
 // y vers le bas ; la tête est vers y ≈ -0.2, le buste descend jusqu'au bas (s.bot).
 
@@ -3805,18 +3806,25 @@ export function createAlienPortrait(canvas, speciesKey) {
     return PAINTED.has(key) ? createPaintedPortrait(canvas, key, ACCENTS[key]) : createDrawnPortrait(canvas, key);
   };
   let current = make(speciesKey);
+  let key = resolveKey(speciesKey);
   let speaking = false;
+  const owner = {}; // identifiant de ce portrait auprès des voix
   return {
-    setSpeaking(v) {
+    // silent : la bouche bouge sans voix (messages ordinaires du conseiller).
+    setSpeaking(v, { silent = false } = {}) {
       speaking = !!v;
       current.setSpeaking(v);
+      if (speaking && !silent) startVoice(key, owner);
+      else stopVoice(owner);
     },
     setSpecies(k) {
       current.destroy();
       current = make(k);
+      key = resolveKey(k);
       current.setSpeaking(speaking);
     },
     destroy() {
+      stopVoice(owner);
       current.destroy();
     },
   };

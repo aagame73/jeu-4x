@@ -7,6 +7,7 @@ const KEYS = [
   ['+ / −', 'Vitesse du temps (×1, ×2, ×4)'],
   ['R', 'Recherche : en cours, file d’attente, disponibles (l’arbre complet s’ouvre depuis le tiroir)'],
   ['D', 'Diplomatie'],
+  ['M', 'Couper / remettre les voix des espèces'],
   ['H', 'Cette aide'],
   ['F', 'Plein écran'],
   ['Échap', 'Menu (sauvegarder, charger) ou retour'],

@@ -965,3 +965,15 @@ button.big .small {
 .building-line.stopped .muted {
   color: #ffb36b;
 }
+
+/* Menu : réglage du volume des voix */
+.sound-row label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+.sound-row input[type='range'] {
+  flex: 1;
+  accent-color: var(--accent);
+}

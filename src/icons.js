@@ -3,6 +3,9 @@ const svg = (body, extra = '') =>
   `<svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ${extra}>${body}</svg>`;
 
 export const ICONS = {
+  // Son : haut-parleur avec ondes, ou barré
+  son: svg('<path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/>'),
+  sonCoupe: svg('<path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M17 9l5 6M22 9l-5 6"/>'),
   diplomatie: svg('<path d="M4 6h10a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2H9l-4 3v-3H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z"/><path d="M18 10h2a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-1v2l-3-2h-3"/>'),
   // Ressources et quantités (minerais, biomasse, Vélarine : tracés « néon » repris du bandeau)
   minerais: svg('<path d="M6.5 3.5h11l4 5.5L12 21 2.5 9z"/><path d="M2.5 9h19"/><path d="M9.5 3.5 8 9l4 12 4-12-1.5-5.5"/>'),
