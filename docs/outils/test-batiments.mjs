@@ -43,5 +43,13 @@ for (const species of styles) {
   check(!broken.length, `${species ?? 'neutre'} : ${BUILDING_TYPES.length} bâtiments${broken.length ? ` — ${broken.join(', ')}` : ''}`);
 }
 
+// Styles déjà dessinés : chaque bâtiment doit être redessiné (pas de retour au style neutre).
+const { makeKit } = await imp('buildings/kit.js');
+for (const [species, file, fn] of [['vaskhar', 'vaskhar.js', 'buildVaskhar'], ['synodes', 'synodes.js', 'buildSynodes']]) {
+  const build = (await imp(`buildings/${file}`))[fn];
+  const missing = BUILDING_TYPES.filter((t) => build(t, makeKit(false)) === undefined);
+  check(!missing.length, `${species} : les ${BUILDING_TYPES.length} bâtiments ont leur propre modèle${missing.length ? ` (manque : ${missing.join(', ')})` : ''}`);
+}
+
 console.log(fails ? `\n${fails} échec(s)` : '\nTout est bon.');
 process.exit(fails ? 1 : 0);
